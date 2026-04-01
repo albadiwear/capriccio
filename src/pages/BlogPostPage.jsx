@@ -1,3 +1,1 @@
-export default function BlogPostPage() {
-  return <div>BlogPostPage</div>
-}
+export default function BlogPostPage() { return <div>BlogPostPage</div> }

@@ -1,3 +1,1 @@
-export default function AdminOrdersPage() {
-  return <div>AdminOrdersPage</div>
-}
+export default function AdminOrdersPage() { return <div>AdminOrdersPage</div> }

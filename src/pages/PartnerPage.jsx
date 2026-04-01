@@ -1,3 +1,1 @@
-export default function PartnerPage() {
-  return <div>PartnerPage</div>
-}
+export default function PartnerPage() { return <div>PartnerPage</div> }

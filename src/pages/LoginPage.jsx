@@ -128,8 +128,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 px-6 py-10">
-      <div className="mx-auto mt-16 max-w-md rounded-2xl bg-white p-8 shadow-sm">
+    <div className="min-h-screen bg-gray-50 px-4 py-8 sm:px-6 md:py-10">
+      <div className="mx-auto mt-8 max-w-md rounded-2xl bg-white p-6 shadow-sm sm:mt-16 sm:p-8">
         <div className="text-center">
           <Link to="/" className="text-lg font-bold tracking-[0.2em] text-gray-900">
             CAPRICCIO
@@ -154,7 +154,7 @@ export default function LoginPage() {
               type="email"
               value={formData.email}
               onChange={handleChange}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="h-12 w-full rounded-lg border border-gray-300 px-4 focus:outline-none focus:ring-2 focus:ring-gray-900"
               placeholder="you@example.com"
             />
             {fieldErrors.email && (
@@ -173,7 +173,7 @@ export default function LoginPage() {
                 type={showPassword ? 'text' : 'password'}
                 value={formData.password}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="h-12 w-full rounded-lg border border-gray-300 px-4 pr-12 focus:outline-none focus:ring-2 focus:ring-gray-900"
                 placeholder="Введите пароль"
               />
               <button
@@ -190,7 +190,7 @@ export default function LoginPage() {
             )}
           </div>
 
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <label className="flex items-center gap-2 text-sm text-gray-600">
               <input
                 type="checkbox"
@@ -210,7 +210,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-gray-900 py-3 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-70"
+            className="h-12 w-full rounded-lg bg-gray-900 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-70"
           >
             {loading ? 'Входим...' : 'Войти'}
           </button>
@@ -225,7 +225,7 @@ export default function LoginPage() {
             type="button"
             onClick={handleGoogleLogin}
             disabled={loading}
-            className="flex w-full items-center justify-center gap-3 rounded-lg border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-70"
+            className="flex h-12 w-full items-center justify-center gap-3 rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-70"
           >
             <GoogleIcon />
             Войти через Google

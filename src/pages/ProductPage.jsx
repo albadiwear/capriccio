@@ -223,7 +223,7 @@ export default function ProductPage() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-6 py-10">
+      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 md:py-10">
         <SkeletonProduct />
       </div>
     )
@@ -231,7 +231,7 @@ export default function ProductPage() {
 
   if (!product) {
     return (
-      <div className="max-w-7xl mx-auto px-6 py-20 text-center text-gray-400">
+      <div className="max-w-7xl mx-auto px-4 py-12 text-center text-gray-400 sm:px-6 md:py-20">
         <p className="text-lg">Товар не найден</p>
         <Link to="/catalog" className="mt-4 inline-block text-sm underline hover:text-gray-700">
           Вернуться в каталог
@@ -253,7 +253,7 @@ export default function ProductPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6">
 
         {/* Breadcrumbs */}
         <nav className="flex items-center gap-2 text-sm text-gray-500 mb-8 flex-wrap">
@@ -273,7 +273,7 @@ export default function ProductPage() {
         </nav>
 
         {/* Main block */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-12">
 
           {/* Gallery */}
           <div>
@@ -318,7 +318,7 @@ export default function ProductPage() {
               {product.brand && (
                 <p className="text-sm text-gray-500 uppercase tracking-widest mb-1">{product.brand}</p>
               )}
-              <h1 className="text-2xl font-bold text-gray-900 leading-tight">{product.name}</h1>
+              <h1 className="text-2xl font-bold leading-tight text-gray-900 md:text-3xl">{product.name}</h1>
               <div className="mt-2">
                 <StarRating rating={4.8} count={24} />
               </div>
@@ -394,7 +394,7 @@ export default function ProductPage() {
                         key={v.size}
                         onClick={() => !outOfStock && setSelectedSize(v.size)}
                         disabled={outOfStock}
-                        className={`px-4 py-2 text-sm border rounded transition-all relative ${
+                        className={`h-12 px-4 text-sm border rounded transition-all relative ${
                           outOfStock
                             ? 'opacity-40 cursor-not-allowed border-gray-200 text-gray-400 line-through'
                             : isSelected
@@ -411,11 +411,11 @@ export default function ProductPage() {
             )}
 
             {/* Action buttons */}
-            <div className="flex gap-3 items-start">
+            <div className="flex items-start gap-3">
               <div className="flex flex-col gap-3 flex-1">
                 <button
                   onClick={handleAddToCart}
-                  className={`w-full py-3.5 text-sm font-medium tracking-wide rounded transition-colors ${
+                  className={`h-12 w-full text-sm font-medium tracking-wide rounded transition-colors ${
                     added
                       ? 'bg-green-600 text-white'
                       : 'bg-gray-900 text-white hover:bg-gray-700'
@@ -425,7 +425,7 @@ export default function ProductPage() {
                 </button>
                 <button
                   onClick={handleWhatsApp}
-                  className="w-full py-3.5 text-sm font-medium tracking-wide rounded border border-gray-200 text-gray-700 hover:border-gray-900 hover:text-gray-900 transition-colors flex items-center justify-center gap-2"
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded border border-gray-200 text-sm font-medium tracking-wide text-gray-700 transition-colors hover:border-gray-900 hover:text-gray-900"
                 >
                   <MessageCircle className="w-4 h-4" />
                   Заказать в WhatsApp
@@ -434,7 +434,7 @@ export default function ProductPage() {
               <button
                 onClick={() => setWished((w) => !w)}
                 aria-label="В избранное"
-                className="mt-0.5 p-3.5 border border-gray-200 rounded hover:border-gray-900 transition-colors flex-shrink-0"
+                className="mt-0.5 flex h-12 w-12 flex-shrink-0 items-center justify-center rounded border border-gray-200 transition-colors hover:border-gray-900"
               >
                 <Heart className={`w-5 h-5 ${wished ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
               </button>
@@ -457,7 +457,7 @@ export default function ProductPage() {
               <div className="border-t border-gray-100">
                 <button
                   onClick={() => setAccordionOpen((v) => !v)}
-                  className="flex items-center justify-between w-full py-4 text-sm font-medium text-gray-900 hover:text-gray-600 transition-colors"
+                  className="flex min-h-12 w-full items-center justify-between py-4 text-sm font-medium text-gray-900 transition-colors hover:text-gray-600"
                 >
                   <span>Состав и уход</span>
                   {accordionOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}

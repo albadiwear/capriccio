@@ -67,17 +67,17 @@ export default function ContactsPage() {
   }
 
   return (
-    <div className="bg-white px-6 py-16 text-gray-900">
+    <div className="bg-white px-4 py-8 text-gray-900 sm:px-6 md:py-16">
       <div className="mx-auto max-w-7xl">
         <div className="mx-auto max-w-3xl text-center">
           <p className="text-sm uppercase tracking-[0.3em] text-gray-400">Capriccio</p>
-          <h1 className="mt-4 text-4xl font-bold md:text-5xl">Контакты</h1>
+          <h1 className="mt-4 text-2xl font-bold md:text-5xl sm:text-4xl">Контакты</h1>
           <p className="mt-4 text-base text-gray-500 md:text-lg">
             Мы всегда на связи и готовы помочь с выбором, заказом и доставкой
           </p>
         </div>
 
-        <section className="py-16">
+        <section className="py-8 md:py-16">
           <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
             <div>
               <h2 className="text-2xl font-bold text-gray-900 md:text-3xl">Свяжитесь с нами</h2>
@@ -131,7 +131,7 @@ export default function ContactsPage() {
               </div>
             </div>
 
-            <div className="rounded-3xl border border-gray-200 p-8">
+            <div className="rounded-3xl border border-gray-200 p-6 sm:p-8">
               <h2 className="text-2xl font-bold text-gray-900">Форма обратной связи</h2>
               <p className="mt-3 text-sm text-gray-500">
                 Оставьте сообщение, и мы свяжемся с вами в ближайшее время
@@ -149,7 +149,7 @@ export default function ContactsPage() {
                   value={formData.name}
                   onChange={handleChange}
                   placeholder="Имя"
-                  className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="h-12 w-full rounded-lg border border-gray-300 px-4 focus:outline-none focus:ring-2 focus:ring-gray-900"
                   required
                 />
                 <input
@@ -158,7 +158,7 @@ export default function ContactsPage() {
                   value={formData.email}
                   onChange={handleChange}
                   placeholder="Email"
-                  className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="h-12 w-full rounded-lg border border-gray-300 px-4 focus:outline-none focus:ring-2 focus:ring-gray-900"
                   required
                 />
                 <input
@@ -166,14 +166,14 @@ export default function ContactsPage() {
                   value={formData.phone}
                   onChange={handleChange}
                   placeholder="Телефон"
-                  className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="h-12 w-full rounded-lg border border-gray-300 px-4 focus:outline-none focus:ring-2 focus:ring-gray-900"
                 />
                 <input
                   name="subject"
                   value={formData.subject}
                   onChange={handleChange}
                   placeholder="Тема"
-                  className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="h-12 w-full rounded-lg border border-gray-300 px-4 focus:outline-none focus:ring-2 focus:ring-gray-900"
                   required
                 />
                 <textarea
@@ -187,7 +187,7 @@ export default function ContactsPage() {
                 />
                 <button
                   type="submit"
-                  className="w-full rounded-lg bg-gray-900 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-gray-700"
+                  className="h-12 w-full rounded-lg bg-gray-900 px-6 text-sm font-medium text-white transition-colors hover:bg-gray-700"
                 >
                   Отправить
                 </button>
@@ -196,7 +196,7 @@ export default function ContactsPage() {
           </div>
         </section>
 
-        <section className="py-16">
+        <section className="py-8 md:py-16">
           <div className="flex h-64 items-center justify-center rounded-2xl bg-gray-200 px-6 text-center text-gray-600">
             Карта — г. Алматы, ул. Примерная, 123
           </div>

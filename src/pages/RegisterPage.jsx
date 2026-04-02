@@ -120,8 +120,8 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 px-6 py-10">
-      <div className="mx-auto mt-16 max-w-md rounded-2xl bg-white p-8 shadow-sm">
+    <div className="min-h-screen bg-gray-50 px-4 py-8 sm:px-6 md:py-10">
+      <div className="mx-auto mt-8 max-w-md rounded-2xl bg-white p-6 shadow-sm sm:mt-16 sm:p-8">
         <div className="text-center">
           <Link to="/" className="text-lg font-bold tracking-[0.2em] text-gray-900">
             CAPRICCIO
@@ -152,7 +152,7 @@ export default function RegisterPage() {
               type="text"
               value={formData.full_name}
               onChange={handleChange}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="h-12 w-full rounded-lg border border-gray-300 px-4 focus:outline-none focus:ring-2 focus:ring-gray-900"
               placeholder="Ваше имя"
             />
             {fieldErrors.full_name && (
@@ -170,7 +170,7 @@ export default function RegisterPage() {
               type="email"
               value={formData.email}
               onChange={handleChange}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="h-12 w-full rounded-lg border border-gray-300 px-4 focus:outline-none focus:ring-2 focus:ring-gray-900"
               placeholder="you@example.com"
             />
             {fieldErrors.email && (
@@ -188,7 +188,7 @@ export default function RegisterPage() {
               type="tel"
               value={formData.phone}
               onChange={handleChange}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="h-12 w-full rounded-lg border border-gray-300 px-4 focus:outline-none focus:ring-2 focus:ring-gray-900"
               placeholder="+7 777 123 45 67"
             />
             {fieldErrors.phone && (
@@ -207,7 +207,7 @@ export default function RegisterPage() {
                 type={showPassword ? 'text' : 'password'}
                 value={formData.password}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="h-12 w-full rounded-lg border border-gray-300 px-4 pr-12 focus:outline-none focus:ring-2 focus:ring-gray-900"
                 placeholder="Введите пароль"
               />
               <button
@@ -235,7 +235,7 @@ export default function RegisterPage() {
                 type={showConfirmPassword ? 'text' : 'password'}
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="h-12 w-full rounded-lg border border-gray-300 px-4 pr-12 focus:outline-none focus:ring-2 focus:ring-gray-900"
                 placeholder="Повторите пароль"
               />
               <button
@@ -271,7 +271,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-gray-900 py-3 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-70"
+            className="h-12 w-full rounded-lg bg-gray-900 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-70"
           >
             {loading ? 'Регистрация...' : 'Зарегистрироваться'}
           </button>

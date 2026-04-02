@@ -92,7 +92,7 @@ export default function BlogPostPage() {
 
   if (loading) {
     return (
-      <div className="bg-white px-6 py-16">
+      <div className="bg-white px-4 py-8 sm:px-6 md:py-16">
         <div className="mx-auto max-w-3xl animate-pulse">
           <div className="h-4 w-48 rounded bg-gray-200" />
           <div className="mt-6 aspect-video rounded-lg bg-gray-200" />
@@ -113,7 +113,7 @@ export default function BlogPostPage() {
   }
 
   return (
-    <div className="bg-white px-6 py-16">
+    <div className="bg-white px-4 py-8 sm:px-6 md:py-16">
       <div className="mx-auto max-w-3xl">
         <nav className="mb-8 flex flex-wrap items-center gap-2 text-sm text-gray-400">
           <Link to="/" className="transition-colors hover:text-gray-900">
@@ -140,7 +140,7 @@ export default function BlogPostPage() {
           <span className="text-sm text-gray-400">{formatDate(post.published_at)}</span>
         </div>
 
-        <h1 className="mt-6 text-3xl font-bold text-gray-900 md:text-4xl">
+        <h1 className="mt-6 text-2xl font-bold text-gray-900 md:text-4xl">
           {post.title}
         </h1>
 
@@ -155,7 +155,7 @@ export default function BlogPostPage() {
               href={`https://t.me/share/url?url=${encodeURIComponent(pageUrl)}&text=${encodeURIComponent(post.title)}`}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-900 hover:text-white"
+              className="inline-flex min-h-12 items-center gap-2 rounded-full bg-gray-100 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-900 hover:text-white"
             >
               <Send className="h-4 w-4" />
               Telegram
@@ -165,7 +165,7 @@ export default function BlogPostPage() {
               href={`https://wa.me/?text=${encodeURIComponent(`${post.title} ${pageUrl}`)}`}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-900 hover:text-white"
+              className="inline-flex min-h-12 items-center gap-2 rounded-full bg-gray-100 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-900 hover:text-white"
             >
               <MessageCircle className="h-4 w-4" />
               WhatsApp
@@ -174,7 +174,7 @@ export default function BlogPostPage() {
             <button
               type="button"
               onClick={handleCopyLink}
-              className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-900 hover:text-white"
+              className="inline-flex min-h-12 items-center gap-2 rounded-full bg-gray-100 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-900 hover:text-white"
             >
               <Link2 className="h-4 w-4" />
               {copied ? 'Ссылка скопирована' : 'Копировать ссылку'}

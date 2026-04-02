@@ -39,10 +39,10 @@ export default function AboutPage() {
           className="h-[420px] w-full object-cover md:h-[520px]"
         />
         <div className="absolute inset-0 bg-black/45" />
-        <div className="absolute inset-0 flex items-center justify-center px-6 text-center">
+        <div className="absolute inset-0 flex items-center justify-center px-4 text-center sm:px-6">
           <div>
             <p className="text-sm uppercase tracking-[0.3em] text-white/70">Capriccio</p>
-            <h1 className="mt-4 text-4xl font-bold text-white md:text-6xl">О нас</h1>
+            <h1 className="mt-4 text-2xl font-bold text-white sm:text-4xl md:text-6xl">О нас</h1>
             <p className="mt-4 text-lg text-white/80">
               Премиальная одежда для современных женщин
             </p>
@@ -50,7 +50,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="px-6 py-16">
+      <section className="px-4 py-8 sm:px-6 md:py-16">
         <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-12 md:grid-cols-2">
           <div>
             <p className="text-sm uppercase tracking-[0.25em] text-gray-400">История бренда</p>
@@ -73,7 +73,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="bg-gray-50 px-6 py-16">
+      <section className="bg-gray-50 px-4 py-8 sm:px-6 md:py-16">
         <div className="mx-auto max-w-7xl">
           <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
             {stats.map((item) => (
@@ -86,7 +86,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="px-6 py-16">
+      <section className="px-4 py-8 sm:px-6 md:py-16">
         <div className="mx-auto max-w-7xl">
           <div className="mx-auto max-w-3xl text-center">
             <p className="text-sm uppercase tracking-[0.25em] text-gray-400">Почему мы</p>
@@ -111,7 +111,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="px-6 py-16">
+      <section className="px-4 py-8 sm:px-6 md:py-16">
         <div className="mx-auto max-w-4xl rounded-3xl bg-gray-900 px-8 py-14 text-center text-white md:px-12">
           <p className="text-sm uppercase tracking-[0.3em] text-white/60">Capriccio</p>
           <h2 className="mt-4 text-3xl font-bold md:text-4xl">Откройте наш каталог</h2>

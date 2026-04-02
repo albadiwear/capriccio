@@ -127,7 +127,7 @@ function ProductCard({ product, view }) {
         </button>
         <button
           onClick={handleAddToCart}
-          className="absolute bottom-0 left-0 right-0 bg-gray-900 text-white text-xs tracking-wide py-3 translate-y-full group-hover:translate-y-0 transition-transform duration-300"
+          className="absolute bottom-0 left-0 right-0 flex h-12 items-center justify-center bg-gray-900 text-xs tracking-wide text-white translate-y-full transition-transform duration-300 group-hover:translate-y-0"
         >
           В корзину
         </button>
@@ -271,7 +271,7 @@ function FilterPanel({ filters, setFilters, category, onReset }) {
 
       <button
         onClick={onReset}
-        className="w-full py-2.5 border border-gray-200 text-sm text-gray-600 rounded hover:border-gray-900 hover:text-gray-900 transition-colors"
+        className="h-12 w-full rounded border border-gray-200 text-sm text-gray-600 transition-colors hover:border-gray-900 hover:text-gray-900"
       >
         Сбросить фильтры
       </button>
@@ -376,8 +376,8 @@ export default function CatalogPage() {
   return (
     <div className="min-h-screen bg-white">
       {/* Page header */}
-      <div className="border-b border-gray-100 py-8">
-        <div className="max-w-7xl mx-auto px-6">
+      <div className="border-b border-gray-100 py-6 md:py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <h1 className="text-2xl font-bold tracking-[0.05em] text-gray-900">
             {categoryLabel ? `Каталог — ${categoryLabel}` : 'Каталог'}
           </h1>
@@ -387,12 +387,12 @@ export default function CatalogPage() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6">
         {/* Mobile filter button */}
         <div className="lg:hidden mb-4">
           <button
             onClick={() => setDrawerOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 rounded text-sm text-gray-700 hover:border-gray-900 transition-colors"
+            className="flex min-h-12 items-center gap-2 rounded border border-gray-200 px-4 text-sm text-gray-700 transition-colors hover:border-gray-900"
           >
             <SlidersHorizontal className="w-4 h-4" />
             Фильтры
@@ -415,31 +415,31 @@ export default function CatalogPage() {
           {/* Product area */}
           <div>
             {/* Sort bar */}
-            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
+            <div className="mb-6 flex flex-col gap-4 border-b border-gray-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-gray-500">
                 Найдено: <span className="font-medium text-gray-900">{loading ? '...' : filtered.length}</span> товаров
               </p>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <select
                   value={sort}
                   onChange={(e) => setSort(e.target.value)}
-                  className="text-sm border border-gray-200 rounded px-3 py-1.5 text-gray-700 focus:outline-none focus:border-gray-900"
+                  className="min-h-12 rounded border border-gray-200 px-3 text-sm text-gray-700 focus:border-gray-900 focus:outline-none"
                 >
                   {SORT_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
                 </select>
-                <div className="flex gap-1 border border-gray-200 rounded overflow-hidden">
+                <div className="flex overflow-hidden rounded border border-gray-200">
                   <button
                     onClick={() => setView('grid')}
-                    className={`p-2 transition-colors ${view === 'grid' ? 'bg-gray-900 text-white' : 'text-gray-400 hover:text-gray-900'}`}
+                    className={`flex h-12 w-12 items-center justify-center transition-colors ${view === 'grid' ? 'bg-gray-900 text-white' : 'text-gray-400 hover:text-gray-900'}`}
                     aria-label="Сетка"
                   >
                     <LayoutGrid className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setView('list')}
-                    className={`p-2 transition-colors ${view === 'list' ? 'bg-gray-900 text-white' : 'text-gray-400 hover:text-gray-900'}`}
+                    className={`flex h-12 w-12 items-center justify-center transition-colors ${view === 'list' ? 'bg-gray-900 text-white' : 'text-gray-400 hover:text-gray-900'}`}
                     aria-label="Список"
                   >
                     <List className="w-4 h-4" />
@@ -480,14 +480,14 @@ export default function CatalogPage() {
             className="absolute inset-0 bg-black/40"
             onClick={() => setDrawerOpen(false)}
           />
-          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div className="absolute bottom-0 left-0 right-0 max-h-[85vh] overflow-y-auto rounded-t-2xl bg-white">
+            <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4 sm:px-6">
               <h2 className="text-sm font-semibold uppercase tracking-widest text-gray-900">Фильтры</h2>
               <button onClick={() => setDrawerOpen(false)} aria-label="Закрыть">
                 <X className="w-5 h-5 text-gray-600" />
               </button>
             </div>
-            <div className="px-6 py-6">
+            <div className="px-4 py-6 sm:px-6">
               <FilterPanel
                 filters={filters}
                 setFilters={setFilters}
@@ -495,10 +495,10 @@ export default function CatalogPage() {
                 onReset={() => { resetFilters(); setDrawerOpen(false) }}
               />
             </div>
-            <div className="px-6 pb-6">
+            <div className="px-4 pb-6 sm:px-6">
               <button
                 onClick={() => setDrawerOpen(false)}
-                className="w-full py-3 bg-gray-900 text-white text-sm tracking-wide rounded hover:bg-gray-700 transition-colors"
+                className="h-12 w-full rounded bg-gray-900 text-sm tracking-wide text-white transition-colors hover:bg-gray-700"
               >
                 Показать {filtered.length} товаров
               </button>

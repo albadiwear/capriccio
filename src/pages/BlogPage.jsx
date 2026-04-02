@@ -54,11 +54,11 @@ export default function BlogPage() {
       : posts.filter((post) => post.category === activeCategory)
 
   return (
-    <div className="bg-white px-6 py-16">
+    <div className="bg-white px-4 py-8 sm:px-6 md:py-16">
       <div className="mx-auto max-w-7xl">
         <div className="mx-auto max-w-3xl text-center">
           <p className="text-sm uppercase tracking-[0.3em] text-gray-400">Capriccio Journal</p>
-          <h1 className="mt-4 text-4xl font-bold text-gray-900 md:text-5xl">Блог</h1>
+          <h1 className="mt-4 text-2xl font-bold text-gray-900 sm:text-4xl md:text-5xl">Блог</h1>
           <p className="mt-4 text-base text-gray-500 md:text-lg">
             Советы по стилю, тренды и новости Capriccio
           </p>
@@ -70,7 +70,7 @@ export default function BlogPage() {
               key={category}
               type="button"
               onClick={() => setActiveCategory(category)}
-              className={`rounded-full px-5 py-2 text-sm transition-colors ${
+              className={`min-h-12 rounded-full px-5 py-2 text-sm transition-colors ${
                 activeCategory === category
                   ? 'bg-gray-900 text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900'

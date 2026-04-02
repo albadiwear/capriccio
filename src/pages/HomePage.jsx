@@ -117,12 +117,12 @@ export default function HomePage() {
           className="absolute inset-0 h-full w-full object-cover"
         />
         <div className="absolute inset-0 bg-black/40" />
-        <div className="relative mx-auto flex min-h-[85vh] max-w-7xl items-center px-6 py-16">
+        <div className="relative mx-auto flex min-h-[85vh] max-w-7xl items-center px-4 py-8 sm:px-6 md:py-16">
           <div className="max-w-3xl">
             <p className="text-sm uppercase tracking-[0.3em] text-white/80">
               Новая коллекция 2026
             </p>
-            <h1 className="mt-4 text-4xl font-bold leading-tight text-white md:text-6xl">
+            <h1 className="mt-4 text-2xl font-bold leading-tight text-white sm:text-4xl md:text-6xl">
               Пуховики, трикотаж и костюмы — с любовью из Capriccio
             </h1>
             <p className="mt-6 text-lg text-white/80">
@@ -130,7 +130,7 @@ export default function HomePage() {
             </p>
             <Link
               to="/catalog"
-              className="mt-8 inline-flex items-center bg-white px-8 py-3 text-sm tracking-wide text-gray-900 transition-colors hover:bg-gray-100"
+              className="mt-8 inline-flex h-12 items-center bg-white px-8 text-sm tracking-wide text-gray-900 transition-colors hover:bg-gray-100"
             >
               Открыть каталог
             </Link>
@@ -138,7 +138,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="px-6 py-16">
+      <section className="px-4 py-8 sm:px-6 md:py-16">
         <div className="mx-auto max-w-7xl">
           <h2 className="mb-10 text-center text-2xl font-bold text-gray-900 md:text-3xl">
             Категории
@@ -165,7 +165,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="px-6 py-16">
+      <section className="px-4 py-8 sm:px-6 md:py-16">
         <div className="mx-auto max-w-7xl">
           <h2 className="mb-4 text-center text-2xl font-bold text-gray-900 md:text-3xl">
             Хиты продаж
@@ -230,7 +230,7 @@ export default function HomePage() {
                   <button
                     type="button"
                     onClick={() => addItem(product)}
-                    className="mt-4 w-full bg-gray-900 py-2 text-xs text-white transition-colors hover:bg-gray-700"
+                    className="mt-4 h-12 w-full bg-gray-900 text-xs text-white transition-colors hover:bg-gray-700"
                   >
                     В корзину
                   </button>
@@ -241,14 +241,14 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="px-6 py-16">
+      <section className="px-4 py-8 sm:px-6 md:py-16">
         <div className="mx-auto max-w-7xl overflow-hidden rounded-2xl bg-gray-900">
           <div className="grid grid-cols-1 items-center md:grid-cols-2">
             <div className="p-8 md:p-12">
               <p className="text-sm uppercase tracking-[0.3em] text-white/60">
                 Специальное предложение
               </p>
-              <h2 className="mt-4 text-3xl font-bold text-white md:text-5xl">
+              <h2 className="mt-4 text-2xl font-bold text-white sm:text-3xl md:text-5xl">
                 Новая коллекция
               </h2>
               <p className="mt-4 max-w-md text-gray-400">
@@ -257,7 +257,7 @@ export default function HomePage() {
               </p>
               <Link
                 to="/catalog"
-                className="mt-8 inline-flex items-center bg-white px-8 py-3 text-sm tracking-wide text-gray-900 transition-colors hover:bg-gray-100"
+                className="mt-8 inline-flex h-12 items-center bg-white px-8 text-sm tracking-wide text-gray-900 transition-colors hover:bg-gray-100"
               >
                 Смотреть
               </Link>
@@ -274,7 +274,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="px-6 py-16">
+      <section className="px-4 py-8 sm:px-6 md:py-16">
         <div className="mx-auto max-w-7xl">
           <div className="grid grid-cols-2 gap-8 lg:grid-cols-4">
             {advantages.map((item) => {
@@ -293,7 +293,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="px-6 py-16">
+      <section className="px-4 py-8 sm:px-6 md:py-16">
         <div className="mx-auto max-w-7xl">
           <h2 className="mb-10 text-center text-2xl font-bold text-gray-900 md:text-3xl">
             Отзывы наших клиентов

@@ -353,7 +353,7 @@ export default function AccountPage() {
               name="full_name"
               value={profile.full_name}
               onChange={handleProfileChange}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="h-12 w-full rounded-lg border border-gray-300 px-4 focus:outline-none focus:ring-2 focus:ring-gray-900"
               placeholder="Ваше имя"
             />
           </div>
@@ -363,7 +363,7 @@ export default function AccountPage() {
             <input
               value={profile.email}
               readOnly
-              className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-gray-500 focus:outline-none"
+              className="h-12 w-full rounded-lg border border-gray-200 bg-gray-50 px-4 text-gray-500 focus:outline-none"
             />
           </div>
 
@@ -373,7 +373,7 @@ export default function AccountPage() {
               name="phone"
               value={profile.phone}
               onChange={handleProfileChange}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="h-12 w-full rounded-lg border border-gray-300 px-4 focus:outline-none focus:ring-2 focus:ring-gray-900"
               placeholder="+7 777 123 45 67"
             />
           </div>
@@ -384,7 +384,7 @@ export default function AccountPage() {
               name="city"
               value={profile.city}
               onChange={handleProfileChange}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="h-12 w-full rounded-lg border border-gray-300 px-4 focus:outline-none focus:ring-2 focus:ring-gray-900"
               placeholder="Алматы"
             />
           </div>
@@ -393,7 +393,7 @@ export default function AccountPage() {
             <button
               type="submit"
               disabled={savingProfile}
-              className="rounded-lg bg-gray-900 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:opacity-70"
+              className="h-12 rounded-lg bg-gray-900 px-6 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:opacity-70"
             >
               {savingProfile ? 'Сохраняем...' : 'Сохранить'}
             </button>
@@ -496,7 +496,7 @@ export default function AccountPage() {
                 <button
                   type="button"
                   onClick={() => handleRemoveWishlist(item.id)}
-                  className="mt-4 w-full rounded-lg border border-red-200 px-4 py-2 text-sm text-red-600 transition-colors hover:bg-red-50"
+                  className="mt-4 h-12 w-full rounded-lg border border-red-200 px-4 text-sm text-red-600 transition-colors hover:bg-red-50"
                 >
                   Удалить из избранного
                 </button>
@@ -520,7 +520,7 @@ export default function AccountPage() {
             <button
               type="button"
               onClick={() => setAddingAddress((prev) => !prev)}
-              className="rounded-lg bg-gray-900 px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-gray-700"
+              className="h-12 rounded-lg bg-gray-900 px-5 text-sm font-medium text-white transition-colors hover:bg-gray-700"
             >
               {addingAddress ? 'Закрыть форму' : 'Добавить адрес'}
             </button>
@@ -535,51 +535,51 @@ export default function AccountPage() {
                 value={addressForm.recipient_name}
                 onChange={handleAddressChange}
                 placeholder="Имя получателя"
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="h-12 w-full rounded-lg border border-gray-300 px-4 focus:outline-none focus:ring-2 focus:ring-gray-900"
               />
               <input
                 name="phone"
                 value={addressForm.phone}
                 onChange={handleAddressChange}
                 placeholder="Телефон"
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="h-12 w-full rounded-lg border border-gray-300 px-4 focus:outline-none focus:ring-2 focus:ring-gray-900"
               />
               <input
                 name="city"
                 value={addressForm.city}
                 onChange={handleAddressChange}
                 placeholder="Город"
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="h-12 w-full rounded-lg border border-gray-300 px-4 focus:outline-none focus:ring-2 focus:ring-gray-900"
               />
               <input
                 name="street"
                 value={addressForm.street}
                 onChange={handleAddressChange}
                 placeholder="Улица"
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="h-12 w-full rounded-lg border border-gray-300 px-4 focus:outline-none focus:ring-2 focus:ring-gray-900"
               />
               <input
                 name="house"
                 value={addressForm.house}
                 onChange={handleAddressChange}
                 placeholder="Дом"
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="h-12 w-full rounded-lg border border-gray-300 px-4 focus:outline-none focus:ring-2 focus:ring-gray-900"
               />
               <input
                 name="apartment"
                 value={addressForm.apartment}
                 onChange={handleAddressChange}
                 placeholder="Квартира"
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="h-12 w-full rounded-lg border border-gray-300 px-4 focus:outline-none focus:ring-2 focus:ring-gray-900"
               />
               <input
                 name="postal_code"
                 value={addressForm.postal_code}
                 onChange={handleAddressChange}
                 placeholder="Индекс"
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="h-12 w-full rounded-lg border border-gray-300 px-4 focus:outline-none focus:ring-2 focus:ring-gray-900"
               />
-              <label className="flex items-center gap-3 rounded-lg border border-gray-200 px-4 py-3 text-sm text-gray-700">
+              <label className="flex min-h-12 items-center gap-3 rounded-lg border border-gray-200 px-4 text-sm text-gray-700">
                 <input
                   type="checkbox"
                   name="is_default"
@@ -594,7 +594,7 @@ export default function AccountPage() {
             <button
               type="submit"
               disabled={savingAddress}
-              className="mt-5 rounded-lg bg-gray-900 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:opacity-70"
+              className="mt-5 h-12 rounded-lg bg-gray-900 px-6 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:opacity-70"
             >
               {savingAddress ? 'Сохраняем...' : 'Сохранить адрес'}
             </button>
@@ -685,12 +685,12 @@ export default function AccountPage() {
               <input
                 value={referralLink}
                 readOnly
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-600 focus:outline-none"
+                className="h-12 w-full rounded-lg border border-gray-300 px-4 text-sm text-gray-600 focus:outline-none"
               />
               <button
                 type="button"
                 onClick={copyReferralLink}
-                className="rounded-lg bg-gray-900 px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-gray-700"
+                className="h-12 rounded-lg bg-gray-900 px-5 text-sm font-medium text-white transition-colors hover:bg-gray-700"
               >
                 Скопировать ссылку
               </button>
@@ -742,21 +742,21 @@ export default function AccountPage() {
               value={payoutForm.amount}
               onChange={handlePayoutChange}
               placeholder="Сумма"
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="h-12 w-full rounded-lg border border-gray-300 px-4 focus:outline-none focus:ring-2 focus:ring-gray-900"
             />
             <input
               name="kaspi_phone"
               value={payoutForm.kaspi_phone}
               onChange={handlePayoutChange}
               placeholder="Номер Kaspi"
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="h-12 w-full rounded-lg border border-gray-300 px-4 focus:outline-none focus:ring-2 focus:ring-gray-900"
             />
           </div>
 
           <button
             type="submit"
             disabled={requestingPayout}
-            className="mt-5 rounded-lg bg-gray-900 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:opacity-70"
+            className="mt-5 h-12 rounded-lg bg-gray-900 px-6 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:opacity-70"
           >
             {requestingPayout ? 'Отправляем...' : 'Запросить вывод'}
           </button>
@@ -782,7 +782,7 @@ export default function AccountPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 px-6 py-10">
+    <div className="min-h-screen bg-gray-50 px-4 py-8 sm:px-6 md:py-10">
       <div className="mx-auto max-w-7xl">
         {(error || success) && (
           <div className="mb-6 space-y-3">
@@ -799,7 +799,7 @@ export default function AccountPage() {
           </div>
         )}
 
-        <div className="mb-6 flex gap-3 overflow-x-auto lg:hidden">
+          <div className="mb-6 flex gap-3 overflow-x-auto pb-1 lg:hidden">
           {sections.map((section) => {
             const Icon = section.icon
             const isActive = activeSection === section.id
@@ -809,7 +809,7 @@ export default function AccountPage() {
                 key={section.id}
                 type="button"
                 onClick={() => setActiveSection(section.id)}
-                className={`flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm transition-colors ${
+                className={`flex min-h-12 shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm transition-colors ${
                   isActive ? 'bg-gray-900 text-white' : 'bg-white text-gray-600'
                 }`}
               >
@@ -832,7 +832,7 @@ export default function AccountPage() {
                     key={section.id}
                     type="button"
                     onClick={() => setActiveSection(section.id)}
-                    className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm transition-colors ${
+                    className={`flex min-h-12 w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm transition-colors ${
                       isActive
                         ? 'bg-gray-900 text-white'
                         : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
@@ -847,7 +847,7 @@ export default function AccountPage() {
               <button
                 type="button"
                 onClick={handleSignOut}
-                className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm text-red-600 transition-colors hover:bg-red-50"
+                className="flex min-h-12 w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm text-red-600 transition-colors hover:bg-red-50"
               >
                 <LogOut className="h-5 w-5" />
                 Выйти

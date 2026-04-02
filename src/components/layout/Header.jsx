@@ -30,9 +30,9 @@ export default function Header() {
 
   return (
     <header className={`sticky top-0 z-50 bg-white border-b border-gray-200 transition-shadow duration-200 ${isScrolled ? 'shadow-sm' : ''}`}>
-      <div className="max-w-7xl mx-auto px-6 flex items-center justify-between h-16">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
 
-        <Link to="/" className="text-xl font-bold tracking-[0.2em] text-gray-900">
+        <Link to="/" className="text-base font-bold tracking-[0.18em] text-gray-900 sm:text-xl sm:tracking-[0.2em]">
           CAPRICCIO
         </Link>
 
@@ -52,12 +52,12 @@ export default function Header() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           <Search className="w-5 h-5 text-gray-600 hover:text-gray-900 cursor-pointer transition-colors hidden lg:block" />
           <Heart className="w-5 h-5 text-gray-600 hover:text-gray-900 cursor-pointer transition-colors hidden lg:block" />
           <button
             onClick={() => setIsOpen(true)}
-            className="relative"
+            className="relative flex h-12 w-12 items-center justify-center"
             aria-label="Открыть корзину"
           >
             <ShoppingBag className="w-5 h-5 text-gray-600 hover:text-gray-900 transition-colors" />
@@ -71,7 +71,7 @@ export default function Header() {
             <User className="w-5 h-5 text-gray-600 hover:text-gray-900 transition-colors" />
           </Link>
           <button
-            className="lg:hidden"
+            className="flex h-12 w-12 items-center justify-center lg:hidden"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             aria-label={isMenuOpen ? 'Закрыть меню' : 'Открыть меню'}
           >
@@ -90,12 +90,12 @@ export default function Header() {
               key={item.to}
               to={item.to}
               onClick={() => setIsMenuOpen(false)}
-              className="block py-3 px-6 text-sm text-gray-600 hover:text-gray-900 border-b border-gray-100"
+              className="flex min-h-12 items-center border-b border-gray-100 px-4 text-sm text-gray-600 hover:text-gray-900"
             >
               {item.label}
             </Link>
           ))}
-          <div className="flex items-center gap-4 px-6 py-4">
+          <div className="flex items-center gap-4 px-4 py-4">
             <Link to="/account" onClick={() => setIsMenuOpen(false)}>
               <User className="w-5 h-5 text-gray-600" />
             </Link>

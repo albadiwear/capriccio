@@ -43,17 +43,17 @@ export default function DeliveryPage() {
   const [openFaq, setOpenFaq] = useState(0)
 
   return (
-    <div className="bg-white px-6 py-16 text-gray-900">
+    <div className="bg-white px-4 py-8 text-gray-900 sm:px-6 md:py-16">
       <div className="mx-auto max-w-7xl">
         <div className="mx-auto max-w-3xl text-center">
           <p className="text-sm uppercase tracking-[0.3em] text-gray-400">Capriccio Service</p>
-          <h1 className="mt-4 text-4xl font-bold md:text-5xl">Доставка и оплата</h1>
+          <h1 className="mt-4 text-2xl font-bold sm:text-4xl md:text-5xl">Доставка и оплата</h1>
           <p className="mt-4 text-base text-gray-500 md:text-lg">
             Удобные способы доставки по Алматы, Казахстану и СНГ, а также безопасные варианты оплаты
           </p>
         </div>
 
-        <section className="py-16">
+        <section className="py-8 md:py-16">
           <div className="mb-10 text-center">
             <h2 className="text-2xl font-bold text-gray-900 md:text-3xl">Способы доставки</h2>
             <p className="mt-3 text-gray-500">
@@ -75,7 +75,7 @@ export default function DeliveryPage() {
           </div>
         </section>
 
-        <section className="py-16">
+        <section className="py-8 md:py-16">
           <div className="mb-10 text-center">
             <h2 className="text-2xl font-bold text-gray-900 md:text-3xl">Способы оплаты</h2>
           </div>
@@ -92,7 +92,7 @@ export default function DeliveryPage() {
           </div>
         </section>
 
-        <section className="py-16">
+        <section className="py-8 md:py-16">
           <div className="rounded-3xl bg-gray-50 p-8 md:p-10">
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white">
               <RotateCcw className="h-6 w-6 text-gray-900" />
@@ -111,7 +111,7 @@ export default function DeliveryPage() {
           </div>
         </section>
 
-        <section className="py-16">
+        <section className="py-8 md:py-16">
           <div className="mb-10 text-center">
             <h2 className="text-2xl font-bold text-gray-900 md:text-3xl">Часто задаваемые вопросы</h2>
           </div>
@@ -125,7 +125,7 @@ export default function DeliveryPage() {
                   <button
                     type="button"
                     onClick={() => setOpenFaq(isOpen ? -1 : index)}
-                    className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left"
+                    className="flex min-h-12 w-full items-center justify-between gap-4 px-4 py-4 text-left sm:px-6 sm:py-5"
                   >
                     <span className="text-base font-medium text-gray-900">{item.question}</span>
                     {isOpen ? (

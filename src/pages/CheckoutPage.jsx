@@ -33,7 +33,7 @@ function InputField({ label, ...props }) {
       <label className="text-xs text-gray-500 font-medium">{label}</label>
       <input
         {...props}
-        className="border border-gray-200 rounded px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-gray-900 transition-colors"
+        className="h-12 rounded border border-gray-200 px-3 text-sm text-gray-900 transition-colors focus:border-gray-900 focus:outline-none"
       />
     </div>
   )
@@ -158,7 +158,7 @@ export default function CheckoutPage() {
 
   if (items.length === 0) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-6">
+      <div className="min-h-screen bg-white flex items-center justify-center px-4 sm:px-6">
         <div className="text-center">
           <p className="text-gray-400 mb-4">Корзина пуста</p>
           <a href="/catalog" className="text-sm underline text-gray-700 hover:text-gray-900">
@@ -171,7 +171,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto px-6 py-10">
+      <div className="max-w-6xl mx-auto px-4 py-8 sm:px-6 md:py-10">
         <h1 className="text-2xl font-bold text-gray-900 mb-8 tracking-wide">Оформление заказа</h1>
 
         <form onSubmit={handleSubmit}>
@@ -313,7 +313,7 @@ export default function CheckoutPage() {
 
               <div className="bg-white rounded-xl p-6">
                 <SectionTitle>Промокод</SectionTitle>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <div className="relative flex-1">
                     <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
                     <input
@@ -321,14 +321,14 @@ export default function CheckoutPage() {
                       value={promoInput}
                       onChange={(e) => { setPromoInput(e.target.value); setPromoError(''); setPromoValid(false) }}
                       placeholder="Введите промокод"
-                      className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded text-sm focus:outline-none focus:border-gray-900 transition-colors uppercase"
+                      className="h-12 w-full rounded border border-gray-200 py-2.5 pl-9 pr-3 text-sm uppercase transition-colors focus:border-gray-900 focus:outline-none"
                     />
                   </div>
                   <button
                     type="button"
                     onClick={applyPromo}
                     disabled={promoLoading || !promoInput.trim()}
-                    className="px-4 py-2.5 bg-gray-900 text-white text-sm rounded hover:bg-gray-700 transition-colors disabled:opacity-50"
+                    className="h-12 rounded bg-gray-900 px-4 text-sm text-white transition-colors hover:bg-gray-700 disabled:opacity-50"
                   >
                     {promoLoading ? '...' : 'Применить'}
                   </button>
@@ -343,7 +343,7 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            <div className="sticky top-20">
+            <div className="lg:sticky lg:top-20">
               <div className="bg-white rounded-xl p-6">
                 <SectionTitle>Ваш заказ</SectionTitle>
 
@@ -405,7 +405,7 @@ export default function CheckoutPage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="mt-5 w-full py-3.5 bg-gray-900 text-white text-sm font-medium tracking-wide rounded hover:bg-gray-700 transition-colors disabled:opacity-60"
+                  className="mt-5 h-12 w-full rounded bg-gray-900 text-sm font-medium tracking-wide text-white transition-colors hover:bg-gray-700 disabled:opacity-60"
                 >
                   {submitting ? 'Оформляем...' : 'Подтвердить заказ'}
                 </button>

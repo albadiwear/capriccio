@@ -23,9 +23,9 @@ const socialLinks = [
 
 export default function Footer() {
   return (
-    <footer className="bg-gray-900 px-6 py-16 text-gray-400">
+    <footer className="bg-gray-900 px-4 py-8 text-gray-400 sm:px-6 md:py-16">
       <div className="mx-auto max-w-7xl">
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <Link to="/" className="text-lg font-bold tracking-[0.2em] text-white">
               CAPRICCIO

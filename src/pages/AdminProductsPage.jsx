@@ -3,11 +3,11 @@ import { Plus, Pencil, Trash2, X, Package } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 const CATEGORIES = [
-  { value: 'puhoviki', label: 'Пуховики' },
-  { value: 'kostyumy', label: 'Костюмы' },
-  { value: 'trikotazh', label: 'Трикотаж' },
-  { value: 'obuv', label: 'Обувь' },
-  { value: 'povsednevnoe', label: 'Повседневное' },
+  { value: 'Пуховики', label: 'Пуховики' },
+  { value: 'Костюмы', label: 'Костюмы' },
+  { value: 'Трикотаж', label: 'Трикотаж' },
+  { value: 'Обувь', label: 'Обувь' },
+  { value: 'Повседневное', label: 'Повседневное' },
 ]
 
 const BADGE_OPTIONS = ['hit', 'new', 'sale']
@@ -15,7 +15,7 @@ const BADGE_OPTIONS = ['hit', 'new', 'sale']
 const EMPTY_FORM = {
   name: '',
   description: '',
-  category: 'puhoviki',
+  category: 'Пуховики',
   brand: '',
   price: '',
   sale_price: '',
@@ -100,7 +100,7 @@ export default function AdminProductsPage() {
     setForm({
       name: rest.name || '',
       description: rest.description || '',
-      category: rest.category || 'puhoviki',
+      category: rest.category || 'Пуховики',
       brand: rest.brand || '',
       price: rest.price || '',
       sale_price: rest.sale_price || '',
@@ -234,7 +234,7 @@ export default function AdminProductsPage() {
       <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
         {loading ? (
           <div className="p-6 space-y-3">
-            {[1,2,3,4].map(i => <div key={i} className="h-12 bg-gray-100 rounded animate-pulse" />)}
+            {[1, 2, 3, 4].map(i => <div key={i} className="h-12 bg-gray-100 rounded animate-pulse" />)}
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center py-12 text-gray-400">
@@ -273,7 +273,13 @@ export default function AdminProductsPage() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     {p.sale_price
-                      ? <><span className="font-medium text-red-600">{p.sale_price.toLocaleString('ru-RU')} ₸</span><br /><span className="text-xs text-gray-400 line-through">{p.price?.toLocaleString('ru-RU')} ₸</span></>
+                      ? (
+                        <>
+                          <span className="font-medium text-red-600">{p.sale_price.toLocaleString('ru-RU')} ₸</span>
+                          <br />
+                          <span className="text-xs text-gray-400 line-through">{p.price?.toLocaleString('ru-RU')} ₸</span>
+                        </>
+                      )
                       : <span className="font-medium">{p.price?.toLocaleString('ru-RU')} ₸</span>
                     }
                   </td>
@@ -305,37 +311,37 @@ export default function AdminProductsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
                 <Field label="Название *">
-                  <input className={inputCls} value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} />
+                  <input className={inputCls} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
                 </Field>
               </div>
               <Field label="Категория">
-                <select className={inputCls} value={form.category} onChange={e => setForm(f => ({...f, category: e.target.value}))}>
+                <select className={inputCls} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
                   {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                 </select>
               </Field>
               <Field label="Бренд">
-                <input className={inputCls} value={form.brand} onChange={e => setForm(f => ({...f, brand: e.target.value}))} />
+                <input className={inputCls} value={form.brand} onChange={e => setForm(f => ({ ...f, brand: e.target.value }))} />
               </Field>
               <Field label="Цена *">
-                <input type="number" className={inputCls} value={form.price} onChange={e => setForm(f => ({...f, price: e.target.value}))} />
+                <input type="number" className={inputCls} value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} />
               </Field>
               <Field label="Цена со скидкой">
-                <input type="number" className={inputCls} value={form.sale_price} onChange={e => setForm(f => ({...f, sale_price: e.target.value}))} />
+                <input type="number" className={inputCls} value={form.sale_price} onChange={e => setForm(f => ({ ...f, sale_price: e.target.value }))} />
               </Field>
               <div className="sm:col-span-2">
                 <Field label="Описание">
-                  <textarea rows={3} className={`${inputCls} resize-none`} value={form.description} onChange={e => setForm(f => ({...f, description: e.target.value}))} />
+                  <textarea rows={3} className={`${inputCls} resize-none`} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
                 </Field>
               </div>
               <Field label="Состав ткани">
-                <input className={inputCls} value={form.composition} onChange={e => setForm(f => ({...f, composition: e.target.value}))} />
+                <input className={inputCls} value={form.composition} onChange={e => setForm(f => ({ ...f, composition: e.target.value }))} />
               </Field>
               <Field label="Уход за тканью">
-                <input className={inputCls} value={form.care} onChange={e => setForm(f => ({...f, care: e.target.value}))} />
+                <input className={inputCls} value={form.care} onChange={e => setForm(f => ({ ...f, care: e.target.value }))} />
               </Field>
               <div className="sm:col-span-2">
                 <Field label="YouTube ссылка">
-                  <input className={inputCls} value={form.youtube_url} onChange={e => setForm(f => ({...f, youtube_url: e.target.value}))} placeholder="https://youtu.be/..." />
+                  <input className={inputCls} value={form.youtube_url} onChange={e => setForm(f => ({ ...f, youtube_url: e.target.value }))} placeholder="https://youtu.be/..." />
                 </Field>
               </div>
               <div className="sm:col-span-2">
@@ -347,8 +353,12 @@ export default function AdminProductsPage() {
                       {uploadedImages.map((url, i) => (
                         <div key={i} className="relative">
                           <img src={url} alt="" className="w-16 h-20 object-cover rounded" />
-                          <button onClick={() => setUploadedImages(p => p.filter((_, j) => j !== i))}
-                            className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center text-xs">×</button>
+                          <button
+                            onClick={() => setUploadedImages(p => p.filter((_, j) => j !== i))}
+                            className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center text-xs"
+                          >
+                            ×
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -362,9 +372,12 @@ export default function AdminProductsPage() {
               <div className="flex gap-3">
                 {BADGE_OPTIONS.map(b => (
                   <label key={b} className="flex items-center gap-1.5 cursor-pointer text-sm text-gray-700">
-                    <input type="checkbox" checked={form.badges.includes(b)}
-                      onChange={() => setForm(f => ({...f, badges: f.badges.includes(b) ? f.badges.filter(x => x !== b) : [...f.badges, b]}))}
-                      className="accent-gray-900" />
+                    <input
+                      type="checkbox"
+                      checked={form.badges.includes(b)}
+                      onChange={() => setForm(f => ({ ...f, badges: f.badges.includes(b) ? f.badges.filter(x => x !== b) : [...f.badges, b] }))}
+                      className="accent-gray-900"
+                    />
                     {b.toUpperCase()}
                   </label>
                 ))}
@@ -372,15 +385,17 @@ export default function AdminProductsPage() {
             </div>
 
             <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={form.is_active} onChange={e => setForm(f => ({...f, is_active: e.target.checked}))} className="accent-gray-900" />
+              <input type="checkbox" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} className="accent-gray-900" />
               <span className="text-sm text-gray-700">Товар активен</span>
             </label>
 
             <div className="border-t border-gray-100 pt-4">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-medium text-gray-900">Варианты товара</p>
-                <button onClick={() => setVariants(v => [...v, {...EMPTY_VARIANT}])}
-                  className="flex items-center gap-1 text-xs text-gray-600 hover:text-gray-900 border border-gray-200 rounded px-2 py-1">
+                <button
+                  onClick={() => setVariants(v => [...v, { ...EMPTY_VARIANT }])}
+                  className="flex items-center gap-1 text-xs text-gray-600 hover:text-gray-900 border border-gray-200 rounded px-2 py-1"
+                >
                   <Plus className="w-3 h-3" /> Добавить
                 </button>
               </div>
@@ -390,22 +405,38 @@ export default function AdminProductsPage() {
                   <div className="space-y-2">
                     {variants.map((v, i) => (
                       <div key={i} className="flex gap-2 items-center">
-                        <input placeholder="Размер" className={`${inputCls} w-20`} value={v.size}
-                          onChange={e => setVariants(prev => prev.map((x,j) => j===i ? {...x, size: e.target.value} : x))} />
-                        <input placeholder="Цвет" className={`${inputCls} flex-1`} value={v.color}
-                          onChange={e => setVariants(prev => prev.map((x,j) => j===i ? {...x, color: e.target.value} : x))} />
-                        <input type="color" className="w-8 h-8 rounded border border-gray-200 cursor-pointer" value={v.color_hex || '#000000'}
-                          onChange={e => setVariants(prev => prev.map((x,j) => j===i ? {...x, color_hex: e.target.value} : x))} />
-                        <input type="number" placeholder="Остаток" className={`${inputCls} w-20`} value={v.stock}
-                          onChange={e => setVariants(prev => prev.map((x,j) => j===i ? {...x, stock: e.target.value} : x))} />
+                        <input
+                          placeholder="Размер"
+                          className={`${inputCls} w-20`}
+                          value={v.size}
+                          onChange={e => setVariants(prev => prev.map((x, j) => j === i ? { ...x, size: e.target.value } : x))}
+                        />
+                        <input
+                          placeholder="Цвет"
+                          className={`${inputCls} flex-1`}
+                          value={v.color}
+                          onChange={e => setVariants(prev => prev.map((x, j) => j === i ? { ...x, color: e.target.value } : x))}
+                        />
+                        <input
+                          type="color"
+                          className="w-8 h-8 rounded border border-gray-200 cursor-pointer"
+                          value={v.color_hex || '#000000'}
+                          onChange={e => setVariants(prev => prev.map((x, j) => j === i ? { ...x, color_hex: e.target.value } : x))}
+                        />
+                        <input
+                          type="number"
+                          placeholder="Остаток"
+                          className={`${inputCls} w-20`}
+                          value={v.stock}
+                          onChange={e => setVariants(prev => prev.map((x, j) => j === i ? { ...x, stock: e.target.value } : x))}
+                        />
                         <button onClick={() => deleteVariant(v)} className="text-gray-300 hover:text-red-500">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     ))}
                   </div>
-                )
-              }
+                )}
             </div>
 
             <div className="flex justify-end gap-3 pt-2">

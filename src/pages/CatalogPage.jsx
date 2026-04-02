@@ -32,6 +32,20 @@ const COLORS = [
 
 const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
 const LENGTHS = ['Короткие', 'Средние', 'Длинные']
+const ALL_CATEGORIES = [
+  'Пуховики',
+  'Костюмы',
+  'Трикотаж',
+  'Обувь',
+  'Шапки',
+  'Сумки',
+  'Аксессуары',
+  'Очки',
+  'Ремни',
+  'Косметика',
+  'Украшения',
+]
+const SEASONS = ['Весна', 'Лето', 'Осень', 'Зима']
 
 const SORT_OPTIONS = [
   { value: 'popular', label: 'По популярности' },
@@ -209,6 +223,23 @@ function FilterPanel({ filters, setFilters, category, onReset }) {
       )}
 
       <div>
+        <h3 className="mb-3 text-xs font-semibold uppercase tracking-widest text-gray-900">Категория</h3>
+        <div className="space-y-2">
+          {ALL_CATEGORIES.map((item) => (
+            <label key={item} className="group flex cursor-pointer items-center gap-2">
+              <input
+                type="checkbox"
+                checked={filters.categories.includes(item)}
+                onChange={() => toggleArray('categories', item)}
+                className="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-900"
+              />
+              <span className="text-sm text-gray-600 transition-colors group-hover:text-gray-900">{item}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div>
         <h3 className="mb-3 text-xs font-semibold uppercase tracking-widest text-gray-900">Цвет</h3>
         <div className="flex flex-wrap gap-2">
           {COLORS.map((c) => (
@@ -272,6 +303,38 @@ function FilterPanel({ filters, setFilters, category, onReset }) {
         </div>
       </div>
 
+      <div>
+        <h3 className="mb-3 text-xs font-semibold uppercase tracking-widest text-gray-900">Скидки</h3>
+        <label className="group flex cursor-pointer items-center gap-2">
+          <input
+            type="checkbox"
+            checked={filters.onSale}
+            onChange={(e) => setFilters((p) => ({ ...p, onSale: e.target.checked }))}
+            className="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-900"
+          />
+          <span className="text-sm text-gray-600 transition-colors group-hover:text-gray-900">Только со скидкой</span>
+        </label>
+      </div>
+
+      <div>
+        <h3 className="mb-3 text-xs font-semibold uppercase tracking-widest text-gray-900">Сезон</h3>
+        <div className="flex flex-wrap gap-2">
+          {SEASONS.map((season) => (
+            <button
+              key={season}
+              onClick={() => toggleArray('seasons', season)}
+              className={`rounded border px-3 py-1.5 text-xs transition-colors ${
+                filters.seasons.includes(season)
+                  ? 'border-gray-900 bg-gray-900 text-white'
+                  : 'border-gray-200 text-gray-600 hover:border-gray-900 hover:text-gray-900'
+              }`}
+            >
+              {season}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <label className="group flex cursor-pointer items-center gap-2">
         <input
           type="checkbox"
@@ -293,9 +356,12 @@ function FilterPanel({ filters, setFilters, category, onReset }) {
 }
 
 const DEFAULT_FILTERS = {
+  categories: [],
   colors: [],
   sizes: [],
   lengths: [],
+  seasons: [],
+  onSale: false,
   priceMin: 0,
   priceMax: MAX_PRICE,
   inStock: false,
@@ -319,7 +385,8 @@ export default function CatalogPage() {
       .from('products')
       .select('*, product_variants(*)')
       .eq('is_active', true)
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) console.error(error)
         setProducts(data || [])
         setLoading(false)
       })
@@ -332,8 +399,41 @@ export default function CatalogPage() {
   const filtered = useMemo(() => {
     let list = [...products]
 
+    const hasExtraFilters =
+      filters.categories.length > 0 ||
+      filters.colors.length > 0 ||
+      filters.sizes.length > 0 ||
+      filters.lengths.length > 0 ||
+      filters.seasons.length > 0 ||
+      filters.onSale ||
+      filters.inStock ||
+      filters.priceMin !== 0 ||
+      filters.priceMax !== MAX_PRICE
+
+    if (!categoryName && !hasExtraFilters) {
+      switch (sort) {
+        case 'price_asc':
+          list.sort((a, b) => (a.sale_price || a.price || 0) - (b.sale_price || b.price || 0))
+          break
+        case 'price_desc':
+          list.sort((a, b) => (b.sale_price || b.price || 0) - (a.sale_price || a.price || 0))
+          break
+        case 'newest':
+          list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+          break
+        default:
+          break
+      }
+
+      return list
+    }
+
     list = list.filter((p) => {
       if (categoryName && p.category !== categoryName) return false
+
+      if (filters.categories.length > 0 && !filters.categories.includes(p.category)) {
+        return false
+      }
 
       if (filters.colors.length > 0) {
         const hasMatchingColor = p.product_variants?.some((v) => {
@@ -351,6 +451,15 @@ export default function CatalogPage() {
       if (filters.lengths.length > 0) {
         const hasMatchingLength = filters.lengths.some((l) => p.length === l || p.tags?.includes(l))
         if (!hasMatchingLength) return false
+      }
+
+      if (filters.onSale && !p.sale_price) return false
+
+      if (filters.seasons.length > 0) {
+        const hasMatchingSeason = filters.seasons.some(
+          (season) => p.season === season || p.tags?.includes(season)
+        )
+        if (!hasMatchingSeason) return false
       }
 
       const price = p.sale_price || p.price || 0

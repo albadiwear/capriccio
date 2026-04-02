@@ -104,12 +104,16 @@ export default function AccountPage() {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false }),
       supabase.from('wishlist').select('*, products(*)').eq('user_id', user.id),
-      supabase.from('addresses').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+      supabase
+        .from('addresses')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false }),
       supabase.from('referrals').select('*').eq('user_id', user.id).single(),
       supabase
         .from('referral_transactions')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('referrer_id', user.id)
         .order('created_at', { ascending: false }),
     ])
 
@@ -232,7 +236,11 @@ export default function AccountPage() {
   }
 
   const handleDeleteAddress = async (id) => {
-    const { error: deleteError } = await supabase.from('addresses').delete().eq('id', id)
+    const { error: deleteError } = await supabase
+      .from('addresses')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id)
 
     if (deleteError) {
       setError(deleteError.message)
@@ -243,7 +251,11 @@ export default function AccountPage() {
   }
 
   const handleRemoveWishlist = async (id) => {
-    const { error: deleteError } = await supabase.from('wishlist').delete().eq('id', id)
+    const { error: deleteError } = await supabase
+      .from('wishlist')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id)
 
     if (deleteError) {
       setError(deleteError.message)

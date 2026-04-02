@@ -35,6 +35,7 @@ import AdminBlogPage from './pages/AdminBlogPage'
 import AdminPromoPage from './pages/AdminPromoPage'
 
 // Other
+import OrderSuccessPage from './pages/OrderSuccessPage'
 import NotFoundPage from './pages/NotFoundPage'
 
 function App() {
@@ -69,6 +70,7 @@ function App() {
           <Route path="account/wishlist" element={<ProtectedRoute><WishlistPage /></ProtectedRoute>} />
           <Route path="account/partner" element={<ProtectedRoute><PartnerPage /></ProtectedRoute>} />
           <Route path="checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
+          <Route path="order-success/:id" element={<OrderSuccessPage />} />
 
           {/* Admin routes */}
           <Route path="admin" element={<ProtectedRoute adminOnly><AdminPage /></ProtectedRoute>} />

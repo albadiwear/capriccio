@@ -16,12 +16,17 @@ export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const location = useLocation()
   const items = useCartStore((state) => state.items)
+  const setIsOpen = useCartStore((state) => state.setIsOpen)
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 10)
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  useEffect(() => {
+    setIsMenuOpen(false)
+  }, [location.pathname])
 
   return (
     <header className={`sticky top-0 z-50 bg-white border-b border-gray-200 transition-shadow duration-200 ${isScrolled ? 'shadow-sm' : ''}`}>
@@ -48,22 +53,27 @@ export default function Header() {
         </nav>
 
         <div className="flex items-center gap-4">
-          <Search className="w-5 h-5 text-gray-600 hover:text-gray-900 cursor-pointer transition-colors" />
-          <Heart className="w-5 h-5 text-gray-600 hover:text-gray-900 cursor-pointer transition-colors" />
-          <div className="relative">
-            <ShoppingBag className="w-5 h-5 text-gray-600 hover:text-gray-900 cursor-pointer transition-colors" />
+          <Search className="w-5 h-5 text-gray-600 hover:text-gray-900 cursor-pointer transition-colors hidden lg:block" />
+          <Heart className="w-5 h-5 text-gray-600 hover:text-gray-900 cursor-pointer transition-colors hidden lg:block" />
+          <button
+            onClick={() => setIsOpen(true)}
+            className="relative"
+            aria-label="Открыть корзину"
+          >
+            <ShoppingBag className="w-5 h-5 text-gray-600 hover:text-gray-900 transition-colors" />
             {items.length > 0 && (
-              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">
+              <span className="absolute -top-2 -right-2 bg-gray-900 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">
                 {items.length}
               </span>
             )}
-          </div>
-          <Link to="/account">
+          </button>
+          <Link to="/account" className="hidden lg:block">
             <User className="w-5 h-5 text-gray-600 hover:text-gray-900 transition-colors" />
           </Link>
           <button
             className="lg:hidden"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
+            aria-label={isMenuOpen ? 'Закрыть меню' : 'Открыть меню'}
           >
             {isMenuOpen
               ? <X className="w-5 h-5 text-gray-600" />
@@ -85,6 +95,11 @@ export default function Header() {
               {item.label}
             </Link>
           ))}
+          <div className="flex items-center gap-4 px-6 py-4">
+            <Link to="/account" onClick={() => setIsMenuOpen(false)}>
+              <User className="w-5 h-5 text-gray-600" />
+            </Link>
+          </div>
         </div>
       )}
     </header>

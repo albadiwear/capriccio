@@ -7,6 +7,8 @@ import {
   Shield,
   HeadphonesIcon,
   Star,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useCartStore } from '../store/cartStore'
@@ -86,6 +88,8 @@ export default function HomePage() {
   const addItem = useCartStore((state) => state.addItem)
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
+  const [banners, setBanners] = useState([])
+  const [activeBanner, setActiveBanner] = useState(0)
 
   useEffect(() => {
     const loadProducts = async () => {
@@ -108,34 +112,169 @@ export default function HomePage() {
     loadProducts()
   }, [])
 
+  useEffect(() => {
+    const loadBanners = async () => {
+      const { data } = await supabase
+        .from('banners')
+        .select('*')
+        .eq('is_active', true)
+        .order('position')
+
+      setBanners(data || [])
+    }
+
+    loadBanners()
+  }, [])
+
+  useEffect(() => {
+    if (banners.length <= 1) return undefined
+
+    const interval = window.setInterval(() => {
+      setActiveBanner((current) => (current + 1) % banners.length)
+    }, 5000)
+
+    return () => window.clearInterval(interval)
+  }, [banners.length])
+
+  useEffect(() => {
+    if (activeBanner >= banners.length && banners.length > 0) {
+      setActiveBanner(0)
+    }
+  }, [activeBanner, banners.length])
+
+  const goToPreviousBanner = () => {
+    setActiveBanner((current) => (current - 1 + banners.length) % banners.length)
+  }
+
+  const goToNextBanner = () => {
+    setActiveBanner((current) => (current + 1) % banners.length)
+  }
+
   return (
     <div className="bg-white text-gray-900">
       <section className="relative min-h-[85vh] overflow-hidden">
-        <img
-          src="https://picsum.photos/seed/fashion-hero/1920/1080"
-          alt="Capriccio новая коллекция"
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-        <div className="absolute inset-0 bg-black/40" />
-        <div className="relative mx-auto flex min-h-[85vh] max-w-7xl items-center px-4 py-8 sm:px-6 md:py-16">
-          <div className="max-w-3xl">
-            <p className="text-sm uppercase tracking-[0.3em] text-white/80">
-              Новая коллекция 2026
-            </p>
-            <h1 className="mt-4 text-2xl font-bold leading-tight text-white sm:text-4xl md:text-6xl">
-              Пуховики, трикотаж и костюмы — с любовью из Capriccio
-            </h1>
-            <p className="mt-6 text-lg text-white/80">
-              Премиальная одежда для современных женщин
-            </p>
-            <Link
-              to="/catalog"
-              className="mt-8 inline-flex h-12 items-center bg-white px-8 text-sm tracking-wide text-gray-900 transition-colors hover:bg-gray-100"
-            >
-              Открыть каталог
-            </Link>
-          </div>
-        </div>
+        {banners.length > 0 ? (
+          <>
+            <div className="absolute inset-0">
+              {banners.map((banner, index) => {
+                const isActive = index === activeBanner
+                const mediaUrl = banner.image_url || banner.media_url || banner.desktop_image
+                const isVideo = banner.type === 'video' || banner.media_type === 'video'
+
+                return (
+                  <div
+                    key={banner.id}
+                    className={`absolute inset-0 transition-opacity duration-700 ${
+                      isActive ? 'opacity-100' : 'opacity-0'
+                    }`}
+                  >
+                    {isVideo ? (
+                      <video
+                        src={mediaUrl}
+                        className="h-full w-full object-cover"
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                      />
+                    ) : (
+                      <img
+                        src={mediaUrl || 'https://picsum.photos/seed/fashion-hero/1920/1080'}
+                        alt={banner.title || 'Capriccio banner'}
+                        className="h-full w-full object-cover"
+                      />
+                    )}
+                    <div className="absolute inset-0 bg-black/40" />
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="relative mx-auto flex min-h-[85vh] max-w-7xl items-center px-4 py-8 sm:px-6 md:py-16">
+              <div className="max-w-3xl">
+                <p className="text-sm uppercase tracking-[0.3em] text-white/80">
+                  {banners[activeBanner]?.subtitle || 'Новая коллекция 2026'}
+                </p>
+                <h1 className="mt-4 text-2xl font-bold leading-tight text-white sm:text-4xl md:text-6xl">
+                  {banners[activeBanner]?.title || 'Пуховики, трикотаж и костюмы — с любовью из Capriccio'}
+                </h1>
+                <p className="mt-6 text-lg text-white/80">
+                  {banners[activeBanner]?.description || 'Премиальная одежда для современных женщин'}
+                </p>
+                <Link
+                  to={banners[activeBanner]?.button_url || '/catalog'}
+                  className="mt-8 inline-flex h-12 items-center bg-white px-8 text-sm tracking-wide text-gray-900 transition-colors hover:bg-gray-100"
+                >
+                  {banners[activeBanner]?.button_text || 'Открыть каталог'}
+                </Link>
+              </div>
+            </div>
+
+            {banners.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={goToPreviousBanner}
+                  aria-label="Предыдущий баннер"
+                  className="absolute left-4 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm transition-colors hover:bg-white/30"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={goToNextBanner}
+                  aria-label="Следующий баннер"
+                  className="absolute right-4 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm transition-colors hover:bg-white/30"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+
+                <div className="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2">
+                  {banners.map((banner, index) => (
+                    <button
+                      key={banner.id}
+                      type="button"
+                      onClick={() => setActiveBanner(index)}
+                      aria-label={`Перейти к баннеру ${index + 1}`}
+                      className={`h-2.5 rounded-full transition-all ${
+                        index === activeBanner ? 'w-8 bg-white' : 'w-2.5 bg-white/50 hover:bg-white/80'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </>
+        ) : (
+          <>
+            <img
+              src="https://picsum.photos/seed/fashion-hero/1920/1080"
+              alt="Capriccio новая коллекция"
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+            <div className="absolute inset-0 bg-black/40" />
+            <div className="relative mx-auto flex min-h-[85vh] max-w-7xl items-center px-4 py-8 sm:px-6 md:py-16">
+              <div className="max-w-3xl">
+                <p className="text-sm uppercase tracking-[0.3em] text-white/80">
+                  Новая коллекция 2026
+                </p>
+                <h1 className="mt-4 text-2xl font-bold leading-tight text-white sm:text-4xl md:text-6xl">
+                  Пуховики, трикотаж и костюмы — с любовью из Capriccio
+                </h1>
+                <p className="mt-6 text-lg text-white/80">
+                  Премиальная одежда для современных женщин
+                </p>
+                <Link
+                  to="/catalog"
+                  className="mt-8 inline-flex h-12 items-center bg-white px-8 text-sm tracking-wide text-gray-900 transition-colors hover:bg-gray-100"
+                >
+                  Открыть каталог
+                </Link>
+              </div>
+            </div>
+          </>
+        )}
       </section>
 
       <section className="px-4 py-8 sm:px-6 md:py-16">

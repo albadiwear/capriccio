@@ -8,6 +8,7 @@ import {
   Handshake,
   FileText,
   Tag,
+  Images,
   LogOut,
   Menu,
   X,
@@ -21,6 +22,7 @@ const NAV_ITEMS = [
   { label: 'Покупатели', icon: Users, to: '/admin/customers' },
   { label: 'Партнёры', icon: Handshake, to: '/admin/partners' },
   { label: 'Блог', icon: FileText, to: '/admin/blog' },
+  { label: 'Баннеры', icon: Images, to: '/admin/banners' },
   { label: 'Промокоды', icon: Tag, to: '/admin/promo' },
 ]
 

@@ -1,0 +1,374 @@
+import { useEffect, useState } from 'react'
+import { Plus, Pencil, Trash2, X, Image as ImageIcon, Video } from 'lucide-react'
+import { supabase } from '../../lib/supabase'
+
+const EMPTY_FORM = {
+  title: '',
+  subtitle: '',
+  button_text: '',
+  button_url: '',
+  image_url: '',
+  video_url: '',
+  type: 'image',
+  position: 1,
+  is_active: true,
+}
+
+function Modal({ title, onClose, children }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative my-4 w-full max-w-2xl rounded-xl bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+          <h2 className="text-base font-semibold text-gray-900">{title}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-900">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="max-h-[80vh] overflow-y-auto px-6 py-5">{children}</div>
+      </div>
+    </div>
+  )
+}
+
+function Field({ label, children }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-xs font-medium text-gray-500">{label}</label>
+      {children}
+    </div>
+  )
+}
+
+const inputCls = 'border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-gray-900'
+
+export default function AdminBannersPage() {
+  const [banners, setBanners] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editing, setEditing] = useState(null)
+  const [form, setForm] = useState(EMPTY_FORM)
+  const [saving, setSaving] = useState(false)
+
+  async function load() {
+    setLoading(true)
+    const { data } = await supabase
+      .from('banners')
+      .select('*')
+      .order('position', { ascending: true })
+      .order('created_at', { ascending: false })
+    setBanners(data || [])
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    load()
+  }, [])
+
+  function openCreate() {
+    setEditing(null)
+    setForm(EMPTY_FORM)
+    setModalOpen(true)
+  }
+
+  function openEdit(banner) {
+    setEditing(banner.id)
+    setForm({
+      title: banner.title || '',
+      subtitle: banner.subtitle || '',
+      button_text: banner.button_text || '',
+      button_url: banner.button_url || '',
+      image_url: banner.image_url || '',
+      video_url: banner.video_url || '',
+      type: banner.type || 'image',
+      position: banner.position ?? 1,
+      is_active: banner.is_active ?? true,
+    })
+    setModalOpen(true)
+  }
+
+  async function handleSave() {
+    if (!form.title.trim()) {
+      alert('Заполните заголовок баннера')
+      return
+    }
+
+    if (form.type === 'image' && !form.image_url.trim()) {
+      alert('Укажите URL изображения')
+      return
+    }
+
+    if (form.type === 'video' && !form.video_url.trim()) {
+      alert('Укажите URL видео')
+      return
+    }
+
+    setSaving(true)
+
+    const payload = {
+      title: form.title,
+      subtitle: form.subtitle,
+      button_text: form.button_text,
+      button_url: form.button_url,
+      image_url: form.image_url || null,
+      video_url: form.video_url || null,
+      type: form.type,
+      position: Number(form.position) || 1,
+      is_active: form.is_active,
+    }
+
+    if (editing) {
+      await supabase.from('banners').update(payload).eq('id', editing)
+    } else {
+      await supabase.from('banners').insert(payload)
+    }
+
+    setSaving(false)
+    setModalOpen(false)
+    load()
+  }
+
+  async function handleDelete(id, title) {
+    if (!window.confirm(`Удалить баннер "${title}"?`)) return
+    await supabase.from('banners').delete().eq('id', id)
+    load()
+  }
+
+  return (
+    <div>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-xl font-bold text-gray-900">Баннеры</h1>
+        <button
+          onClick={openCreate}
+          className="flex items-center gap-2 rounded bg-gray-900 px-4 py-2 text-sm text-white transition-colors hover:bg-gray-700"
+        >
+          <Plus className="h-4 w-4" />
+          Добавить баннер
+        </button>
+      </div>
+
+      <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white">
+        {loading ? (
+          <div className="space-y-3 p-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-12 animate-pulse rounded bg-gray-100" />
+            ))}
+          </div>
+        ) : banners.length === 0 ? (
+          <div className="flex flex-col items-center py-12 text-gray-400">
+            <ImageIcon className="mb-3 h-10 w-10 text-gray-200" />
+            <p className="text-sm">Баннеры пока не добавлены</p>
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 text-xs text-gray-500">
+                <th className="px-4 py-3 text-left font-medium">Превью</th>
+                <th className="px-4 py-3 text-left font-medium">Заголовок</th>
+                <th className="px-4 py-3 text-left font-medium">Подзаголовок</th>
+                <th className="px-4 py-3 text-center font-medium">Позиция</th>
+                <th className="px-4 py-3 text-center font-medium">Статус</th>
+                <th className="px-4 py-3 text-right font-medium">Действия</th>
+              </tr>
+            </thead>
+            <tbody>
+              {banners.map((banner) => (
+                <tr key={banner.id} className="border-b border-gray-50 hover:bg-gray-50">
+                  <td className="px-4 py-3">
+                    <div className="flex h-12 w-16 items-center justify-center overflow-hidden rounded bg-gray-100">
+                      {banner.type === 'video' ? (
+                        banner.video_url ? (
+                          <video
+                            src={banner.video_url}
+                            className="h-full w-full object-cover"
+                            muted
+                            playsInline
+                          />
+                        ) : (
+                          <Video className="h-5 w-5 text-gray-300" />
+                        )
+                      ) : banner.image_url ? (
+                        <img
+                          src={banner.image_url}
+                          alt={banner.title}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <ImageIcon className="h-5 w-5 text-gray-300" />
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <p className="line-clamp-1 font-medium text-gray-900">{banner.title}</p>
+                    <p className="mt-1 text-xs uppercase text-gray-400">{banner.type}</p>
+                  </td>
+                  <td className="px-4 py-3 text-gray-600">
+                    <p className="line-clamp-2">{banner.subtitle || '—'}</p>
+                  </td>
+                  <td className="px-4 py-3 text-center font-medium text-gray-700">
+                    {banner.position ?? '—'}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <span
+                      className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
+                        banner.is_active
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-gray-100 text-gray-500'
+                      }`}
+                    >
+                      {banner.is_active ? 'Активен' : 'Скрыт'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => openEdit(banner)}
+                        className="p-1.5 text-gray-400 transition-colors hover:text-gray-900"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(banner.id, banner.title)}
+                        className="p-1.5 text-gray-400 transition-colors hover:text-red-500"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {modalOpen && (
+        <Modal title={editing ? 'Редактировать баннер' : 'Новый баннер'} onClose={() => setModalOpen(false)}>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <Field label="Заголовок">
+                  <input
+                    className={inputCls}
+                    value={form.title}
+                    onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                  />
+                </Field>
+              </div>
+
+              <div className="sm:col-span-2">
+                <Field label="Подзаголовок">
+                  <input
+                    className={inputCls}
+                    value={form.subtitle}
+                    onChange={(e) => setForm((f) => ({ ...f, subtitle: e.target.value }))}
+                  />
+                </Field>
+              </div>
+
+              <Field label="Текст кнопки">
+                <input
+                  className={inputCls}
+                  value={form.button_text}
+                  onChange={(e) => setForm((f) => ({ ...f, button_text: e.target.value }))}
+                />
+              </Field>
+
+              <Field label="Ссылка кнопки">
+                <input
+                  className={inputCls}
+                  value={form.button_url}
+                  onChange={(e) => setForm((f) => ({ ...f, button_url: e.target.value }))}
+                  placeholder="/catalog"
+                />
+              </Field>
+
+              <div className="sm:col-span-2">
+                <Field label="URL изображения">
+                  <input
+                    className={inputCls}
+                    value={form.image_url}
+                    onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))}
+                    placeholder="https://..."
+                  />
+                </Field>
+              </div>
+
+              <div className="sm:col-span-2">
+                <Field label="URL видео">
+                  <input
+                    className={inputCls}
+                    value={form.video_url}
+                    onChange={(e) => setForm((f) => ({ ...f, video_url: e.target.value }))}
+                    placeholder="https://..."
+                  />
+                </Field>
+              </div>
+
+              <div className="sm:col-span-2">
+                <p className="mb-2 text-xs font-medium text-gray-500">Тип баннера</p>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 text-sm text-gray-700">
+                    <input
+                      type="radio"
+                      checked={form.type === 'image'}
+                      onChange={() => setForm((f) => ({ ...f, type: 'image' }))}
+                      className="accent-gray-900"
+                    />
+                    Изображение
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-gray-700">
+                    <input
+                      type="radio"
+                      checked={form.type === 'video'}
+                      onChange={() => setForm((f) => ({ ...f, type: 'video' }))}
+                      className="accent-gray-900"
+                    />
+                    Видео
+                  </label>
+                </div>
+              </div>
+
+              <Field label="Позиция">
+                <input
+                  type="number"
+                  className={inputCls}
+                  value={form.position}
+                  onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))}
+                />
+              </Field>
+
+              <div className="flex items-end">
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={form.is_active}
+                    onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))}
+                    className="accent-gray-900"
+                  />
+                  Активен
+                </label>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => setModalOpen(false)}
+                className="rounded border border-gray-200 px-4 py-2 text-sm text-gray-600 transition-colors hover:border-gray-900"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="rounded bg-gray-900 px-5 py-2 text-sm text-white transition-colors hover:bg-gray-700 disabled:opacity-60"
+              >
+                {saving ? 'Сохранение...' : 'Сохранить'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  )
+}

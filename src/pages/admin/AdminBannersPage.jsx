@@ -49,6 +49,8 @@ export default function AdminBannersPage() {
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
+  const [selectedImageFile, setSelectedImageFile] = useState(null)
+  const [uploadingImage, setUploadingImage] = useState(false)
 
   async function load() {
     setLoading(true)
@@ -68,6 +70,7 @@ export default function AdminBannersPage() {
   function openCreate() {
     setEditing(null)
     setForm(EMPTY_FORM)
+    setSelectedImageFile(null)
     setModalOpen(true)
   }
 
@@ -84,7 +87,13 @@ export default function AdminBannersPage() {
       position: banner.position ?? 1,
       is_active: banner.is_active ?? true,
     })
+    setSelectedImageFile(null)
     setModalOpen(true)
+  }
+
+  function handleImageSelect(event) {
+    const file = event.target.files?.[0] || null
+    setSelectedImageFile(file)
   }
 
   async function handleSave() {
@@ -93,8 +102,8 @@ export default function AdminBannersPage() {
       return
     }
 
-    if (form.type === 'image' && !form.image_url.trim()) {
-      alert('Укажите URL изображения')
+    if (form.type === 'image' && !form.image_url.trim() && !selectedImageFile) {
+      alert('Выберите изображение баннера')
       return
     }
 
@@ -105,12 +114,36 @@ export default function AdminBannersPage() {
 
     setSaving(true)
 
+    let imageUrl = form.image_url || null
+
+    if (selectedImageFile) {
+      setUploadingImage(true)
+      const fileExt = selectedImageFile.name.split('.').pop()
+      const filePath = `banners/${Date.now()}.${fileExt}`
+      const { error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(filePath, selectedImageFile, { upsert: true })
+
+      if (uploadError) {
+        setUploadingImage(false)
+        setSaving(false)
+        throw uploadError
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(filePath)
+
+      imageUrl = urlData.publicUrl
+      setUploadingImage(false)
+    }
+
     const payload = {
       title: form.title,
       subtitle: form.subtitle,
       button_text: form.button_text,
       button_url: form.button_url,
-      image_url: form.image_url || null,
+      image_url: imageUrl,
       video_url: form.video_url || null,
       type: form.type,
       position: Number(form.position) || 1,
@@ -125,6 +158,7 @@ export default function AdminBannersPage() {
 
     setSaving(false)
     setModalOpen(false)
+    setSelectedImageFile(null)
     load()
   }
 
@@ -284,13 +318,37 @@ export default function AdminBannersPage() {
               </Field>
 
               <div className="sm:col-span-2">
-                <Field label="URL изображения">
-                  <input
-                    className={inputCls}
-                    value={form.image_url}
-                    onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))}
-                    placeholder="https://..."
-                  />
+                <Field label="Изображение баннера">
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <label className="inline-flex cursor-pointer items-center justify-center rounded bg-gray-900 px-4 py-2 text-sm text-white transition-colors hover:bg-gray-700">
+                        Выбрать фото
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageSelect}
+                          className="hidden"
+                        />
+                      </label>
+                      <span className="text-sm text-gray-500">
+                        {selectedImageFile ? selectedImageFile.name : form.image_url ? 'Текущее изображение' : 'Файл не выбран'}
+                      </span>
+                    </div>
+
+                    {(selectedImageFile || form.image_url) && (
+                      <div className="overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+                        <img
+                          src={selectedImageFile ? URL.createObjectURL(selectedImageFile) : form.image_url}
+                          alt="Превью баннера"
+                          className="h-40 w-full object-cover"
+                        />
+                      </div>
+                    )}
+
+                    {uploadingImage && (
+                      <p className="text-sm text-gray-500">Загрузка изображения...</p>
+                    )}
+                  </div>
                 </Field>
               </div>
 
@@ -360,10 +418,10 @@ export default function AdminBannersPage() {
               </button>
               <button
                 onClick={handleSave}
-                disabled={saving}
+                disabled={saving || uploadingImage}
                 className="rounded bg-gray-900 px-5 py-2 text-sm text-white transition-colors hover:bg-gray-700 disabled:opacity-60"
               >
-                {saving ? 'Сохранение...' : 'Сохранить'}
+                {saving || uploadingImage ? 'Сохранение...' : 'Сохранить'}
               </button>
             </div>
           </div>

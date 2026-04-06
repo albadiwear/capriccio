@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useCartStore } from '../store/cartStore'
+import Toast from '../components/ui/Toast'
 
 const CATEGORY_LABELS = {
   puhoviki: 'Пуховики',
@@ -143,6 +144,24 @@ export default function ProductPage() {
   const [accordionOpen, setAccordionOpen] = useState(false)
   const [videoOpen, setVideoOpen] = useState(false)
   const [added, setAdded] = useState(false)
+  const [user, setUser] = useState(null)
+  const [selectedRating, setSelectedRating] = useState(0)
+  const [hoveredRating, setHoveredRating] = useState(0)
+  const [reviewText, setReviewText] = useState('')
+  const [reviewSubmitting, setReviewSubmitting] = useState(false)
+  const [reviewMessage, setReviewMessage] = useState('')
+
+  useEffect(() => {
+    async function loadUser() {
+      const {
+        data: { user: currentUser },
+      } = await supabase.auth.getUser()
+
+      setUser(currentUser || null)
+    }
+
+    loadUser()
+  }, [])
 
   useEffect(() => {
     if (!id) return
@@ -219,6 +238,38 @@ export default function ProductPage() {
     if (!url) return null
     const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([^&?/]+)/)
     return match ? `https://www.youtube.com/embed/${match[1]}?autoplay=1` : null
+  }
+
+  async function handleSubmitReview(event) {
+    event.preventDefault()
+
+    if (selectedRating < 1) {
+      setReviewMessage('Пожалуйста, выберите оценку от 1 до 5.')
+      return
+    }
+
+    if (reviewText.trim().length < 10) {
+      setReviewMessage('Отзыв должен содержать минимум 10 символов.')
+      return
+    }
+
+    setReviewSubmitting(true)
+    setReviewMessage('')
+
+    await supabase.from('reviews').insert({
+      product_id: id,
+      user_id: user?.id || null,
+      author_name: user?.user_metadata?.full_name || 'Покупатель',
+      rating: selectedRating,
+      text: reviewText,
+      is_approved: false,
+    })
+
+    setReviewSubmitting(false)
+    setSelectedRating(0)
+    setHoveredRating(0)
+    setReviewText('')
+    setReviewMessage('Спасибо! Ваш отзыв отправлен на модерацию.')
   }
 
   if (loading) {
@@ -487,6 +538,58 @@ export default function ProductPage() {
               {reviews.map((r) => <ReviewCard key={r.id} review={r} />)}
             </div>
           )}
+
+          <form onSubmit={handleSubmitReview} className="mt-10 max-w-2xl rounded-xl border border-gray-100 bg-gray-50 p-6">
+            <h3 className="text-lg font-semibold text-gray-900">Написать отзыв</h3>
+
+            <div className="mt-5">
+              <p className="mb-2 text-sm font-medium text-gray-900">Оценка</p>
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setSelectedRating(value)}
+                    onMouseEnter={() => setHoveredRating(value)}
+                    onMouseLeave={() => setHoveredRating(0)}
+                    className="transition-transform hover:scale-110"
+                    aria-label={`Оценка ${value}`}
+                  >
+                    <Star
+                      className={`h-6 w-6 ${
+                        value <= (hoveredRating || selectedRating)
+                          ? 'fill-amber-400 text-amber-400'
+                          : 'text-gray-200'
+                      }`}
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-5">
+              <label className="mb-2 block text-sm font-medium text-gray-900">Ваш отзыв</label>
+              <textarea
+                value={reviewText}
+                onChange={(e) => setReviewText(e.target.value)}
+                rows={5}
+                placeholder="Поделитесь впечатлениями о товаре"
+                className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm text-gray-900 focus:border-gray-900 focus:outline-none"
+              />
+            </div>
+
+            {reviewMessage && (
+              <p className="mt-4 text-sm text-gray-600">{reviewMessage}</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={reviewSubmitting}
+              className="mt-5 inline-flex h-12 items-center rounded bg-gray-900 px-6 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:opacity-60"
+            >
+              {reviewSubmitting ? 'Отправка...' : 'Отправить отзыв'}
+            </button>
+          </form>
         </section>
 
         {/* Related products */}
@@ -527,6 +630,12 @@ export default function ProductPage() {
           </div>
         </div>
       )}
+
+      <Toast
+        message="Товар добавлен в корзину ✓"
+        isVisible={added}
+        type="success"
+      />
     </div>
   )
 }

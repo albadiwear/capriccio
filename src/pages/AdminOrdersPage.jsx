@@ -71,6 +71,8 @@ function OrderDetailsModal({ order, onClose, onStatusChange }) {
   const customerPhone = getCustomerPhone(order)
   const comment = order.comment || order.notes || order.customer_comment || '—'
 
+  console.log('order_items:', order.order_items)
+
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
@@ -132,24 +134,28 @@ function OrderDetailsModal({ order, onClose, onStatusChange }) {
           <div>
             <p className="mb-3 text-xs uppercase tracking-wider text-gray-400">Список товаров</p>
             <div className="overflow-hidden rounded-xl border border-gray-100">
-              {(order.order_items || []).length === 0 ? (
-                <p className="px-4 py-5 text-sm text-gray-400">Товары не найдены</p>
-              ) : (
-                <div className="divide-y divide-gray-100">
-                  {order.order_items.map((item, index) => (
-                    <div key={`${item.id || item.product_id}-${index}`} className="flex items-start justify-between gap-4 px-4 py-4">
-                      <div>
-                        <p className="font-medium text-gray-900">{item.products?.name || `Товар #${item.product_id}`}</p>
-                        <p className="mt-1 text-sm text-gray-500">
-                          {[item.size && `Размер: ${item.size}`, `Количество: ${item.quantity}`].filter(Boolean).join(' · ')}
-                        </p>
-                      </div>
-                      <p className="whitespace-nowrap text-sm font-medium text-gray-900">
-                        {item.price?.toLocaleString('ru-RU')} ₸
+              {order.order_items?.length > 0 ? (
+                order.order_items.map((item) => (
+                  <div
+                    key={item.id}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      padding: '8px 0',
+                      borderBottom: '1px solid #f0f0f0',
+                    }}
+                  >
+                    <div>
+                      <p style={{ fontWeight: 500 }}>{item.products?.name || '—'}</p>
+                      <p style={{ fontSize: 12, color: '#888' }}>
+                        Размер: {item.product_variants?.size || '—'} · {item.quantity} шт.
                       </p>
                     </div>
-                  ))}
-                </div>
+                    <p style={{ fontWeight: 500 }}>{Number(item.price).toLocaleString('ru-RU')} ₸</p>
+                  </div>
+                ))
+              ) : (
+                <p className="px-4 py-5 text-sm text-gray-400">Товары не найдены</p>
               )}
             </div>
           </div>
@@ -184,8 +190,20 @@ export default function AdminOrdersPage() {
 
       const { data } = await supabase
         .from('orders')
-        .select('*, users(full_name, phone, email), order_items(*, products(name))')
+        .select(`
+          *,
+          users(full_name, phone, email),
+          order_items(
+            id,
+            quantity,
+            price,
+            products(name),
+            product_variants(size, color)
+          )
+        `)
         .order('created_at', { ascending: false })
+
+      console.log('Первый заказ:', JSON.stringify(data[0], null, 2))
 
       setOrders(data || [])
       setLoading(false)

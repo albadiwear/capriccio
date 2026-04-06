@@ -135,16 +135,17 @@ export default function CheckoutPage() {
 
       if (orderError) throw orderError
 
-      await supabase.from('order_items').insert(
+      const { error: itemsError } = await supabase.from('order_items').insert(
         items.map((item) => ({
           order_id: order.id,
-          product_id: item.id,
+          product_id: item.product_id || item.id,
+          variant_id: item.variant_id || null,
           quantity: item.quantity,
           price: item.price,
-          color: item.color || null,
-          size: item.size || null,
         }))
       )
+
+      if (itemsError) console.error('order_items error:', itemsError)
 
       if (!user && email) {
         const tempPassword = Math.random().toString(36).slice(-10)

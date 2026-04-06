@@ -34,7 +34,7 @@ export default function AdminLeadsPage() {
 
       const { data } = await supabase
         .from('users')
-        .select('*')
+        .select('*, orders(id, total_amount, status)')
         .order('created_at', { ascending: false })
 
       setLeads(data || [])
@@ -48,7 +48,8 @@ export default function AdminLeadsPage() {
     return leads.filter((lead) => {
       const query = search.trim().toLowerCase()
       const source = getLeadSource(lead)
-      const status = statuses[lead.id] || 'Новый'
+      const hasOrders = (lead.orders || []).length > 0
+      const status = hasOrders ? 'Купил' : (statuses[lead.id] || 'Новый')
 
       const matchesSearch = !query
         || lead.full_name?.toLowerCase().includes(query)
@@ -128,6 +129,7 @@ export default function AdminLeadsPage() {
                 <th className="px-4 py-4 text-left font-medium">Email</th>
                 <th className="px-4 py-4 text-left font-medium">Источник</th>
                 <th className="px-4 py-4 text-left font-medium">Дата регистрации</th>
+                <th className="px-4 py-4 text-left font-medium">Заказы</th>
                 <th className="px-4 py-4 text-left font-medium">Статус</th>
                 <th className="px-4 py-4 text-center font-medium">Действие</th>
               </tr>
@@ -135,7 +137,10 @@ export default function AdminLeadsPage() {
             <tbody>
               {filteredLeads.map((lead, index) => {
                 const source = getLeadSource(lead)
-                const status = statuses[lead.id] || 'Новый'
+                const orders = lead.orders || []
+                const hasOrders = orders.length > 0
+                const ordersTotal = orders.reduce((sum, order) => sum + Number(order.total_amount || 0), 0)
+                const status = hasOrders ? 'Купил' : (statuses[lead.id] || 'Новый')
                 const whatsappPhone = formatPhoneForWhatsApp(lead.phone)
 
                 return (
@@ -153,9 +158,19 @@ export default function AdminLeadsPage() {
                       {lead.created_at ? new Date(lead.created_at).toLocaleDateString('ru-RU') : '—'}
                     </td>
                     <td className="px-4 py-4">
+                      {hasOrders ? (
+                        <span className="rounded-full bg-green-100 px-2.5 py-1 text-xs text-green-700">
+                          {orders.length} {orders.length === 1 ? 'заказ' : orders.length < 5 ? 'заказа' : 'заказов'} · {ordersTotal.toLocaleString('ru-RU')} ₸
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-4">
                       <select
                         value={status}
                         onChange={(event) => handleStatusChange(lead.id, event.target.value)}
+                        disabled={hasOrders}
                         className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition-colors focus:border-gray-900"
                       >
                         {STATUS_OPTIONS.map((option) => (

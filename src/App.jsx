@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import Layout from './components/layout/Layout'
 import ProtectedRoute from './components/layout/ProtectedRoute'
 import AdminLayout from './components/admin/AdminLayout'
+import ScrollToTop from './components/layout/ScrollToTop'
 
 // Public pages
 import HomePage from './pages/HomePage'
@@ -50,6 +51,7 @@ function App() {
 
   return (
     <Router>
+      <ScrollToTop />
       <Routes>
         {/* Public layout */}
         <Route path="/" element={<Layout />}>

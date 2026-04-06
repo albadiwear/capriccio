@@ -17,8 +17,8 @@ import { useAuthStore } from '../../store/authStore'
 const NAV_ITEMS = [
   { label: 'Дашборд', icon: LayoutDashboard, to: '/admin' },
   { label: 'Товары', icon: Package, to: '/admin/products' },
+  { label: 'Лиды', icon: Users, to: '/admin/leads' },
   { label: 'Заказы', icon: ShoppingBag, to: '/admin/orders' },
-  { label: 'Покупатели', icon: Users, to: '/admin/customers' },
   { label: 'Партнёры', icon: Handshake, to: '/admin/partners' },
 ]
 

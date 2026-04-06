@@ -111,9 +111,6 @@ export default function LoginPage() {
   }
 
   const handleGoogleLogin = async () => {
-    setLoading(true)
-    setFormError('')
-
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -122,8 +119,7 @@ export default function LoginPage() {
     })
 
     if (error) {
-      setFormError(error.message)
-      setLoading(false)
+      console.error(error)
     }
   }
 

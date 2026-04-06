@@ -72,7 +72,7 @@ function ReviewCard({ review }) {
         </div>
       )}
       <div className="flex items-center gap-2 mt-3 text-xs text-gray-400">
-        <span className="font-medium text-gray-600">{review.author_name || 'Покупатель'}</span>
+        <span className="font-medium text-gray-600">{review.user_id ? 'Покупатель' : 'Гость'}</span>
         <span>·</span>
         <span>{review.created_at ? new Date(review.created_at).toLocaleDateString('ru-RU') : ''}</span>
       </div>
@@ -244,7 +244,7 @@ export default function ProductPage() {
     event.preventDefault()
 
     if (selectedRating < 1) {
-      setReviewMessage('Пожалуйста, выберите оценку от 1 до 5.')
+      alert('Выберите оценку')
       return
     }
 
@@ -256,14 +256,20 @@ export default function ProductPage() {
     setReviewSubmitting(true)
     setReviewMessage('')
 
-    await supabase.from('reviews').insert({
+    const { error } = await supabase.from('reviews').insert({
       product_id: id,
       user_id: user?.id || null,
-      author_name: user?.user_metadata?.full_name || 'Покупатель',
       rating: selectedRating,
       text: reviewText,
       is_approved: false,
     })
+
+    if (error) {
+      console.error('Ошибка сохранения отзыва:', error)
+      alert('Ошибка: ' + error.message)
+      setReviewSubmitting(false)
+      return
+    }
 
     setReviewSubmitting(false)
     setSelectedRating(0)

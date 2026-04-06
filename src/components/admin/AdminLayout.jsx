@@ -1,14 +1,13 @@
-import { useState } from 'react'
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   Package,
   ShoppingBag,
   Users,
   Handshake,
-  FileText,
-  Tag,
-  Images,
+  ChevronDown,
+  ChevronRight,
   LogOut,
   Menu,
   X,
@@ -21,14 +20,27 @@ const NAV_ITEMS = [
   { label: 'Заказы', icon: ShoppingBag, to: '/admin/orders' },
   { label: 'Покупатели', icon: Users, to: '/admin/customers' },
   { label: 'Партнёры', icon: Handshake, to: '/admin/partners' },
-  { label: 'Блог', icon: FileText, to: '/admin/blog' },
-  { label: 'Баннеры', icon: Images, to: '/admin/banners' },
-  { label: 'Промокоды', icon: Tag, to: '/admin/promo' },
+]
+
+const CONTENT_ITEMS = [
+  { label: 'Баннеры', to: '/admin/banners' },
+  { label: 'Блог', to: '/admin/blog' },
+  { label: 'Промокоды', to: '/admin/promo' },
+  { label: 'Отзывы', to: '/admin/reviews' },
 ]
 
 function SidebarContent({ onClose }) {
+  const location = useLocation()
   const navigate = useNavigate()
   const signOut = useAuthStore((state) => state.signOut)
+  const isContentRoute = CONTENT_ITEMS.some((item) => location.pathname === item.to)
+  const [contentOpen, setContentOpen] = useState(isContentRoute)
+
+  useEffect(() => {
+    if (isContentRoute) {
+      setContentOpen(true)
+    }
+  }, [isContentRoute])
 
   async function handleLogout() {
     await signOut()
@@ -65,6 +77,45 @@ function SidebarContent({ onClose }) {
             {label}
           </NavLink>
         ))}
+
+        <div className="pt-1">
+          <button
+            onClick={() => setContentOpen((current) => !current)}
+            className={`flex w-full items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+              isContentRoute
+                ? 'bg-gray-700 text-white'
+                : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+            }`}
+          >
+            <span>Контент</span>
+            {contentOpen ? (
+              <ChevronDown className="w-4 h-4 flex-shrink-0" />
+            ) : (
+              <ChevronRight className="w-4 h-4 flex-shrink-0" />
+            )}
+          </button>
+
+          {contentOpen && (
+            <div className="mt-1 space-y-0.5">
+              {CONTENT_ITEMS.map(({ label, to }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  onClick={onClose}
+                  className={({ isActive }) =>
+                    `block rounded-lg py-2 pl-8 pr-3 text-xs transition-colors ${
+                      isActive
+                        ? 'bg-gray-700 text-white'
+                        : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                    }`
+                  }
+                >
+                  {label}
+                </NavLink>
+              ))}
+            </div>
+          )}
+        </div>
       </nav>
 
       <div className="px-3 py-4 border-t border-gray-800">

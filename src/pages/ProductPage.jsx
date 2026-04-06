@@ -241,9 +241,11 @@ export default function ProductPage() {
   }
 
   function handleAddToCart() {
-    if (!product) return
+    if (!product || isSelectedVariantOutOfStock) return
     addItem({
       id: product.id,
+      product_id: product.id,
+      variant_id: selectedVariant?.id || null,
       name: product.name,
       price: product.sale_price || product.price,
       image: product.images?.[0],
@@ -332,6 +334,9 @@ export default function ProductPage() {
   const variants = product.product_variants || []
   const uniqueColors = getUniqueColors(variants)
   const sizesForColor = selectedColor ? getSizesForColor(variants, selectedColor) : []
+  const selectedVariant = sizesForColor.find((variant) => variant.size === selectedSize) || null
+  const selectedVariantStock = selectedVariant?.stock ?? null
+  const isSelectedVariantOutOfStock = selectedVariant !== null && selectedVariantStock <= 0
   const categoryLabel = CATEGORY_LABELS[product.category] || product.category
 
   const embedUrl = getYoutubeEmbedUrl(product.youtube_url)
@@ -500,14 +505,22 @@ export default function ProductPage() {
               <div className="flex flex-col gap-3 flex-1">
                 <button
                   onClick={handleAddToCart}
+                  disabled={isSelectedVariantOutOfStock}
                   className={`h-12 w-full text-sm font-medium tracking-wide rounded transition-colors ${
                     added
                       ? 'bg-green-600 text-white'
+                      : isSelectedVariantOutOfStock
+                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                       : 'bg-gray-900 text-white hover:bg-gray-700'
                   }`}
                 >
-                  {added ? '✓ Добавлено в корзину' : 'Добавить в корзину'}
+                  {added ? '✓ Добавлено в корзину' : isSelectedVariantOutOfStock ? 'Нет в наличии' : 'Добавить в корзину'}
                 </button>
+                {selectedVariant && (
+                  <p className={`text-sm ${selectedVariantStock > 0 ? 'text-gray-500' : 'text-red-500'}`}>
+                    В наличии: {selectedVariantStock} шт.
+                  </p>
+                )}
                 <button
                   onClick={handleWhatsApp}
                   className="flex h-12 w-full items-center justify-center gap-2 rounded border border-gray-200 text-sm font-medium tracking-wide text-gray-700 transition-colors hover:border-gray-900 hover:text-gray-900"

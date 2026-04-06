@@ -14,6 +14,7 @@ const BADGE_OPTIONS = ['hit', 'new', 'sale']
 
 const EMPTY_FORM = {
   name: '',
+  billz_id: '',
   description: '',
   category: 'Пуховики',
   brand: '',
@@ -73,7 +74,7 @@ export default function AdminProductsPage() {
     setLoading(true)
     const { data } = await supabase
       .from('products')
-      .select('id, name, brand, category, price, sale_price, is_active, images')
+      .select('id, name, brand, billz_id, category, price, sale_price, is_active, images, product_variants(stock)')
       .order('created_at', { ascending: false })
     setProducts(data || [])
     setLoading(false)
@@ -99,6 +100,7 @@ export default function AdminProductsPage() {
     const { product_variants, ...rest } = data
     setForm({
       name: rest.name || '',
+      billz_id: rest.billz_id || '',
       description: rest.description || '',
       category: rest.category || 'Пуховики',
       brand: rest.brand || '',
@@ -134,11 +136,12 @@ export default function AdminProductsPage() {
   }
 
   async function handleSave() {
-    if (!form.name || !form.price) return alert('Заполните название и цену')
+    if (!form.name || !form.billz_id || !form.price) return alert('Заполните название, артикул и цену')
     setSaving(true)
 
     const payload = {
       name: form.name,
+      billz_id: form.billz_id,
       description: form.description,
       category: form.category,
       brand: form.brand,
@@ -165,14 +168,32 @@ export default function AdminProductsPage() {
       for (const v of variantsToSave) {
         if (v.id) {
           await supabase.from('product_variants').update({
-            size: v.size, color: v.color, color_hex: v.color_hex, stock: Number(v.stock),
+            size: v.size,
+            color: v.color,
+            color_hex: v.color_hex || '#000000',
+            stock: Number(v.stock) || 0,
           }).eq('id', v.id)
-        } else {
-          await supabase.from('product_variants').insert({
-            product_id: productId, size: v.size, color: v.color,
-            color_hex: v.color_hex, stock: Number(v.stock),
-          })
         }
+      }
+
+      const newVariants = variantsToSave.filter((v) => !v.id)
+      if (newVariants.length > 0) {
+        const variantsToInsert = newVariants.map((v) => ({
+          product_id: productId,
+          size: v.size || '',
+          color: v.color || '',
+          color_hex: v.color_hex || '#000000',
+          stock: parseInt(v.stock, 10) || 0,
+        }))
+
+        console.log('Варианты для записи:', JSON.stringify(variantsToInsert, null, 2))
+
+        const { error: variantsError } = await supabase
+          .from('product_variants')
+          .insert(variantsToInsert)
+
+        if (variantsError) console.error('Ошибка:', JSON.stringify(variantsError, null, 2))
+        else console.log('Варианты успешно записаны')
       }
     }
 
@@ -249,13 +270,17 @@ export default function AdminProductsPage() {
                 <th className="text-left px-4 py-3 font-medium">Название</th>
                 <th className="text-left px-4 py-3 font-medium">Категория</th>
                 <th className="text-right px-4 py-3 font-medium">Цена</th>
+                <th className="text-center px-4 py-3 font-medium">Остаток</th>
                 <th className="text-center px-4 py-3 font-medium">Статус</th>
                 <th className="text-right px-4 py-3 font-medium">Действия</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((p) => (
-                <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50">
+              {filtered.map((p) => {
+                const totalStock = (p.product_variants || []).reduce((sum, v) => sum + (v.stock || 0), 0)
+
+                return (
+                  <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50">
                   <td className="px-4 py-3">
                     <div className="w-10 h-10 rounded overflow-hidden bg-gray-100 flex-shrink-0">
                       {p.images?.[0]
@@ -284,6 +309,15 @@ export default function AdminProductsPage() {
                     }
                   </td>
                   <td className="px-4 py-3 text-center">
+                    {totalStock === 0 ? (
+                      <span className="text-xs font-medium text-red-600">Нет в наличии</span>
+                    ) : totalStock < 3 ? (
+                      <span className="text-xs font-medium text-yellow-600">Мало ({totalStock})</span>
+                    ) : (
+                      <span className="text-xs font-medium text-green-600">{totalStock}</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-center">
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${p.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                       {p.is_active ? 'Активен' : 'Скрыт'}
                     </span>
@@ -298,8 +332,9 @@ export default function AdminProductsPage() {
                       </button>
                     </div>
                   </td>
-                </tr>
-              ))}
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         )}
@@ -321,6 +356,9 @@ export default function AdminProductsPage() {
               </Field>
               <Field label="Бренд">
                 <input className={inputCls} value={form.brand} onChange={e => setForm(f => ({ ...f, brand: e.target.value }))} />
+              </Field>
+              <Field label="Артикул *">
+                <input className={inputCls} value={form.billz_id} onChange={e => setForm(f => ({ ...f, billz_id: e.target.value }))} />
               </Field>
               <Field label="Цена *">
                 <input type="number" className={inputCls} value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} />

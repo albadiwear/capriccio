@@ -195,6 +195,8 @@ export default function AdminOrdersPage() {
           users(full_name, phone, email),
           order_items(
             id,
+            product_id,
+            variant_id,
             quantity,
             price,
             products(name),
@@ -213,7 +215,39 @@ export default function AdminOrdersPage() {
   }, [])
 
   async function handleStatusChange(orderId, status) {
+    const order = orders.find((item) => item.id === orderId)
+    const previousStatus = order?.status
+
     await supabase.from('orders').update({ status }).eq('id', orderId)
+
+    if (status === 'delivered' && previousStatus !== 'delivered' && order) {
+      for (const item of order.order_items || []) {
+        if (item.variant_id) {
+          const { error: decrementError } = await supabase.rpc('decrement_stock', {
+            variant_id: item.variant_id,
+            amount: item.quantity,
+          })
+
+          if (decrementError) {
+            console.error('decrement_stock error:', decrementError)
+          }
+        } else {
+          const { data: variants } = await supabase
+            .from('product_variants')
+            .select('id, stock')
+            .eq('product_id', item.product_id)
+            .order('stock', { ascending: false })
+            .limit(1)
+
+          if (variants?.[0]) {
+            await supabase
+              .from('product_variants')
+              .update({ stock: Math.max(0, variants[0].stock - item.quantity) })
+              .eq('id', variants[0].id)
+          }
+        }
+      }
+    }
 
     setOrders((current) =>
       current.map((order) => (order.id === orderId ? { ...order, status } : order))

@@ -70,7 +70,7 @@ function App() {
           <Route path="account/orders" element={<ProtectedRoute><AccountOrdersPage /></ProtectedRoute>} />
           <Route path="account/wishlist" element={<ProtectedRoute><WishlistPage /></ProtectedRoute>} />
           <Route path="account/partner" element={<ProtectedRoute><PartnerPage /></ProtectedRoute>} />
-          <Route path="checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
+          <Route path="checkout" element={<CheckoutPage />} />
           <Route path="order-success/:id" element={<OrderSuccessPage />} />
 
           <Route path="*" element={<NotFoundPage />} />

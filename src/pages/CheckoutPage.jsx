@@ -146,6 +146,26 @@ export default function CheckoutPage() {
         }))
       )
 
+      if (!user && email) {
+        const tempPassword = Math.random().toString(36).slice(-10)
+        const { data: newUser } = await supabase.auth.signUp({
+          email,
+          password: tempPassword,
+          options: {
+            data: { full_name: name, phone },
+          },
+        })
+
+        if (newUser?.user) {
+          await supabase.from('users').upsert({
+            id: newUser.user.id,
+            email,
+            full_name: name,
+            phone,
+          })
+        }
+      }
+
       clearCart()
       navigate(`/order-success/${order.id}`)
     } catch (err) {

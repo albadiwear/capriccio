@@ -134,6 +134,7 @@ export default function ProductPage() {
 
   const [product, setProduct] = useState(null)
   const [reviews, setReviews] = useState([])
+  const [recentlyViewed, setRecentlyViewed] = useState([])
   const [related, setRelated] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -169,6 +170,7 @@ export default function ProductPage() {
     setActiveImage(0)
     setSelectedColor(null)
     setSelectedSize(null)
+    setRecentlyViewed([])
 
     Promise.all([
       supabase.from('products').select('*, product_variants(*)').eq('id', id).single(),
@@ -189,11 +191,37 @@ export default function ProductPage() {
           .neq('id', id)
           .limit(4)
           .then(({ data: rel }) => setRelated(rel || []))
+
+        const recentIds = JSON.parse(localStorage.getItem('recently_viewed') || '[]')
+          .filter((recentId) => recentId !== prod.id)
+          .slice(0, 6)
+
+        if (recentIds.length > 0) {
+          supabase
+            .from('products')
+            .select('id, name, price, sale_price, images')
+            .in('id', recentIds)
+            .then(({ data: recentData }) => {
+              const orderedRecent = recentIds
+                .map((recentId) => (recentData || []).find((item) => item.id === recentId))
+                .filter(Boolean)
+
+              setRecentlyViewed(orderedRecent)
+            })
+        }
       }
 
       setLoading(false)
     })
   }, [id])
+
+  useEffect(() => {
+    if (!product) return
+    const key = 'recently_viewed'
+    const existing = JSON.parse(localStorage.getItem(key) || '[]')
+    const updated = [product.id, ...existing.filter((existingId) => existingId !== product.id)].slice(0, 7)
+    localStorage.setItem(key, JSON.stringify(updated))
+  }, [product])
 
   function getUniqueColors(variants) {
     const seen = new Set()
@@ -597,6 +625,15 @@ export default function ProductPage() {
             </button>
           </form>
         </section>
+
+        {recentlyViewed.length > 0 && (
+          <section className="mt-16 border-t border-gray-100 pt-10">
+            <h2 className="text-xl font-bold text-gray-900 mb-6">Недавно смотрели</h2>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+              {recentlyViewed.map((p) => <ProductCard key={p.id} product={p} />)}
+            </div>
+          </section>
+        )}
 
         {/* Related products */}
         {related.length > 0 && (

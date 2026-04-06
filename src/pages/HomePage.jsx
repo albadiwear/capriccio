@@ -89,6 +89,7 @@ export default function HomePage() {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [banners, setBanners] = useState([])
+  const [bannersLoading, setBannersLoading] = useState(true)
   const [activeBanner, setActiveBanner] = useState(0)
 
   useEffect(() => {
@@ -114,6 +115,8 @@ export default function HomePage() {
 
   useEffect(() => {
     const loadBanners = async () => {
+      setBannersLoading(true)
+
       const { data } = await supabase
         .from('banners')
         .select('*')
@@ -121,6 +124,7 @@ export default function HomePage() {
         .order('position')
 
       setBanners(data || [])
+      setBannersLoading(false)
     }
 
     loadBanners()
@@ -152,8 +156,10 @@ export default function HomePage() {
 
   return (
     <div className="bg-white text-gray-900">
-      <section className="relative min-h-[85vh] overflow-hidden">
-        {banners.length > 0 ? (
+      <section className="relative min-h-[85vh] overflow-hidden bg-gray-900">
+        {bannersLoading ? (
+          <div className="absolute inset-0 bg-gray-900 animate-pulse" />
+        ) : banners.length > 0 ? (
           <>
             <div className="absolute inset-0">
               {banners.map((banner, index) => {
@@ -246,35 +252,7 @@ export default function HomePage() {
               </>
             )}
           </>
-        ) : (
-          <>
-            <img
-              src="https://picsum.photos/seed/fashion-hero/1920/1080"
-              alt="Capriccio новая коллекция"
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-            <div className="absolute inset-0 bg-black/40" />
-            <div className="relative mx-auto flex min-h-[85vh] max-w-7xl items-center px-4 py-8 sm:px-6 md:py-16">
-              <div className="max-w-3xl">
-                <p className="text-sm uppercase tracking-[0.3em] text-white/80">
-                  Новая коллекция 2026
-                </p>
-                <h1 className="mt-4 text-2xl font-bold leading-tight text-white sm:text-4xl md:text-6xl">
-                  Пуховики, трикотаж и костюмы — с любовью из Capriccio
-                </h1>
-                <p className="mt-6 text-lg text-white/80">
-                  Премиальная одежда для современных женщин
-                </p>
-                <Link
-                  to="/catalog"
-                  className="mt-8 inline-flex h-12 items-center bg-white px-8 text-sm tracking-wide text-gray-900 transition-colors hover:bg-gray-100"
-                >
-                  Открыть каталог
-                </Link>
-              </div>
-            </div>
-          </>
-        )}
+        ) : null}
       </section>
 
       <section className="px-4 py-8 sm:px-6 md:py-16">

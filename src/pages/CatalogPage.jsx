@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Heart, LayoutGrid, List, SlidersHorizontal, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useCartStore } from '../store/cartStore'
@@ -67,9 +67,8 @@ function SkeletonCard() {
   )
 }
 
-function ProductCard({ product, view }) {
+function ProductCard({ product, view, wished, onToggleWishlist }) {
   const addItem = useCartStore((state) => state.addItem)
-  const [wished, setWished] = useState(false)
 
   const price = product.sale_price || product.price
   const originalPrice = product.sale_price ? product.price : null
@@ -143,9 +142,9 @@ function ProductCard({ product, view }) {
           </span>
         )}
         <button
-          onClick={(e) => {
+          onClick={async (e) => {
             e.preventDefault()
-            setWished((w) => !w)
+            await onToggleWishlist(product.id)
           }}
           className="absolute right-3 top-3 rounded-full bg-white p-1.5 shadow-sm transition-transform hover:scale-110"
           aria-label="В избранное"
@@ -368,11 +367,14 @@ const DEFAULT_FILTERS = {
 }
 
 export default function CatalogPage() {
+  const navigate = useNavigate()
   const { category } = useParams()
   const categoryName = CATEGORY_MAP[category] || null
   const pageTitle = CATEGORY_TITLES[category] || 'Каталог'
 
   const [products, setProducts] = useState([])
+  const [user, setUser] = useState(null)
+  const [wishlistIds, setWishlistIds] = useState([])
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState(DEFAULT_FILTERS)
   const [sort, setSort] = useState('popular')
@@ -390,6 +392,30 @@ export default function CatalogPage() {
         setProducts(data || [])
         setLoading(false)
       })
+  }, [])
+
+  useEffect(() => {
+    async function loadWishlist() {
+      const {
+        data: { user: currentUser },
+      } = await supabase.auth.getUser()
+
+      setUser(currentUser || null)
+
+      if (!currentUser) {
+        setWishlistIds([])
+        return
+      }
+
+      const { data } = await supabase
+        .from('wishlist')
+        .select('product_id')
+        .eq('user_id', currentUser.id)
+
+      setWishlistIds((data || []).map((item) => item.product_id))
+    }
+
+    loadWishlist()
   }, [])
 
   useEffect(() => {
@@ -492,6 +518,35 @@ export default function CatalogPage() {
 
   const resetFilters = () => setFilters(DEFAULT_FILTERS)
 
+  async function handleToggleWishlist(productId) {
+    const {
+      data: { user: currentUser },
+    } = await supabase.auth.getUser()
+
+    if (!currentUser) {
+      navigate('/login')
+      return
+    }
+
+    setUser(currentUser)
+
+    const { data: existing } = await supabase
+      .from('wishlist')
+      .select('id')
+      .eq('user_id', currentUser.id)
+      .eq('product_id', productId)
+      .single()
+
+    if (existing?.id) {
+      await supabase.from('wishlist').delete().eq('id', existing.id)
+      setWishlistIds((current) => current.filter((id) => id !== productId))
+      return
+    }
+
+    await supabase.from('wishlist').insert({ user_id: currentUser.id, product_id: productId })
+    setWishlistIds((current) => [...new Set([...current, productId])])
+  }
+
   return (
     <div className="min-h-screen bg-white">
       <div className="border-b border-gray-100 py-6 md:py-8">
@@ -573,11 +628,27 @@ export default function CatalogPage() {
               </div>
             ) : view === 'grid' ? (
               <div className="grid grid-cols-2 gap-x-4 gap-y-8 lg:grid-cols-3">
-                {filtered.map((p) => <ProductCard key={p.id} product={p} view="grid" />)}
+                {filtered.map((p) => (
+                  <ProductCard
+                    key={p.id}
+                    product={p}
+                    view="grid"
+                    wished={wishlistIds.includes(p.id)}
+                    onToggleWishlist={handleToggleWishlist}
+                  />
+                ))}
               </div>
             ) : (
               <div className="flex flex-col gap-6">
-                {filtered.map((p) => <ProductCard key={p.id} product={p} view="list" />)}
+                {filtered.map((p) => (
+                  <ProductCard
+                    key={p.id}
+                    product={p}
+                    view="list"
+                    wished={wishlistIds.includes(p.id)}
+                    onToggleWishlist={handleToggleWishlist}
+                  />
+                ))}
               </div>
             )}
           </div>

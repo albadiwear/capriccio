@@ -115,7 +115,9 @@ export default function Header() {
           >
             <Search className="w-5 h-5 text-gray-600 hover:text-gray-900 cursor-pointer transition-colors" />
           </button>
-          <Heart className="w-5 h-5 text-gray-600 hover:text-gray-900 cursor-pointer transition-colors hidden lg:block" />
+          <Link to="/account/wishlist" className="hidden lg:block" aria-label="Избранное">
+            <Heart className="w-5 h-5 text-gray-600 hover:text-gray-900 transition-colors" />
+          </Link>
           <button
             onClick={() => setIsOpen(true)}
             className="relative flex h-12 w-12 items-center justify-center"
@@ -167,6 +169,9 @@ export default function Header() {
             >
               <Search className="w-5 h-5 text-gray-600" />
             </button>
+            <Link to="/account/wishlist" onClick={() => setIsMenuOpen(false)} aria-label="Избранное">
+              <Heart className="w-5 h-5 text-gray-600" />
+            </Link>
             <Link to="/account" onClick={() => setIsMenuOpen(false)}>
               <User className="w-5 h-5 text-gray-600" />
             </Link>

@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Plus, Pencil, Trash2, X, Package } from 'lucide-react'
+import * as XLSX from 'xlsx'
 import { supabase } from '../lib/supabase'
 
 const CATEGORIES = [
@@ -58,6 +59,7 @@ function Field({ label, children }) {
 const inputCls = 'border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-gray-900'
 
 export default function AdminProductsPage() {
+  const fileInputRef = useRef(null)
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -215,6 +217,119 @@ export default function AdminProductsPage() {
     setVariants((prev) => prev.filter((x) => x !== v))
   }
 
+  function handleDownloadTemplate() {
+    const templateRows = [
+      {
+        'Название': 'Пуховик Milano',
+        'Артикул': 'CAP-1001',
+        'Категория': 'Пуховики',
+        'Бренд': 'Capriccio',
+        'Цена': 89900,
+        'Цена со скидкой': 79900,
+        'Описание': 'Тёплый пуховик на каждый день',
+        'Состав': 'Полиэстер',
+        'Уход': 'Химчистка',
+        'Размер': 'M',
+        'Цвет': 'Чёрный',
+        'Количество': 5,
+      },
+    ]
+
+    const worksheet = XLSX.utils.json_to_sheet(templateRows)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Товары')
+    XLSX.writeFile(workbook, 'capriccio_template.xlsx')
+  }
+
+  async function handleImportExcel(event) {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    try {
+      const buffer = await file.arrayBuffer()
+      const workbook = XLSX.read(buffer, { type: 'array' })
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
+      const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: '' })
+
+      const groupedProducts = rows.reduce((acc, row) => {
+        const billzId = String(row['Артикул'] || '').trim()
+        if (!billzId) return acc
+
+        if (!acc[billzId]) {
+          acc[billzId] = {
+            product: {
+              name: String(row['Название'] || '').trim(),
+              billz_id: billzId,
+              category: String(row['Категория'] || 'Пуховики').trim() || 'Пуховики',
+              brand: String(row['Бренд'] || '').trim(),
+              price: Number(row['Цена']) || 0,
+              sale_price: row['Цена со скидкой'] ? Number(row['Цена со скидкой']) : null,
+              description: String(row['Описание'] || '').trim(),
+              composition: String(row['Состав'] || '').trim(),
+              care: String(row['Уход'] || '').trim(),
+              is_active: true,
+            },
+            variants: [],
+          }
+        }
+
+        acc[billzId].variants.push({
+          size: String(row['Размер'] || '').trim(),
+          color: String(row['Цвет'] || '').trim(),
+          color_hex: '#000000',
+          stock: parseInt(row['Количество'], 10) || 0,
+        })
+
+        return acc
+      }, {})
+
+      let importedCount = 0
+
+      for (const item of Object.values(groupedProducts)) {
+        const { data: productData, error: productError } = await supabase
+          .from('products')
+          .insert(item.product)
+          .select()
+          .single()
+
+        if (productError || !productData?.id) {
+          console.error('Ошибка импорта товара:', productError)
+          continue
+        }
+
+        const variantsToInsert = item.variants
+          .filter((variant) => variant.size || variant.color)
+          .map((variant) => ({
+            product_id: productData.id,
+            size: variant.size || '',
+            color: variant.color || '',
+            color_hex: variant.color_hex || '#000000',
+            stock: parseInt(variant.stock, 10) || 0,
+          }))
+
+        if (variantsToInsert.length > 0) {
+          const { error: variantsError } = await supabase
+            .from('product_variants')
+            .insert(variantsToInsert)
+
+          if (variantsError) {
+            console.error('Ошибка импорта вариантов:', variantsError)
+          }
+        }
+
+        importedCount += 1
+      }
+
+      await load()
+      alert(`Импортировано ${importedCount} товаров`)
+    } catch (error) {
+      console.error('Ошибка импорта Excel:', error)
+      alert('Не удалось импортировать Excel файл')
+    } finally {
+      event.target.value = ''
+    }
+  }
+
   const filtered = products.filter((p) => {
     const matchSearch = !search || p.name?.toLowerCase().includes(search.toLowerCase())
     const matchCat = !filterCat || p.category === filterCat
@@ -225,13 +340,34 @@ export default function AdminProductsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold text-gray-900">Товары</h1>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm rounded hover:bg-gray-700 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Добавить товар
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls"
+            onChange={handleImportExcel}
+            className="hidden"
+          />
+          <button
+            onClick={handleDownloadTemplate}
+            className="px-4 py-2 border border-gray-200 text-gray-700 text-sm rounded hover:border-gray-900 hover:text-gray-900 transition-colors"
+          >
+            Скачать шаблон
+          </button>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="px-4 py-2 border border-gray-200 text-gray-700 text-sm rounded hover:border-gray-900 hover:text-gray-900 transition-colors"
+          >
+            Импорт из Excel
+          </button>
+          <button
+            onClick={openCreate}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm rounded hover:bg-gray-700 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Добавить товар
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 mb-5">

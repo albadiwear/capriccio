@@ -10,6 +10,7 @@ import ScrollToTop from './components/layout/ScrollToTop'
 import HomePage from './pages/HomePage'
 import CatalogPage from './pages/CatalogPage'
 import ProductPage from './pages/ProductPage'
+import PromoLanding from './pages/PromoLanding'
 import BlogPage from './pages/BlogPage'
 import BlogPostPage from './pages/BlogPostPage'
 import AboutPage from './pages/AboutPage'
@@ -53,6 +54,8 @@ function App() {
     <Router>
       <ScrollToTop />
       <Routes>
+        <Route path="/promo" element={<PromoLanding />} />
+
         {/* Public layout */}
         <Route path="/" element={<Layout />}>
           <Route index element={<HomePage />} />

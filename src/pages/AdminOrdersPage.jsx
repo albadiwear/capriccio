@@ -214,6 +214,100 @@ export default function AdminOrdersPage() {
     loadOrders()
   }, [])
 
+  async function awardReferralCommission(order) {
+    if (!order?.referral_code) return
+
+    const { data: existingTransaction, error: existingTransactionError } = await supabase
+      .from('referral_transactions')
+      .select('id')
+      .eq('order_id', order.id)
+      .limit(1)
+      .maybeSingle()
+
+    if (existingTransactionError) {
+      console.error('referral transaction lookup error:', existingTransactionError)
+      return
+    }
+
+    if (existingTransaction) return
+
+    const { data: referral, error: referralError } = await supabase
+      .from('referrals')
+      .select('*')
+      .eq('referral_code', order.referral_code)
+      .single()
+
+    if (referralError) {
+      console.error('referral lookup error:', referralError)
+      return
+    }
+
+    if (!referral) return
+
+    const startOfMonth = new Date()
+    startOfMonth.setDate(1)
+    startOfMonth.setHours(0, 0, 0, 0)
+
+    const { data: monthlyOrders, error: monthlyOrdersError } = await supabase
+      .from('orders')
+      .select('id, total_amount')
+      .eq('referral_code', order.referral_code)
+      .eq('status', 'delivered')
+      .gte('created_at', startOfMonth.toISOString())
+      .neq('id', order.id)
+
+    if (monthlyOrdersError) {
+      console.error('monthly referral orders error:', monthlyOrdersError)
+      return
+    }
+
+    const monthlySales = monthlyOrders?.length || 0
+    const monthlyRevenue =
+      monthlyOrders?.reduce((sum, monthlyOrder) => sum + Number(monthlyOrder.total_amount || 0), 0) || 0
+
+    const nextMonthlySales = monthlySales + 1
+    const nextMonthlyRevenue = monthlyRevenue + Number(order.total_amount || 0)
+
+    let commissionRate = 0.03
+    if (nextMonthlyRevenue >= 3000000) {
+      commissionRate = 0.07
+    } else if (nextMonthlySales >= 5) {
+      commissionRate = 0.05
+    }
+
+    const commission = Math.round(Number(order.total_amount || 0) * commissionRate)
+
+    const { error: transactionError } = await supabase.from('referral_transactions').insert({
+      referral_id: referral.id,
+      order_id: order.id,
+      amount: commission,
+      status: 'pending',
+    })
+
+    if (transactionError) {
+      console.error('referral transaction insert error:', transactionError)
+      return
+    }
+
+    const nextLevel =
+      nextMonthlyRevenue >= 3000000 ? 'pro' : nextMonthlySales >= 5 ? 'active' : 'start'
+
+    const { error: referralUpdateError } = await supabase
+      .from('referrals')
+      .update({
+        balance: Number(referral.balance || 0) + commission,
+        total_earned: Number(referral.total_earned || 0) + commission,
+        monthly_sales: nextMonthlySales,
+        monthly_revenue: nextMonthlyRevenue,
+        level: nextLevel,
+      })
+      .eq('id', referral.id)
+
+    if (referralUpdateError) {
+      console.error('referral update error:', referralUpdateError)
+    }
+  }
+
   async function handleStatusChange(orderId, status) {
     const order = orders.find((item) => item.id === orderId)
     const previousStatus = order?.status
@@ -247,6 +341,8 @@ export default function AdminOrdersPage() {
           }
         }
       }
+
+      await awardReferralCommission(order)
     }
 
     setOrders((current) =>

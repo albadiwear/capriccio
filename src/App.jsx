@@ -51,6 +51,16 @@ function App() {
     initialize()
   }, [initialize])
 
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const ref = urlParams.get('ref')
+
+    if (ref) {
+      localStorage.setItem('ref_code', ref)
+      localStorage.setItem('ref_expires', String(Date.now() + 30 * 24 * 60 * 60 * 1000))
+    }
+  }, [])
+
   return (
     <Router>
       <ScrollToTop />

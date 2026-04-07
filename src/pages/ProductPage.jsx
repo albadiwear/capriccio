@@ -165,6 +165,16 @@ export default function ProductPage() {
   }, [])
 
   useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const ref = urlParams.get('ref')
+
+    if (ref) {
+      localStorage.setItem('ref_code', ref)
+      localStorage.setItem('ref_expires', String(Date.now() + 30 * 24 * 60 * 60 * 1000))
+    }
+  }, [])
+
+  useEffect(() => {
     if (!id) return
     setLoading(true)
     setActiveImage(0)

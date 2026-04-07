@@ -107,31 +107,72 @@ export default function CheckoutPage() {
     setSubmitting(true)
     setSubmitError('')
 
+    const refExpires = localStorage.getItem('ref_expires')
+    const refCode =
+      refExpires && Date.now() < Number(refExpires)
+        ? localStorage.getItem('ref_code')
+        : null
+
     try {
-      const { data: order, error: orderError } = await supabase
+      const orderPayload = {
+        user_id: user?.id || null,
+        order_number: `CAP-${Date.now()}`,
+        status: 'pending',
+        total_amount: total,
+        delivery_cost: deliveryCost,
+        promo_code: promoCode || null,
+        discount_amount: discount,
+        delivery_method: selectedDelivery,
+        delivery_address: {
+          full_name: name,
+          phone,
+          city,
+          street,
+          house,
+          apartment,
+          postal_code: postalCode,
+        },
+        payment_method: selectedPayment,
+        referral_code: refCode || null,
+      }
+
+      let { data: order, error: orderError } = await supabase
         .from('orders')
-        .insert({
-          user_id: user?.id || null,
-          order_number: `CAP-${Date.now()}`,
-          status: 'pending',
-          total_amount: total,
-          delivery_cost: deliveryCost,
-          promo_code: promoCode || null,
-          discount_amount: discount,
-          delivery_method: selectedDelivery,
-          delivery_address: {
-            full_name: name,
-            phone,
-            city,
-            street,
-            house,
-            apartment,
-            postal_code: postalCode,
-          },
-          payment_method: selectedPayment,
-        })
+        .insert(orderPayload)
         .select()
         .single()
+
+      if (orderError && orderError.message?.toLowerCase().includes('referral_code')) {
+        console.log('ref_code for order:', refCode)
+
+        const fallbackOrderResponse = await supabase
+          .from('orders')
+          .insert({
+            user_id: user?.id || null,
+            order_number: `CAP-${Date.now()}`,
+            status: 'pending',
+            total_amount: total,
+            delivery_cost: deliveryCost,
+            promo_code: promoCode || null,
+            discount_amount: discount,
+            delivery_method: selectedDelivery,
+            delivery_address: {
+              full_name: name,
+              phone,
+              city,
+              street,
+              house,
+              apartment,
+              postal_code: postalCode,
+            },
+            payment_method: selectedPayment,
+          })
+          .select()
+          .single()
+
+        order = fallbackOrderResponse.data
+        orderError = fallbackOrderResponse.error
+      }
 
       if (orderError) throw orderError
 

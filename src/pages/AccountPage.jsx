@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { User, ShoppingBag, Heart, MapPin, Users, LogOut } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/authStore'
@@ -7,9 +7,8 @@ import { useAuthStore } from '../store/authStore'
 const sections = [
   { id: 'profile', label: 'Профиль', icon: User },
   { id: 'orders', label: 'Мои заказы', icon: ShoppingBag },
-  { id: 'wishlist', label: 'Избранное', icon: Heart },
   { id: 'addresses', label: 'Мои адреса', icon: MapPin },
-  { id: 'partner', label: 'Партнёрская программа', icon: Users },
+  { id: 'wishlist', label: 'Избранное', icon: Heart },
 ]
 
 const statusMap = {
@@ -778,6 +777,20 @@ export default function AccountPage() {
     if (activeSection === 'orders') return renderOrdersSection()
     if (activeSection === 'wishlist') return renderWishlistSection()
     if (activeSection === 'addresses') return renderAddressesSection()
+    if (activeSection === 'partner') {
+      return (
+        <div className="rounded-2xl bg-white p-8 text-center text-gray-700 shadow-sm">
+          <p className="text-sm text-gray-500">Партнёрская программа открывается отдельной страницей.</p>
+          <Link
+            to="/account/partner"
+            className="mt-4 inline-flex h-11 items-center justify-center rounded-lg bg-gray-900 px-5 text-sm font-medium text-white transition-colors hover:bg-gray-700"
+          >
+            Перейти в партнёрский кабинет
+          </Link>
+        </div>
+      )
+    }
+
     return renderPartnerSection()
   }
 
@@ -804,6 +817,19 @@ export default function AccountPage() {
             const Icon = section.icon
             const isActive = activeSection === section.id
 
+            if (section.id === 'partner') {
+              return (
+                <Link
+                  key={section.id}
+                  to="/account/partner"
+                  className="flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900"
+                >
+                  <Icon className="h-4 w-4" />
+                  {section.label}
+                </Link>
+              )
+            }
+
             return (
               <button
                 key={section.id}
@@ -818,6 +844,14 @@ export default function AccountPage() {
               </button>
             )
           })}
+
+          <Link
+            to="/account/partner"
+            className="flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900"
+          >
+            <Users className="h-4 w-4" />
+            Партнёрская программа
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[240px_1fr]">
@@ -826,6 +860,19 @@ export default function AccountPage() {
               {sections.map((section) => {
                 const Icon = section.icon
                 const isActive = activeSection === section.id
+
+                if (section.id === 'partner') {
+                  return (
+                    <Link
+                      key={section.id}
+                      to="/account/partner"
+                      className="flex min-h-12 w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900"
+                    >
+                      <Icon className="h-5 w-5" />
+                      {section.label}
+                    </Link>
+                  )
+                }
 
                 return (
                   <button
@@ -843,6 +890,14 @@ export default function AccountPage() {
                   </button>
                 )
               })}
+
+              <Link
+                to="/account/partner"
+                className="flex min-h-12 w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900"
+              >
+                <Users className="h-5 w-5" />
+                Партнёрская программа
+              </Link>
 
               <button
                 type="button"

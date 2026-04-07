@@ -382,6 +382,16 @@ export default function CatalogPage() {
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const ref = urlParams.get('ref')
+
+    if (ref) {
+      localStorage.setItem('ref_code', ref)
+      localStorage.setItem('ref_expires', String(Date.now() + 30 * 24 * 60 * 60 * 1000))
+    }
+  }, [])
+
+  useEffect(() => {
     setLoading(true)
     supabase
       .from('products')

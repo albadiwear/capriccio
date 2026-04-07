@@ -128,6 +128,28 @@ function SkeletonProduct() {
   )
 }
 
+function DescriptionBlock({ text }) {
+  const [expanded, setExpanded] = useState(false)
+  const isLong = text.length > 200
+
+  return (
+    <div>
+      <p className={`text-sm text-gray-600 leading-relaxed ${!expanded && isLong ? 'line-clamp-3' : ''}`}>
+        {text}
+      </p>
+      {isLong && (
+        <button
+          type="button"
+          onClick={() => setExpanded(v => !v)}
+          className="mt-1 text-xs text-gray-500 underline hover:text-gray-900 transition-colors"
+        >
+          {expanded ? 'Свернуть' : 'Читать полностью'}
+        </button>
+      )}
+    </div>
+  )
+}
+
 export default function ProductPage() {
   const { id } = useParams()
   const addItem = useCartStore((state) => state.addItem)
@@ -383,7 +405,7 @@ export default function ProductPage() {
             </div>
 
             {product.description && (
-              <p className="text-sm text-gray-600 leading-relaxed">{product.description}</p>
+              <DescriptionBlock text={product.description} />
             )}
 
             {uniqueColors.length > 0 && (

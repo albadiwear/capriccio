@@ -449,15 +449,23 @@ export default function ProductPage() {
             )}
 
             {(() => {
-              const totalStock = variants.reduce((sum, v) => sum + (v.stock || 0), 0)
-              if (totalStock === 0) return (
+              // Если размер не выбран — не показываем ничего
+              if (!selectedSize) return null
+
+              // Находим вариант по выбранному цвету и размеру
+              const variant = variants.find(
+                (v) => v.color === selectedColor && v.size === selectedSize
+              )
+              const stock = variant?.stock ?? 0
+
+              if (stock === 0) return (
                 <p className="text-sm font-medium text-red-500">Нет в наличии</p>
               )
-              if (totalStock < 5) return (
-                <p className="text-sm font-medium text-yellow-600">Осталось мало: {totalStock} шт.</p>
+              if (stock < 5) return (
+                <p className="text-sm font-medium text-yellow-600">Осталось мало: {stock} шт.</p>
               )
               return (
-                <p className="text-sm text-green-600">В наличии: {totalStock} шт.</p>
+                <p className="text-sm text-green-600">В наличии: {stock} шт.</p>
               )
             })()}
 

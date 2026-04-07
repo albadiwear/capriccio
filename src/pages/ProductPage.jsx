@@ -144,6 +144,11 @@ export default function ProductPage() {
   const [accordionOpen, setAccordionOpen] = useState(false)
   const [videoOpen, setVideoOpen] = useState(false)
   const [added, setAdded] = useState(false)
+  const [reviewForm, setReviewForm] = useState({ rating: 5, text: '', author_name: '' })
+  const [submittingReview, setSubmittingReview] = useState(false)
+  const [reviewSuccess, setReviewSuccess] = useState(false)
+  const [reviewPhotos, setReviewPhotos] = useState([])
+  const [uploadingPhotos, setUploadingPhotos] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -220,6 +225,45 @@ export default function ProductPage() {
     if (!url) return null
     const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([^&?/]+)/)
     return match ? `https://www.youtube.com/embed/${match[1]}?autoplay=1` : null
+  }
+
+  async function handleSubmitReview(e) {
+    e.preventDefault()
+    if (!reviewForm.text || !reviewForm.author_name) return
+    setSubmittingReview(true)
+    await supabase.from('reviews').insert({
+      product_id: id,
+      rating: reviewForm.rating,
+      text: reviewForm.text,
+      author_name: reviewForm.author_name,
+      is_approved: false,
+      photos: reviewPhotos,
+    })
+    setReviewSuccess(true)
+    setReviewForm({ rating: 5, text: '', author_name: '' })
+    setReviewPhotos([])
+    setSubmittingReview(false)
+  }
+
+  async function handleReviewPhotoUpload(e) {
+    const files = Array.from(e.target.files)
+    if (!files.length) return
+    setUploadingPhotos(true)
+    const urls = []
+    for (const file of files) {
+      const path = `${id}/${Date.now()}-${file.name}`
+      const { error } = await supabase.storage
+        .from('review-photos')
+        .upload(path, file)
+      if (!error) {
+        const { data: { publicUrl } } = supabase.storage
+          .from('review-photos')
+          .getPublicUrl(path)
+        urls.push(publicUrl)
+      }
+    }
+    setReviewPhotos(prev => [...prev, ...urls])
+    setUploadingPhotos(false)
   }
 
   if (loading) {
@@ -338,6 +382,10 @@ export default function ProductPage() {
               )}
             </div>
 
+            {product.description && (
+              <p className="text-sm text-gray-600 leading-relaxed">{product.description}</p>
+            )}
+
             {uniqueColors.length > 0 && (
               <div>
                 <p className="text-sm font-medium text-gray-900 mb-2">
@@ -399,6 +447,19 @@ export default function ProductPage() {
                 </div>
               </div>
             )}
+
+            {(() => {
+              const totalStock = variants.reduce((sum, v) => sum + (v.stock || 0), 0)
+              if (totalStock === 0) return (
+                <p className="text-sm font-medium text-red-500">Нет в наличии</p>
+              )
+              if (totalStock < 5) return (
+                <p className="text-sm font-medium text-yellow-600">Осталось мало: {totalStock} шт.</p>
+              )
+              return (
+                <p className="text-sm text-green-600">В наличии: {totalStock} шт.</p>
+              )
+            })()}
 
             <div className="flex items-start gap-3">
               <div className="flex flex-col gap-3 flex-1">
@@ -473,6 +534,91 @@ export default function ProductPage() {
               {reviews.map((r) => <ReviewCard key={r.id} review={r} />)}
             </div>
           )}
+          <div className="mt-8 max-w-xl">
+            <h3 className="text-base font-semibold text-gray-900 mb-4">Оставить отзыв</h3>
+            {reviewSuccess ? (
+              <div className="rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">
+                Спасибо! Отзыв отправлен на модерацию.
+              </div>
+            ) : (
+              <form onSubmit={handleSubmitReview} className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">Оценка</label>
+                  <div className="flex gap-1">
+                    {[1,2,3,4,5].map(n => (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => setReviewForm(f => ({ ...f, rating: n }))}
+                      >
+                        <Star className={`w-6 h-6 ${n <= reviewForm.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-200'}`} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">Ваше имя</label>
+                  <input
+                    value={reviewForm.author_name}
+                    onChange={e => setReviewForm(f => ({ ...f, author_name: e.target.value }))}
+                    placeholder="Айгерим"
+                    required
+                    className="h-11 w-full rounded-lg border border-gray-200 px-4 text-sm focus:outline-none focus:border-gray-900"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">Отзыв</label>
+                  <textarea
+                    value={reviewForm.text}
+                    onChange={e => setReviewForm(f => ({ ...f, text: e.target.value }))}
+                    placeholder="Расскажите о товаре..."
+                    required
+                    rows={4}
+                    className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:border-gray-900 resize-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">
+                    Фото (необязательно)
+                  </label>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleReviewPhotoUpload}
+                    className="text-sm text-gray-600"
+                    disabled={uploadingPhotos}
+                  />
+                  {uploadingPhotos && (
+                    <p className="text-xs text-gray-400 mt-1">Загрузка фото...</p>
+                  )}
+                  {reviewPhotos.length > 0 && (
+                    <div className="flex gap-2 flex-wrap mt-2">
+                      {reviewPhotos.map((url, i) => (
+                        <div key={i} className="relative">
+                          <img src={url} alt="" className="w-16 h-16 object-cover rounded-lg" />
+                          <button
+                            type="button"
+                            onClick={() => setReviewPhotos(prev => prev.filter((_, j) => j !== i))}
+                            className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center text-xs"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="submit"
+                  disabled={submittingReview}
+                  className="h-11 px-6 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-700 transition-colors disabled:opacity-60"
+                >
+                  {submittingReview ? 'Отправляем...' : 'Отправить отзыв'}
+                </button>
+              </form>
+            )}
+          </div>
         </section>
 
         {related.length > 0 && (

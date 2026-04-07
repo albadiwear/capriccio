@@ -388,7 +388,7 @@ export default function HomePage() {
 
             <div className="h-full">
               <img
-                src="https://picsum.photos/seed/banner-promo/600/400"
+                src="/banner-promo.png"
                 alt="Новая коллекция Capriccio"
                 className="h-full w-full object-cover"
               />

@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Heart, LayoutGrid, List, SlidersHorizontal, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useCartStore } from '../store/cartStore'
+import { useSEO } from '../hooks/useSEO'
 
 const CATEGORY_MAP = {
   puhoviki: 'Пуховики',
@@ -367,6 +368,11 @@ const DEFAULT_FILTERS = {
 }
 
 export default function CatalogPage() {
+  useSEO({
+    title: 'Каталог одежды',
+    description: 'Каталог женской одежды премиум класса. Пуховики, костюмы, трикотаж, обувь.',
+    url: '/catalog',
+  })
   const navigate = useNavigate()
   const { category } = useParams()
   const categoryName = CATEGORY_MAP[category] || null

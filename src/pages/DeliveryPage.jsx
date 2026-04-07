@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Truck, CreditCard, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react'
+import { useSEO } from '../hooks/useSEO'
 
 const deliveryMethods = [
   { title: 'Курьер по Алматы', price: 'от 1 500 ₸', time: 'срок 1-2 дня' },
@@ -40,6 +41,11 @@ const faqItems = [
 ]
 
 export default function DeliveryPage() {
+  useSEO({
+    title: 'Доставка и оплата',
+    description: 'Доставка по Казахстану и СНГ. Курьер, Казпочта, СДЭК, Яндекс Доставка.',
+    url: '/delivery',
+  })
   const [openFaq, setOpenFaq] = useState(0)
 
   return (

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useSEO } from '../hooks/useSEO'
 import { Shield, Star, HeadphonesIcon } from 'lucide-react'
 
 const stats = [
@@ -30,6 +31,11 @@ const values = [
 ]
 
 export default function AboutPage() {
+  useSEO({
+    title: 'О нас',
+    description: 'Capriccio — бутик премиальной женской одежды в Казахстане.',
+    url: '/about',
+  })
   return (
     <div className="bg-white text-gray-900">
       <section className="relative overflow-hidden">

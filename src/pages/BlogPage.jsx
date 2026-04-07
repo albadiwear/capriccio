@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useSEO } from '../hooks/useSEO'
 
 const categories = ['Все', 'Советы', 'Тренды', 'Уход', 'Новости']
 
@@ -27,6 +28,11 @@ function BlogCardSkeleton() {
 }
 
 export default function BlogPage() {
+  useSEO({
+    title: 'Блог о моде',
+    description: 'Советы по стилю, тренды сезона и новости бренда Capriccio.',
+    url: '/blog',
+  })
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeCategory, setActiveCategory] = useState('Все')

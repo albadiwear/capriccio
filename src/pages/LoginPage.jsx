@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useSEO } from '../hooks/useSEO'
 
 function GoogleIcon() {
   return (
@@ -27,6 +28,7 @@ function GoogleIcon() {
 }
 
 export default function LoginPage() {
+  useSEO({ title: 'Войти', url: '/login' })
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
     email: '',

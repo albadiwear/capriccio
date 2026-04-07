@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useCartStore } from '../store/cartStore'
+import { useSEO } from '../hooks/useSEO'
 
 const categories = [
   {
@@ -85,6 +86,11 @@ function ProductSkeleton() {
 }
 
 export default function HomePage() {
+  useSEO({
+    title: 'Женская одежда премиум',
+    description: 'Capriccio — премиальная женская одежда. Пуховики, костюмы, трикотаж. Доставка по Казахстану и СНГ.',
+    url: '/',
+  })
   const addItem = useCartStore((state) => state.addItem)
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)

@@ -8,6 +8,7 @@ import {
   Send,
   ExternalLink,
 } from 'lucide-react'
+import { useSEO } from '../hooks/useSEO'
 
 const contactItems = [
   {
@@ -51,6 +52,11 @@ const initialForm = {
 }
 
 export default function ContactsPage() {
+  useSEO({
+    title: 'Контакты',
+    description: 'Свяжитесь с нами: WhatsApp, Telegram, Instagram. г. Алматы.',
+    url: '/contacts',
+  })
   const [formData, setFormData] = useState(initialForm)
   const [submitted, setSubmitted] = useState(false)
 

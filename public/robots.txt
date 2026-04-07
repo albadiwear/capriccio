@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /account/
+Sitemap: https://capriccio.vercel.app/sitemap.xml

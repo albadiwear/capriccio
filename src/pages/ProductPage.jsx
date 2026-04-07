@@ -72,7 +72,7 @@ function ReviewCard({ review }) {
         </div>
       )}
       <div className="flex items-center gap-2 mt-3 text-xs text-gray-400">
-        <span className="font-medium text-gray-600">{review.user_id ? 'Покупатель' : 'Гость'}</span>
+        <span className="font-medium text-gray-600">{review.author_name || 'Покупатель'}</span>
         <span>·</span>
         <span>{review.created_at ? new Date(review.created_at).toLocaleDateString('ru-RU') : ''}</span>
       </div>
@@ -134,7 +134,6 @@ export default function ProductPage() {
 
   const [product, setProduct] = useState(null)
   const [reviews, setReviews] = useState([])
-  const [recentlyViewed, setRecentlyViewed] = useState([])
   const [related, setRelated] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -145,34 +144,6 @@ export default function ProductPage() {
   const [accordionOpen, setAccordionOpen] = useState(false)
   const [videoOpen, setVideoOpen] = useState(false)
   const [added, setAdded] = useState(false)
-  const [user, setUser] = useState(null)
-  const [selectedRating, setSelectedRating] = useState(0)
-  const [hoveredRating, setHoveredRating] = useState(0)
-  const [reviewText, setReviewText] = useState('')
-  const [reviewSubmitting, setReviewSubmitting] = useState(false)
-  const [reviewMessage, setReviewMessage] = useState('')
-
-  useEffect(() => {
-    async function loadUser() {
-      const {
-        data: { user: currentUser },
-      } = await supabase.auth.getUser()
-
-      setUser(currentUser || null)
-    }
-
-    loadUser()
-  }, [])
-
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search)
-    const ref = urlParams.get('ref')
-
-    if (ref) {
-      localStorage.setItem('ref_code', ref)
-      localStorage.setItem('ref_expires', String(Date.now() + 30 * 24 * 60 * 60 * 1000))
-    }
-  }, [])
 
   useEffect(() => {
     if (!id) return
@@ -180,7 +151,6 @@ export default function ProductPage() {
     setActiveImage(0)
     setSelectedColor(null)
     setSelectedSize(null)
-    setRecentlyViewed([])
 
     Promise.all([
       supabase.from('products').select('*, product_variants(*)').eq('id', id).single(),
@@ -201,37 +171,11 @@ export default function ProductPage() {
           .neq('id', id)
           .limit(4)
           .then(({ data: rel }) => setRelated(rel || []))
-
-        const recentIds = JSON.parse(localStorage.getItem('recently_viewed') || '[]')
-          .filter((recentId) => recentId !== prod.id)
-          .slice(0, 6)
-
-        if (recentIds.length > 0) {
-          supabase
-            .from('products')
-            .select('id, name, price, sale_price, images')
-            .in('id', recentIds)
-            .then(({ data: recentData }) => {
-              const orderedRecent = recentIds
-                .map((recentId) => (recentData || []).find((item) => item.id === recentId))
-                .filter(Boolean)
-
-              setRecentlyViewed(orderedRecent)
-            })
-        }
       }
 
       setLoading(false)
     })
   }, [id])
-
-  useEffect(() => {
-    if (!product) return
-    const key = 'recently_viewed'
-    const existing = JSON.parse(localStorage.getItem(key) || '[]')
-    const updated = [product.id, ...existing.filter((existingId) => existingId !== product.id)].slice(0, 7)
-    localStorage.setItem(key, JSON.stringify(updated))
-  }, [product])
 
   function getUniqueColors(variants) {
     const seen = new Set()
@@ -251,11 +195,9 @@ export default function ProductPage() {
   }
 
   function handleAddToCart() {
-    if (!product || isSelectedVariantOutOfStock) return
+    if (!product) return
     addItem({
       id: product.id,
-      product_id: product.id,
-      variant_id: selectedVariant?.id || null,
       name: product.name,
       price: product.sale_price || product.price,
       image: product.images?.[0],
@@ -278,44 +220,6 @@ export default function ProductPage() {
     if (!url) return null
     const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([^&?/]+)/)
     return match ? `https://www.youtube.com/embed/${match[1]}?autoplay=1` : null
-  }
-
-  async function handleSubmitReview(event) {
-    event.preventDefault()
-
-    if (selectedRating < 1) {
-      alert('Выберите оценку')
-      return
-    }
-
-    if (reviewText.trim().length < 10) {
-      setReviewMessage('Отзыв должен содержать минимум 10 символов.')
-      return
-    }
-
-    setReviewSubmitting(true)
-    setReviewMessage('')
-
-    const { error } = await supabase.from('reviews').insert({
-      product_id: id,
-      user_id: user?.id || null,
-      rating: selectedRating,
-      text: reviewText,
-      is_approved: false,
-    })
-
-    if (error) {
-      console.error('Ошибка сохранения отзыва:', error)
-      alert('Ошибка: ' + error.message)
-      setReviewSubmitting(false)
-      return
-    }
-
-    setReviewSubmitting(false)
-    setSelectedRating(0)
-    setHoveredRating(0)
-    setReviewText('')
-    setReviewMessage('Спасибо! Ваш отзыв отправлен на модерацию.')
   }
 
   if (loading) {
@@ -344,9 +248,6 @@ export default function ProductPage() {
   const variants = product.product_variants || []
   const uniqueColors = getUniqueColors(variants)
   const sizesForColor = selectedColor ? getSizesForColor(variants, selectedColor) : []
-  const selectedVariant = sizesForColor.find((variant) => variant.size === selectedSize) || null
-  const selectedVariantStock = selectedVariant?.stock ?? null
-  const isSelectedVariantOutOfStock = selectedVariant !== null && selectedVariantStock <= 0
   const categoryLabel = CATEGORY_LABELS[product.category] || product.category
 
   const embedUrl = getYoutubeEmbedUrl(product.youtube_url)
@@ -354,8 +255,6 @@ export default function ProductPage() {
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6">
-
-        {/* Breadcrumbs */}
         <nav className="flex items-center gap-2 text-sm text-gray-500 mb-8 flex-wrap">
           <Link to="/" className="hover:text-gray-900 transition-colors">Главная</Link>
           <span>/</span>
@@ -372,10 +271,7 @@ export default function ProductPage() {
           <span className="text-gray-900 font-medium line-clamp-1">{product.name}</span>
         </nav>
 
-        {/* Main block */}
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-12">
-
-          {/* Gallery */}
           <div>
             <div className="relative rounded-xl overflow-hidden bg-gray-50 aspect-[3/4]">
               <img
@@ -410,10 +306,7 @@ export default function ProductPage() {
             )}
           </div>
 
-          {/* Details */}
           <div className="flex flex-col gap-5">
-
-            {/* Brand / name / rating */}
             <div>
               {product.brand && (
                 <p className="text-sm text-gray-500 uppercase tracking-widest mb-1">{product.brand}</p>
@@ -425,7 +318,6 @@ export default function ProductPage() {
               <p className="text-sm text-gray-500 mt-1">128 человек купили в этом месяце</p>
             </div>
 
-            {/* Price */}
             <div className="flex items-baseline gap-3">
               {product.sale_price ? (
                 <>
@@ -446,7 +338,6 @@ export default function ProductPage() {
               )}
             </div>
 
-            {/* Color picker */}
             {uniqueColors.length > 0 && (
               <div>
                 <p className="text-sm font-medium text-gray-900 mb-2">
@@ -476,7 +367,6 @@ export default function ProductPage() {
               </div>
             )}
 
-            {/* Size picker */}
             {sizesForColor.length > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-2">
@@ -510,27 +400,18 @@ export default function ProductPage() {
               </div>
             )}
 
-            {/* Action buttons */}
             <div className="flex items-start gap-3">
               <div className="flex flex-col gap-3 flex-1">
                 <button
                   onClick={handleAddToCart}
-                  disabled={isSelectedVariantOutOfStock}
                   className={`h-12 w-full text-sm font-medium tracking-wide rounded transition-colors ${
                     added
                       ? 'bg-green-600 text-white'
-                      : isSelectedVariantOutOfStock
-                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                       : 'bg-gray-900 text-white hover:bg-gray-700'
                   }`}
                 >
-                  {added ? '✓ Добавлено в корзину' : isSelectedVariantOutOfStock ? 'Нет в наличии' : 'Добавить в корзину'}
+                  {added ? '✓ Добавлено в корзину' : 'Добавить в корзину'}
                 </button>
-                {selectedVariant && (
-                  <p className={`text-sm ${selectedVariantStock > 0 ? 'text-gray-500' : 'text-red-500'}`}>
-                    В наличии: {selectedVariantStock} шт.
-                  </p>
-                )}
                 <button
                   onClick={handleWhatsApp}
                   className="flex h-12 w-full items-center justify-center gap-2 rounded border border-gray-200 text-sm font-medium tracking-wide text-gray-700 transition-colors hover:border-gray-900 hover:text-gray-900"
@@ -548,7 +429,6 @@ export default function ProductPage() {
               </button>
             </div>
 
-            {/* Delivery info */}
             <div className="border border-gray-100 rounded-lg p-4 space-y-3 bg-gray-50">
               <div className="flex items-start gap-3">
                 <Truck className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
@@ -560,7 +440,6 @@ export default function ProductPage() {
               </div>
             </div>
 
-            {/* Accordion */}
             {(product.composition || product.care) && (
               <div className="border-t border-gray-100">
                 <button
@@ -585,7 +464,6 @@ export default function ProductPage() {
           </div>
         </div>
 
-        {/* Reviews */}
         <section className="mt-16 border-t border-gray-100 pt-10">
           <h2 className="text-xl font-bold text-gray-900 mb-6">Отзывы покупателей</h2>
           {reviews.length === 0 ? (
@@ -595,70 +473,8 @@ export default function ProductPage() {
               {reviews.map((r) => <ReviewCard key={r.id} review={r} />)}
             </div>
           )}
-
-          <form onSubmit={handleSubmitReview} className="mt-10 max-w-2xl rounded-xl border border-gray-100 bg-gray-50 p-6">
-            <h3 className="text-lg font-semibold text-gray-900">Написать отзыв</h3>
-
-            <div className="mt-5">
-              <p className="mb-2 text-sm font-medium text-gray-900">Оценка</p>
-              <div className="flex items-center gap-1">
-                {[1, 2, 3, 4, 5].map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setSelectedRating(value)}
-                    onMouseEnter={() => setHoveredRating(value)}
-                    onMouseLeave={() => setHoveredRating(0)}
-                    className="transition-transform hover:scale-110"
-                    aria-label={`Оценка ${value}`}
-                  >
-                    <Star
-                      className={`h-6 w-6 ${
-                        value <= (hoveredRating || selectedRating)
-                          ? 'fill-amber-400 text-amber-400'
-                          : 'text-gray-200'
-                      }`}
-                    />
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-5">
-              <label className="mb-2 block text-sm font-medium text-gray-900">Ваш отзыв</label>
-              <textarea
-                value={reviewText}
-                onChange={(e) => setReviewText(e.target.value)}
-                rows={5}
-                placeholder="Поделитесь впечатлениями о товаре"
-                className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm text-gray-900 focus:border-gray-900 focus:outline-none"
-              />
-            </div>
-
-            {reviewMessage && (
-              <p className="mt-4 text-sm text-gray-600">{reviewMessage}</p>
-            )}
-
-            <button
-              type="submit"
-              disabled={reviewSubmitting}
-              className="mt-5 inline-flex h-12 items-center rounded bg-gray-900 px-6 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:opacity-60"
-            >
-              {reviewSubmitting ? 'Отправка...' : 'Отправить отзыв'}
-            </button>
-          </form>
         </section>
 
-        {recentlyViewed.length > 0 && (
-          <section className="mt-16 border-t border-gray-100 pt-10">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Недавно смотрели</h2>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-              {recentlyViewed.map((p) => <ProductCard key={p.id} product={p} />)}
-            </div>
-          </section>
-        )}
-
-        {/* Related products */}
         {related.length > 0 && (
           <section className="mt-16 border-t border-gray-100 pt-10">
             <h2 className="text-xl font-bold text-gray-900 mb-6">Похожие товары</h2>
@@ -669,7 +485,6 @@ export default function ProductPage() {
         )}
       </div>
 
-      {/* YouTube modal */}
       {videoOpen && embedUrl && (
         <div
           className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"

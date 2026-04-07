@@ -18,22 +18,22 @@ const categories = [
   {
     name: 'Пуховики',
     to: '/catalog/puhoviki',
-    image: 'https://picsum.photos/seed/puhoviki/400/500',
+    image: '/cat-puhovik.jpg',
   },
   {
     name: 'Костюмы',
     to: '/catalog/kostyumy',
-    image: 'https://picsum.photos/seed/kostyumy/400/500',
+    image: '/cat-suit.png',
   },
   {
     name: 'Трикотаж',
     to: '/catalog/trikotazh',
-    image: 'https://picsum.photos/seed/trikotazh/400/500',
+    image: '/cat-trikotazh.jpg',
   },
   {
     name: 'Обувь',
     to: '/catalog/obuv',
-    image: 'https://picsum.photos/seed/obuv/400/500',
+    image: '/cat-shoes.png',
   },
 ]
 

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { User, ShoppingBag, Heart, MapPin, Users, LogOut } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/authStore'
+import { AccountSidebarMobile, AccountSidebarDesktop } from '../components/account/AccountSidebar'
 
 const sections = [
   { id: 'profile', label: 'Профиль', icon: User },
@@ -297,11 +298,6 @@ export default function AccountPage() {
     setSuccess('Запрос на вывод отправлен')
     setPayoutForm({ amount: '', kaspi_phone: '' })
     setRequestingPayout(false)
-  }
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    navigate('/login')
   }
 
   const referralLink = `${window.location.origin}/?ref=${
@@ -812,104 +808,9 @@ export default function AccountPage() {
           </div>
         )}
 
-          <div className="mb-6 flex gap-3 overflow-x-auto pb-1 lg:hidden">
-          {sections.map((section) => {
-            const Icon = section.icon
-            const isActive = activeSection === section.id
-
-            if (section.id === 'partner') {
-              return (
-                <Link
-                  key={section.id}
-                  to="/account/partner"
-                  className="flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900"
-                >
-                  <Icon className="h-4 w-4" />
-                  {section.label}
-                </Link>
-              )
-            }
-
-            return (
-              <button
-                key={section.id}
-                type="button"
-                onClick={() => setActiveSection(section.id)}
-                className={`flex min-h-12 shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm transition-colors ${
-                  isActive ? 'bg-gray-900 text-white' : 'bg-white text-gray-600'
-                }`}
-              >
-                <Icon className="h-4 w-4" />
-                {section.label}
-              </button>
-            )
-          })}
-
-          <Link
-            to="/account/partner"
-            className="flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900"
-          >
-            <Users className="h-4 w-4" />
-            Партнёрская программа
-          </Link>
-        </div>
-
+        <AccountSidebarMobile />
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[240px_1fr]">
-          <aside className="hidden rounded-2xl bg-white p-4 shadow-sm lg:block">
-            <nav className="space-y-2">
-              {sections.map((section) => {
-                const Icon = section.icon
-                const isActive = activeSection === section.id
-
-                if (section.id === 'partner') {
-                  return (
-                    <Link
-                      key={section.id}
-                      to="/account/partner"
-                      className="flex min-h-12 w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900"
-                    >
-                      <Icon className="h-5 w-5" />
-                      {section.label}
-                    </Link>
-                  )
-                }
-
-                return (
-                  <button
-                    key={section.id}
-                    type="button"
-                    onClick={() => setActiveSection(section.id)}
-                    className={`flex min-h-12 w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm transition-colors ${
-                      isActive
-                        ? 'bg-gray-900 text-white'
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                    }`}
-                  >
-                    <Icon className="h-5 w-5" />
-                    {section.label}
-                  </button>
-                )
-              })}
-
-              <Link
-                to="/account/partner"
-                className="flex min-h-12 w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900"
-              >
-                <Users className="h-5 w-5" />
-                Партнёрская программа
-              </Link>
-
-              <button
-                type="button"
-                onClick={handleSignOut}
-                className="flex min-h-12 w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm text-red-600 transition-colors hover:bg-red-50"
-              >
-                <LogOut className="h-5 w-5" />
-                Выйти
-              </button>
-            </nav>
-          </aside>
-
+          <AccountSidebarDesktop />
           <div>{renderContent()}</div>
         </div>
       </div>

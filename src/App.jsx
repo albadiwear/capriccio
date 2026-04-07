@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
 import { useEffect } from 'react'
 import Layout from './components/layout/Layout'
@@ -25,6 +25,7 @@ import RegisterPage from './pages/RegisterPage'
 import AccountPage from './pages/AccountPage'
 import AccountOrdersPage from './pages/AccountOrdersPage'
 import WishlistPage from './pages/WishlistPage'
+import AccountAddressesPage from './pages/AccountAddressesPage'
 import PartnerPage from './pages/PartnerPage'
 import CheckoutPage from './pages/CheckoutPage'
 
@@ -85,6 +86,7 @@ function App() {
           <Route path="account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
           <Route path="account/orders" element={<ProtectedRoute><AccountOrdersPage /></ProtectedRoute>} />
           <Route path="account/wishlist" element={<ProtectedRoute><WishlistPage /></ProtectedRoute>} />
+          <Route path="account/addresses" element={<ProtectedRoute><AccountAddressesPage /></ProtectedRoute>} />
           <Route path="account/partner" element={<ProtectedRoute><PartnerPage /></ProtectedRoute>} />
           <Route path="checkout" element={<CheckoutPage />} />
           <Route path="order-success/:id" element={<OrderSuccessPage />} />

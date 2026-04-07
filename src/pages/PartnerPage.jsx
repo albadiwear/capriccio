@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Copy, CreditCard, TrendingUp, Users, Wallet } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/authStore'
+import { AccountSidebarMobile, AccountSidebarDesktop } from '../components/account/AccountSidebar'
 
 function StatCard({ icon: Icon, label, value, hint }) {
   return (
@@ -198,6 +199,11 @@ export default function PartnerPage() {
     setRequestingPayout(false)
   }
 
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    navigate('/login')
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 px-4 py-8 sm:px-6 md:py-10">
@@ -210,7 +216,11 @@ export default function PartnerPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-8 sm:px-6 md:py-10">
-      <div className="mx-auto max-w-6xl space-y-6">
+      <div className="mx-auto max-w-7xl">
+        <AccountSidebarMobile />
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[240px_1fr]">
+          <AccountSidebarDesktop />
+          <div className="space-y-6">
         {(error || success) && (
           <div className="space-y-3">
             {error && (
@@ -420,6 +430,8 @@ export default function PartnerPage() {
             {requestingPayout ? 'Отправляем...' : 'Запросить выплату'}
           </button>
         </form>
+          </div>
+        </div>
       </div>
     </div>
   )

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { User, ShoppingBag, Heart, MapPin, Users, LogOut } from 'lucide-react'
+import { User, ShoppingBag, Heart, MapPin, Users, LogOut, Camera } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/authStore'
 import { AccountSidebarMobile, AccountSidebarDesktop } from '../components/account/AccountSidebar'
@@ -49,6 +49,7 @@ export default function AccountPage() {
   const [addingAddress, setAddingAddress] = useState(false)
   const [savingAddress, setSavingAddress] = useState(false)
   const [requestingPayout, setRequestingPayout] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
 
   const [profile, setProfile] = useState({
     full_name: '',
@@ -300,6 +301,46 @@ export default function AccountPage() {
     setRequestingPayout(false)
   }
 
+  async function handleAvatarUpload(e) {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+
+    setUploadingAvatar(true)
+    setError('')
+
+    const ext = file.name.split('.').pop()
+    const path = `${user.id}/avatar.${ext}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(path, file, { upsert: true })
+
+    if (uploadError) {
+      setError('Не удалось загрузить фото')
+      setUploadingAvatar(false)
+      return
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(path)
+
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ avatar_url: publicUrl })
+      .eq('id', user.id)
+
+    if (updateError) {
+      setError('Не удалось сохранить фото')
+      setUploadingAvatar(false)
+      return
+    }
+
+    setProfile(prev => ({ ...prev, avatar_url: publicUrl }))
+    setSuccess('Фото профиля обновлено')
+    setUploadingAvatar(false)
+  }
+
   const referralLink = `${window.location.origin}/?ref=${
     referral?.referral_code || profile.referral_code
   }`
@@ -324,17 +365,33 @@ export default function AccountPage() {
     return (
       <div className="rounded-2xl bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gray-900 text-xl font-semibold text-white">
-            {profile.avatar_url ? (
-              <img
-                src={profile.avatar_url}
-                alt={profile.full_name}
-                className="h-full w-full rounded-full object-cover"
-              />
-            ) : (
-              initials
-            )}
-          </div>
+          <label className="relative cursor-pointer group">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gray-900 text-xl font-semibold text-white overflow-hidden">
+              {profile.avatar_url ? (
+                <img
+                  src={profile.avatar_url}
+                  alt={profile.full_name}
+                  className="h-full w-full rounded-full object-cover"
+                />
+              ) : (
+                initials
+              )}
+            </div>
+            <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
+              {uploadingAvatar ? (
+                <span className="text-white text-xs">...</span>
+              ) : (
+                <Camera className="h-5 w-5 text-white" />
+              )}
+            </div>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarUpload}
+              className="hidden"
+              disabled={uploadingAvatar}
+            />
+          </label>
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Профиль</h2>
             <p className="mt-1 text-sm text-gray-500">Управляйте личными данными аккаунта</p>

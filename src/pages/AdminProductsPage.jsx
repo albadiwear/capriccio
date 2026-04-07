@@ -64,6 +64,8 @@ export default function AdminProductsPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterCat, setFilterCat] = useState('')
+  const [selected, setSelected] = useState(new Set())
+  const [deletingBulk, setDeletingBulk] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(EMPTY_FORM)
@@ -217,6 +219,37 @@ export default function AdminProductsPage() {
     setVariants((prev) => prev.filter((x) => x !== v))
   }
 
+  function toggleSelect(id) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function toggleSelectAll() {
+    if (selected.size === filtered.length) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(filtered.map(p => p.id)))
+    }
+  }
+
+  async function handleBulkDelete() {
+    if (selected.size === 0) return
+    if (!window.confirm(`Удалить ${selected.size} товаров? Это действие нельзя отменить.`)) return
+    
+    setDeletingBulk(true)
+    const ids = Array.from(selected)
+    
+    await supabase.from('product_variants').delete().in('product_id', ids)
+    await supabase.from('products').delete().in('id', ids)
+    
+    setSelected(new Set())
+    setDeletingBulk(false)
+    load()
+  }
+
   function handleDownloadTemplate() {
     const templateRows = [
       {
@@ -348,6 +381,16 @@ export default function AdminProductsPage() {
             onChange={handleImportExcel}
             className="hidden"
           />
+          {selected.size > 0 && (
+            <button
+              onClick={handleBulkDelete}
+              disabled={deletingBulk}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition-colors disabled:opacity-60"
+            >
+              <Trash2 className="w-4 h-4" />
+              {deletingBulk ? 'Удаление...' : `Удалить (${selected.size})`}
+            </button>
+          )}
           <button
             onClick={handleDownloadTemplate}
             className="px-4 py-2 border border-gray-200 text-gray-700 text-sm rounded hover:border-gray-900 hover:text-gray-900 transition-colors"
@@ -375,12 +418,12 @@ export default function AdminProductsPage() {
           type="text"
           placeholder="Поиск по названию..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => { setSearch(e.target.value); setSelected(new Set()) }}
           className="flex-1 border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-gray-900"
         />
         <select
           value={filterCat}
-          onChange={(e) => setFilterCat(e.target.value)}
+          onChange={(e) => { setFilterCat(e.target.value); setSelected(new Set()) }}
           className="border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-gray-900"
         >
           <option value="">Все категории</option>
@@ -402,6 +445,14 @@ export default function AdminProductsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-xs text-gray-500 border-b border-gray-100">
+                <th className="px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={filtered.length > 0 && selected.size === filtered.length}
+                    onChange={toggleSelectAll}
+                    className="accent-gray-900 w-4 h-4"
+                  />
+                </th>
                 <th className="text-left px-4 py-3 font-medium">Фото</th>
                 <th className="text-left px-4 py-3 font-medium">Название</th>
                 <th className="text-left px-4 py-3 font-medium">Категория</th>
@@ -417,6 +468,14 @@ export default function AdminProductsPage() {
 
                 return (
                   <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50">
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(p.id)}
+                      onChange={() => toggleSelect(p.id)}
+                      className="accent-gray-900 w-4 h-4"
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     <div className="w-10 h-10 rounded overflow-hidden bg-gray-100 flex-shrink-0">
                       {p.images?.[0]

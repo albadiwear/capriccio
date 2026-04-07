@@ -2,6 +2,12 @@ import { useState, useEffect } from 'react'
 import { Handshake, Check, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
+const LEVEL_META = {
+  start: { label: 'Старт', cls: 'bg-gray-100 text-gray-700' },
+  active: { label: 'Активный', cls: 'bg-blue-100 text-blue-700' },
+  pro: { label: 'Про', cls: 'bg-green-100 text-green-700' },
+}
+
 export default function AdminPartnersPage() {
   const [partners, setPartners] = useState([])
   const [withdrawals, setWithdrawals] = useState([])
@@ -28,12 +34,23 @@ export default function AdminPartnersPage() {
 
   useEffect(() => { load() }, [])
 
+  async function handleChangeLevel(referralId, newLevel) {
+    await supabase.from('referrals').update({ level: newLevel }).eq('id', referralId)
+    setPartners((prev) => prev.map((p) => (p.id === referralId ? { ...p, level: newLevel } : p)))
+  }
+
   async function handleApprove(req) {
-    await supabase.from('withdrawal_requests').update({ status: 'paid' }).eq('id', req.id)
+    const partner = partners.find((p) => p.user_id === req.user_id)
+    const currentBalance = Number(partner?.balance || 0)
+
+    await supabase.from('withdrawal_requests')
+      .update({ status: 'paid' }).eq('id', req.id)
     await supabase.from('referrals')
-      .update({ balance: Math.max(0, (req.referrals?.balance || 0) - req.amount) })
+      .update({
+        balance: Math.max(0, currentBalance - Number(req.amount)),
+        total_withdrawn: (Number(partner?.total_withdrawn || 0) + Number(req.amount)),
+      })
       .eq('user_id', req.user_id)
-    alert('Выплата одобрена')
     load()
   }
 
@@ -70,6 +87,9 @@ export default function AdminPartnersPage() {
                 <tr className="text-xs text-gray-500 border-b border-gray-100">
                   <th className="text-left px-4 py-3 font-medium">Имя</th>
                   <th className="text-left px-4 py-3 font-medium">Email</th>
+                  <th className="text-left px-4 py-3 font-medium">Уровень</th>
+                  <th className="text-right px-4 py-3 font-medium">Продажи/мес</th>
+                  <th className="text-left px-4 py-3 font-medium">Реф. код</th>
                   <th className="text-right px-4 py-3 font-medium">Баланс</th>
                   <th className="text-right px-4 py-3 font-medium">Заработано</th>
                   <th className="text-right px-4 py-3 font-medium">Выведено</th>
@@ -80,6 +100,19 @@ export default function AdminPartnersPage() {
                   <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50">
                     <td className="px-4 py-3 font-medium text-gray-900">{p.users?.full_name || '—'}</td>
                     <td className="px-4 py-3 text-gray-600">{p.users?.email || '—'}</td>
+                    <td className="px-4 py-3">
+                      <select
+                        value={p.level || 'start'}
+                        onChange={(e) => handleChangeLevel(p.id, e.target.value)}
+                        className={`h-8 rounded-lg border-0 px-2.5 text-xs font-medium outline-none ${LEVEL_META[p.level]?.cls || LEVEL_META.start.cls}`}
+                      >
+                        <option value="start">Старт</option>
+                        <option value="active">Активный</option>
+                        <option value="pro">Про</option>
+                      </select>
+                    </td>
+                    <td className="px-4 py-3 text-right text-gray-700">{Number(p.monthly_sales || 0)}</td>
+                    <td className="px-4 py-3 text-gray-700">{p.referral_code || '—'}</td>
                     <td className="px-4 py-3 text-right font-medium text-green-600">{(p.balance || 0).toLocaleString('ru-RU')} ₸</td>
                     <td className="px-4 py-3 text-right text-gray-700">{(p.total_earned || 0).toLocaleString('ru-RU')} ₸</td>
                     <td className="px-4 py-3 text-right text-gray-500">{(p.total_withdrawn || 0).toLocaleString('ru-RU')} ₸</td>
@@ -121,7 +154,7 @@ export default function AdminPartnersPage() {
                     <td className="px-4 py-3 text-right font-bold text-gray-900">
                       {r.amount?.toLocaleString('ru-RU')} ₸
                     </td>
-                    <td className="px-4 py-3 text-gray-600 hidden sm:table-cell">{r.kaspi_number || '—'}</td>
+                    <td className="px-4 py-3 text-gray-600 hidden sm:table-cell">{r.kaspi_phone || '—'}</td>
                     <td className="px-4 py-3 text-right text-gray-500 hidden md:table-cell">
                       {new Date(r.created_at).toLocaleDateString('ru-RU')}
                     </td>

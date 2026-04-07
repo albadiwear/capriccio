@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Tag, CheckCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -70,6 +70,62 @@ export default function CheckoutPage() {
 
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
+
+  useEffect(() => {
+    if (!user) return
+
+    async function loadDefaultAddress() {
+      // Загружаем профиль пользователя
+      const { data: profile } = await supabase
+        .from('users')
+        .select('full_name, phone')
+        .eq('id', user.id)
+        .single()
+
+      if (profile?.full_name) setName(profile.full_name)
+      if (profile?.phone) setPhone(profile.phone)
+
+      // Загружаем основной адрес
+      const { data: address } = await supabase
+        .from('addresses')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_default', true)
+        .single()
+
+      // Если основного нет — берём первый
+      if (!address) {
+        const { data: firstAddress } = await supabase
+          .from('addresses')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single()
+
+        if (firstAddress) {
+          if (firstAddress.city) setCity(firstAddress.city)
+          if (firstAddress.street) setStreet(firstAddress.street)
+          if (firstAddress.house) setHouse(firstAddress.house)
+          if (firstAddress.apartment) setApartment(firstAddress.apartment)
+          if (firstAddress.postal_code) setPostalCode(firstAddress.postal_code)
+          if (firstAddress.phone) setPhone(firstAddress.phone)
+          if (firstAddress.recipient_name) setName(firstAddress.recipient_name)
+        }
+        return
+      }
+
+      if (address.city) setCity(address.city)
+      if (address.street) setStreet(address.street)
+      if (address.house) setHouse(address.house)
+      if (address.apartment) setApartment(address.apartment)
+      if (address.postal_code) setPostalCode(address.postal_code)
+      if (address.phone) setPhone(address.phone)
+      if (address.recipient_name) setName(address.recipient_name)
+    }
+
+    loadDefaultAddress()
+  }, [user])
 
   const deliveryCost = DELIVERY_OPTIONS.find((o) => o.value === selectedDelivery)?.cost || 0
   const total = subtotal + deliveryCost - discount

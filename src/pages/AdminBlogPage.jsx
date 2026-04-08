@@ -12,7 +12,7 @@ function slugify(str) {
     .replace(/^-|-$/g, '')
 }
 
-const EMPTY_FORM = { title: '', slug: '', category: 'Мода', content: '', is_published: false }
+const EMPTY_FORM = { title: '', slug: '', category: 'Мода', content: '', is_published: false, cover_url: '' }
 
 export default function AdminBlogPage() {
   const [posts, setPosts] = useState([])
@@ -20,7 +20,6 @@ export default function AdminBlogPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
   const [editing, setEditing] = useState(null)
-  const [coverUrl, setCoverUrl] = useState('')
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -36,7 +35,6 @@ export default function AdminBlogPage() {
   function openCreate() {
     setEditing(null)
     setForm(EMPTY_FORM)
-    setCoverUrl('')
     setModalOpen(true)
   }
 
@@ -48,12 +46,12 @@ export default function AdminBlogPage() {
       category: post.category || 'Мода',
       content: post.content || '',
       is_published: post.is_published || false,
+      cover_url: post.cover_url || post.cover_image || '',
     })
-    setCoverUrl(post.cover_image || '')
     setModalOpen(true)
   }
 
-  async function handleUploadCover(e) {
+  async function handleImageUpload(e) {
     const file = e.target.files?.[0]
     if (!file) return
     setUploading(true)
@@ -61,7 +59,7 @@ export default function AdminBlogPage() {
     const { error } = await supabase.storage.from('product-images').upload(path, file)
     if (!error) {
       const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(path)
-      setCoverUrl(publicUrl)
+      setForm((f) => ({ ...f, cover_url: publicUrl }))
     }
     setUploading(false)
   }
@@ -75,7 +73,7 @@ export default function AdminBlogPage() {
       category: form.category,
       content: form.content,
       is_published: form.is_published,
-      cover_image: coverUrl || null,
+      cover_url: form.cover_url || null,
     }
     if (editing) {
       await supabase.from('blog_posts').update(payload).eq('id', editing)
@@ -185,11 +183,17 @@ export default function AdminBlogPage() {
                   {BLOG_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-2">
                 <label className="text-xs font-medium text-gray-500">Превью изображение</label>
-                <input type="file" accept="image/*" onChange={handleUploadCover} className="text-sm text-gray-600" />
-                {uploading && <p className="text-xs text-gray-400">Загрузка...</p>}
-                {coverUrl && <img src={coverUrl} alt="cover" className="w-full max-h-40 object-cover rounded mt-2" />}
+                <input
+                  type="text"
+                  placeholder="URL изображения (например /blog/blog-puhovik.png)"
+                  value={form.cover_url || ''}
+                  onChange={e => setForm(f => ({ ...f, cover_url: e.target.value }))}
+                  className="border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-gray-900"
+                />
+                <p className="text-xs text-gray-400">или загрузите файл:</p>
+                <input type="file" accept="image/*" onChange={handleImageUpload} className="text-sm text-gray-600" />
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium text-gray-500">Контент</label>

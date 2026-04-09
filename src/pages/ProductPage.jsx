@@ -156,6 +156,7 @@ export default function ProductPage() {
 
   const [product, setProduct] = useState(null)
   const [reviews, setReviews] = useState([])
+  const [outfitItems, setOutfitItems] = useState([])
   const [related, setRelated] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -189,6 +190,15 @@ export default function ProductPage() {
       if (prod) {
         const firstColor = getUniqueColors(prod.product_variants || [])[0]
         setSelectedColor(firstColor?.color || null)
+
+        supabase
+          .from('products')
+          .select('id, name, price, images')
+          .eq('category', prod.category)
+          .neq('id', prod.id)
+          .eq('is_active', true)
+          .limit(6)
+          .then(({ data }) => setOutfitItems(data || []))
 
         supabase
           .from('products')
@@ -315,6 +325,8 @@ export default function ProductPage() {
   const uniqueColors = getUniqueColors(variants)
   const sizesForColor = selectedColor ? getSizesForColor(variants, selectedColor) : []
   const categoryLabel = CATEGORY_LABELS[product.category] || product.category
+  const reviewCount = reviews.length
+  const productStock = product.stock ?? variants.reduce((sum, v) => sum + (v.stock ?? 0), 0)
 
   const embedUrl = getYoutubeEmbedUrl(product.youtube_url)
 
@@ -339,11 +351,11 @@ export default function ProductPage() {
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-12">
           <div>
-            <div className="relative rounded-xl overflow-hidden bg-gray-50 aspect-[3/4]">
+            <div className="relative">
               <img
                 src={images[activeImage]}
                 alt={product.name}
-                className="w-full h-full object-cover"
+                className="w-full aspect-[3/4] object-cover rounded-2xl"
               />
               {embedUrl && (
                 <button
@@ -361,11 +373,11 @@ export default function ProductPage() {
                   <button
                     key={i}
                     onClick={() => setActiveImage(i)}
-                    className={`flex-shrink-0 w-16 rounded overflow-hidden border-2 transition-colors ${
+                    className={`flex-shrink-0 w-[72px] h-[90px] rounded-xl overflow-hidden border-2 transition-colors ${
                       activeImage === i ? 'border-gray-900' : 'border-transparent'
                     }`}
                   >
-                    <img src={img} alt={`Фото ${i + 1}`} className="w-full aspect-[3/4] object-cover" />
+                    <img src={img} alt={`Фото ${i + 1}`} className="w-full h-full object-cover" />
                   </button>
                 ))}
               </div>
@@ -381,6 +393,24 @@ export default function ProductPage() {
               <div className="mt-2">
                 <StarRating rating={4.8} count={24} />
               </div>
+
+              <div className="flex items-center gap-3 bg-[#f5f2ed] rounded-xl px-4 py-3 mb-4 mt-4">
+                <div className="flex">
+                  {['#FBEAF0', '#E1F5EE', '#EEEDFE'].map((bg, i) => (
+                    <div
+                      key={i}
+                      className="w-7 h-7 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-medium -ml-2 first:ml-0"
+                      style={{ background: bg }}
+                    >
+                      {['А', 'Н', 'Д'][i]}
+                    </div>
+                  ))}
+                </div>
+                <span className="text-sm text-[#1a1a18]">
+                  {reviewCount} женщин уже носят этот образ
+                </span>
+              </div>
+
               <p className="text-sm text-gray-500 mt-1">128 человек купили в этом месяце</p>
             </div>
 
@@ -491,6 +521,12 @@ export default function ProductPage() {
               )
             })()}
 
+            {productStock <= 3 && productStock > 0 && (
+              <p className="text-xs text-[#e8453c] text-center mb-2 font-medium">
+                Осталось {productStock} шт. — успей купить
+              </p>
+            )}
+
             <div className="flex items-start gap-3">
               <div className="flex flex-col gap-3 flex-1">
                 <button
@@ -554,6 +590,23 @@ export default function ProductPage() {
             )}
           </div>
         </div>
+
+        {outfitItems.length > 0 && (
+          <div className="mt-8">
+            <h3 className="text-base font-medium mb-4">С этим носят</h3>
+            <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+              {outfitItems.map((item) => (
+                <Link key={item.id} to={`/product/${item.id}`} className="flex-shrink-0 w-[100px]">
+                  <div className="w-[100px] h-[130px] rounded-xl overflow-hidden bg-[#f0ede8] mb-2">
+                    <img src={item.images?.[0]} alt={item.name} className="w-full h-full object-cover" />
+                  </div>
+                  <p className="text-[11px] text-[#1a1a18] leading-tight mb-1">{item.name}</p>
+                  <p className="text-[11px] text-[#888780]">{Number(item.price).toLocaleString('ru-RU')} ₸</p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         <section className="mt-16 border-t border-gray-100 pt-10">
           <h2 className="text-xl font-bold text-gray-900 mb-6">Отзывы покупателей</h2>

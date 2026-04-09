@@ -72,7 +72,6 @@ function SkeletonCard() {
 
 function ProductCard({ product, view, wished, onToggleWishlist, onAddedToCart }) {
   const addItem = useCartStore((state) => state.addItem)
-  const navigate = useNavigate()
 
   const [reviewCount, setReviewCount] = useState(0)
   const [showCartBtn, setShowCartBtn] = useState(false)
@@ -106,9 +105,16 @@ function ProductCard({ product, view, wished, onToggleWishlist, onAddedToCart })
     }
   }, [product?.id])
 
-  const handleAddToCart = (e) => {
-    e.preventDefault()
-    addItem({ id: product.id, name: product.name, price, image, quantity: 1 })
+  const handleAddToCart = () => {
+    addItem({
+      id: product.id,
+      product_id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.images?.[0],
+      quantity: 1,
+      size: null,
+    })
     onAddedToCart?.()
   }
 
@@ -116,6 +122,14 @@ function ProductCard({ product, view, wished, onToggleWishlist, onAddedToCart })
     setShowCartBtn(true)
     clearTimeout(timerRef.current)
     timerRef.current = setTimeout(() => setShowCartBtn(false), 2000)
+  }
+
+  const shouldInterceptPhotoClick = () => {
+    // On desktop we want the whole card (including photo) to navigate.
+    // On touch/mobile we use photo tap to reveal the cart bar instead.
+    if (typeof window === 'undefined') return false
+    if (window.innerWidth < 768) return true
+    return window.matchMedia?.('(hover: none)').matches || false
   }
 
   if (view === 'list') {
@@ -158,19 +172,19 @@ function ProductCard({ product, view, wished, onToggleWishlist, onAddedToCart })
   }
 
   return (
-    <div className="group block rounded-xl border border-[#f0ede8] cursor-pointer">
+    <Link to={`/product/${product.id}`} className="block rounded-xl border border-[#f0ede8]">
       <div
-        className="relative aspect-[4/5] overflow-hidden rounded-t-xl bg-[#f0ede8]"
+        className="relative aspect-[4/5] overflow-hidden rounded-t-xl bg-[#f0ede8] group"
         onClick={(e) => {
-          if (showCartBtn) return
-          e.preventDefault()
-          handleCardTap()
+          if (!shouldInterceptPhotoClick()) return
+          e.preventDefault() // don't follow Link on mobile tap
+          handleCardTap() // reveal cart bar
         }}
       >
         <img
           src={product.images?.[0]}
           alt={product.name}
-          className="h-full w-full object-cover transition-transform duration-300 md:group-hover:scale-105"
+          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           onError={(e) => {
             e.currentTarget.style.display = 'none'
           }}
@@ -193,7 +207,7 @@ function ProductCard({ product, view, wished, onToggleWishlist, onAddedToCart })
         )}
 
         {stock <= 3 && stock > 0 && (
-          <span className="absolute bottom-2 left-2 rounded bg-[#e8453c] px-1.5 py-0.5 text-[9px] font-medium text-white">
+          <span className="absolute bottom-14 left-2 rounded bg-[#e8453c] px-1.5 py-0.5 text-[9px] font-medium text-white">
             Осталось {stock}
           </span>
         )}
@@ -201,21 +215,30 @@ function ProductCard({ product, view, wished, onToggleWishlist, onAddedToCart })
         <button
           type="button"
           onClick={async (e) => {
+            e.preventDefault()
             e.stopPropagation()
             await onToggleWishlist(product.id)
           }}
-          className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-white/90"
+          className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 z-10"
           aria-label="В избранное"
         >
           <Heart size={12} className={`${wished ? 'fill-[#1a1a18] text-[#1a1a18]' : 'text-[#1a1a18]'}`} />
         </button>
 
-        <div className={`absolute bottom-0 left-0 right-0 bg-[#1a1a18] px-4 py-3 transition-transform duration-200 md:translate-y-full md:group-hover:translate-y-0 ${showCartBtn ? 'translate-y-0' : 'translate-y-full'}`}>
+        <div
+          className={`
+            absolute bottom-0 left-0 right-0 bg-[#1a1a18] px-4 py-3 z-10
+            transition-transform duration-200
+            md:translate-y-full md:group-hover:translate-y-0
+            ${showCartBtn ? 'translate-y-0' : 'translate-y-full md:translate-y-full'}
+          `}
+        >
           <button
             type="button"
             onClick={(e) => {
+              e.preventDefault()
               e.stopPropagation()
-              handleAddToCart(e)
+              handleAddToCart()
               setShowCartBtn(false)
               clearTimeout(timerRef.current)
             }}
@@ -227,7 +250,7 @@ function ProductCard({ product, view, wished, onToggleWishlist, onAddedToCart })
         </div>
       </div>
 
-      <div className="p-2" onClick={() => navigate(`/product/${product.id}`)}>
+      <div className="p-2">
         <div className="mb-0.5 text-[9px] uppercase tracking-wide text-[#aaa]">
           {product.category}
         </div>
@@ -250,7 +273,7 @@ function ProductCard({ product, view, wished, onToggleWishlist, onAddedToCart })
           </div>
         )}
       </div>
-    </div>
+    </Link>
   )
 }
 

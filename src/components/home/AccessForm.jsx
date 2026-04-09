@@ -8,44 +8,60 @@ export default function AccessForm({ user }) {
   const [phone, setPhone] = useState('+7')
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
   useEffect(() => {
     if (user) {
       setError('')
-      setMessage('')
     }
   }, [user])
 
-  async function handleOtp(e) {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!email) return
     setLoading(true)
     setError('')
-    setMessage('')
 
-    const { error: signInError } = await supabase.auth.signInWithOtp({
+    // Генерируем случайный пароль — пользователь его не видит
+    const tempPassword = Math.random().toString(36).slice(-10) + 'A1!'
+
+    const { error } = await supabase.auth.signUp({
       email,
+      password: tempPassword,
       options: {
-        emailRedirectTo: `${window.location.origin}/catalog`,
+        data: {
+          full_name: name,
+          phone,
+        },
+        // Отключаем redirect — не ждём подтверждения
+        emailRedirectTo: undefined,
       },
     })
 
-    if (signInError) {
-      setError(signInError.message || 'Не удалось отправить письмо')
+    if (error) {
+      setError(error.message)
       setLoading(false)
       return
     }
 
-    setMessage('Письмо для входа отправлено. Проверьте почту.')
+    // Сразу логиним с тем же паролем
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password: tempPassword,
+    })
+
+    if (!signInError) {
+      navigate('/catalog')
+    } else {
+      setError('Проверьте почту для подтверждения')
+    }
+
     setLoading(false)
   }
 
   async function handleGoogle() {
     setLoading(true)
     setError('')
-    setMessage('')
 
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -83,7 +99,7 @@ export default function AccessForm({ user }) {
             </div>
           ) : (
             <>
-              <form onSubmit={handleOtp} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="mb-1 block text-xs font-medium text-gray-300">Имя</label>
                   <input
@@ -116,10 +132,9 @@ export default function AccessForm({ user }) {
                   />
                 </div>
 
-                {(error || message) && (
+                {error && (
                   <div className="rounded-lg border border-white/10 bg-black/20 px-4 py-3 text-sm">
-                    {error && <p className="text-red-300">{error}</p>}
-                    {message && <p className="text-green-200">{message}</p>}
+                    <p className="text-red-300">{error}</p>
                   </div>
                 )}
 

@@ -1,10 +1,11 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
 import { useEffect } from 'react'
 import Layout from './components/layout/Layout'
 import ProtectedRoute from './components/layout/ProtectedRoute'
 import AdminLayout from './components/admin/AdminLayout'
 import ScrollToTop from './components/layout/ScrollToTop'
+import { supabase } from './lib/supabase'
 
 // Public pages
 import HomePage from './pages/HomePage'
@@ -45,6 +46,22 @@ import AdminReviewsPage from './pages/admin/AdminReviewsPage'
 import OrderSuccessPage from './pages/OrderSuccessPage'
 import NotFoundPage from './pages/NotFoundPage'
 
+function AuthRedirector() {
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        navigate('/catalog')
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [navigate])
+
+  return null
+}
+
 function App() {
   const initialize = useAuthStore((state) => state.initialize)
 
@@ -65,6 +82,7 @@ function App() {
   return (
     <Router>
       <ScrollToTop />
+      <AuthRedirector />
       <Routes>
         <Route path="/promo" element={<PromoLanding />} />
 

@@ -19,3 +19,11 @@ body {
 html {
   scroll-behavior: smooth;
 }
+
+.scrollbar-hide {
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

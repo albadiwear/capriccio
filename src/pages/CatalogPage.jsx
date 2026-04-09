@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { Heart, LayoutGrid, List, SlidersHorizontal, X } from 'lucide-react'
+import { ChevronDown, Heart, LayoutGrid, List, Search, SlidersHorizontal, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useCartStore } from '../store/cartStore'
 import { useSEO } from '../hooks/useSEO'
+import ProductFeed from '../components/catalog/ProductFeed'
 
 const CATEGORY_MAP = {
   puhoviki: 'Пуховики',
@@ -71,19 +72,35 @@ function SkeletonCard() {
 function ProductCard({ product, view, wished, onToggleWishlist }) {
   const addItem = useCartStore((state) => state.addItem)
 
-  const price = product.sale_price || product.price
-  const originalPrice = product.sale_price ? product.price : null
-  const image = product.images?.[0] || `https://picsum.photos/seed/${product.id}/400/533`
+  const [reviewCount, setReviewCount] = useState(0)
 
-  const colors = useMemo(() => {
-    if (!product.product_variants) return []
-    const seen = new Set()
-    return product.product_variants.filter((v) => {
-      if (!v.color || seen.has(v.color)) return false
-      seen.add(v.color)
-      return true
-    })
-  }, [product.product_variants])
+  const price = product.sale_price || product.price
+  const oldPrice = product.old_price ?? (product.sale_price ? product.price : null)
+  const image = product.images?.[0] || `https://picsum.photos/seed/${product.id}/400/533`
+  const stock =
+    typeof product.stock === 'number'
+      ? product.stock
+      : (product.product_variants || []).reduce((sum, v) => sum + (v.stock || 0), 0)
+
+  useEffect(() => {
+    let cancelled = false
+    if (!product?.id) return undefined
+
+    async function loadCount() {
+      const { count } = await supabase
+        .from('reviews')
+        .select('id', { count: 'exact', head: true })
+        .eq('is_approved', true)
+        .eq('product_id', product.id)
+
+      if (!cancelled) setReviewCount(count || 0)
+    }
+
+    loadCount()
+    return () => {
+      cancelled = true
+    }
+  }, [product?.id])
 
   const handleAddToCart = (e) => {
     e.preventDefault()
@@ -130,57 +147,72 @@ function ProductCard({ product, view, wished, onToggleWishlist }) {
   }
 
   return (
-    <Link to={`/product/${product.id}`} className="group">
-      <div className="relative aspect-[3/4] overflow-hidden rounded-lg bg-gray-50">
+    <Link to={`/product/${product.id}`} className="block rounded-xl border border-[#f0ede8]">
+      <div className="relative aspect-[3/4] overflow-hidden rounded-t-xl bg-[#f0ede8]">
         <img
-          src={image}
+          src={product.images?.[0]}
           alt={product.name}
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          className="h-full w-full object-cover"
+          onError={(e) => {
+            e.currentTarget.style.display = 'none'
+          }}
         />
-        {product.badges?.[0] && (
-          <span className="absolute left-3 top-3 rounded bg-gray-900 px-2 py-1 text-xs text-white">
-            {product.badges[0]}
+
+        {product.is_hit && (
+          <span className="absolute left-2 top-2 rounded bg-[#1a1a18] px-1.5 py-0.5 text-[9px] font-medium text-white">
+            hit
           </span>
         )}
+        {!product.is_hit && product.is_new && (
+          <span className="absolute left-2 top-2 rounded bg-[#f0ede8] px-1.5 py-0.5 text-[9px] font-medium text-[#1a1a18]">
+            new
+          </span>
+        )}
+        {!product.is_hit && !product.is_new && oldPrice && (
+          <span className="absolute left-2 top-2 rounded bg-[#e8453c] px-1.5 py-0.5 text-[9px] font-medium text-white">
+            -{Math.round((1 - (price || 0) / oldPrice) * 100)}%
+          </span>
+        )}
+
+        {stock <= 3 && stock > 0 && (
+          <span className="absolute bottom-2 left-2 rounded bg-[#e8453c] px-1.5 py-0.5 text-[9px] font-medium text-white">
+            Осталось {stock}
+          </span>
+        )}
+
         <button
+          type="button"
           onClick={async (e) => {
             e.preventDefault()
             await onToggleWishlist(product.id)
           }}
-          className="absolute right-3 top-3 rounded-full bg-white p-1.5 shadow-sm transition-transform hover:scale-110"
+          className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-white/90"
           aria-label="В избранное"
         >
-          <Heart className={`h-4 w-4 ${wished ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
-        </button>
-        <button
-          onClick={handleAddToCart}
-          className="absolute bottom-0 left-0 right-0 flex h-12 translate-y-full items-center justify-center bg-gray-900 text-xs tracking-wide text-white transition-transform duration-300 group-hover:translate-y-0"
-        >
-          В корзину
+          <Heart size={12} className={`${wished ? 'fill-[#1a1a18] text-[#1a1a18]' : 'text-[#1a1a18]'}`} />
         </button>
       </div>
-      <div className="mt-3">
-        {product.brand && <p className="mb-1 text-xs uppercase tracking-wider text-gray-400">{product.brand}</p>}
-        <h3 className="line-clamp-2 text-sm font-medium leading-snug text-gray-900">{product.name}</h3>
-        <div className="mt-1.5 flex items-center gap-2">
-          <span className="text-sm font-semibold text-gray-900">{price?.toLocaleString('ru-KZ')} ₸</span>
-          {originalPrice && (
-            <span className="text-xs text-gray-400 line-through">{originalPrice?.toLocaleString('ru-KZ')} ₸</span>
-          )}
+
+      <div className="p-2">
+        <div className="mb-0.5 text-[9px] uppercase tracking-wide text-[#aaa]">
+          {product.category}
         </div>
-        {colors.length > 0 && (
-          <div className="mt-2 flex gap-1">
-            {colors.slice(0, 5).map((v) => {
-              const colorDef = COLORS.find((c) => c.value === v.color || c.label === v.color)
-              return (
-                <span
-                  key={v.color}
-                  title={v.color}
-                  className="h-3.5 w-3.5 flex-shrink-0 rounded-full border border-gray-200"
-                  style={{ backgroundColor: colorDef?.hex || v.color }}
-                />
-              )
-            })}
+        <div className="mb-1 text-[11px] leading-tight text-[#1a1a18]">
+          {product.name}
+        </div>
+        <div className="flex items-baseline gap-1">
+          {oldPrice && (
+            <span className="text-[10px] text-[#bbb] line-through">
+              {Number(oldPrice).toLocaleString('ru-RU')} ₸
+            </span>
+          )}
+          <span className="text-[12px] font-medium text-[#1a1a18]">
+            {Number(price || 0).toLocaleString('ru-RU')} ₸
+          </span>
+        </div>
+        {reviewCount > 0 && (
+          <div className="mt-0.5 text-[9px] text-[#888780]">
+            Носят {reviewCount} женщин
           </div>
         )}
       </div>
@@ -384,8 +416,12 @@ export default function CatalogPage() {
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState(DEFAULT_FILTERS)
   const [sort, setSort] = useState('popular')
-  const [view, setView] = useState('grid')
+  const [view, setView] = useState(() => localStorage.getItem('capriccio_catalog_view') || 'grid')
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [activeCategory, setActiveCategory] = useState(categoryName || 'Все')
+  const [desktopDropdown, setDesktopDropdown] = useState(null) // 'price' | 'size' | 'season' | null
+  const desktopFiltersRef = useRef(null)
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
@@ -438,8 +474,33 @@ export default function CatalogPage() {
     setFilters(DEFAULT_FILTERS)
   }, [category])
 
+  useEffect(() => {
+    setActiveCategory(categoryName || 'Все')
+  }, [categoryName])
+
+  useEffect(() => {
+    localStorage.setItem('capriccio_catalog_view', view)
+  }, [view])
+
+  useEffect(() => {
+    if (!desktopDropdown) return undefined
+    const onDown = (e) => {
+      if (!desktopFiltersRef.current) return
+      if (!desktopFiltersRef.current.contains(e.target)) {
+        setDesktopDropdown(null)
+      }
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [desktopDropdown])
+
   const filtered = useMemo(() => {
     let list = [...products]
+
+    const q = searchQuery.trim().toLowerCase()
+    if (q) {
+      list = list.filter((p) => String(p.name || '').toLowerCase().includes(q))
+    }
 
     const hasExtraFilters =
       filters.categories.length > 0 ||
@@ -471,7 +532,17 @@ export default function CatalogPage() {
     }
 
     list = list.filter((p) => {
-      if (categoryName && p.category !== categoryName) return false
+      if (activeCategory && activeCategory !== 'Все') {
+        if (activeCategory === 'Скидки') {
+          if (!p.sale_price) return false
+        } else if (activeCategory === 'Новинки') {
+          if (!p.is_new) return false
+        } else if (p.category !== activeCategory) {
+          return false
+        }
+      } else if (categoryName && p.category !== categoryName) {
+        return false
+      }
 
       if (filters.categories.length > 0 && !filters.categories.includes(p.category)) {
         return false
@@ -530,9 +601,31 @@ export default function CatalogPage() {
     }
 
     return list
-  }, [products, categoryName, filters, sort])
+  }, [products, categoryName, filters, sort, activeCategory, searchQuery])
 
   const resetFilters = () => setFilters(DEFAULT_FILTERS)
+  const clearAllFilters = () => {
+    setFilters(DEFAULT_FILTERS)
+    setSearchQuery('')
+    setActiveCategory(categoryName || 'Все')
+    setDesktopDropdown(null)
+  }
+
+  const onlyDiscount = filters.onSale
+  const setOnlyDiscount = (val) => setFilters((p) => ({ ...p, onSale: val }))
+
+  const hasActiveFilters =
+    searchQuery.trim().length > 0 ||
+    (activeCategory && activeCategory !== 'Все') ||
+    filters.categories.length > 0 ||
+    filters.colors.length > 0 ||
+    filters.sizes.length > 0 ||
+    filters.lengths.length > 0 ||
+    filters.seasons.length > 0 ||
+    filters.onSale ||
+    filters.inStock ||
+    filters.priceMin !== 0 ||
+    filters.priceMax !== MAX_PRICE
 
   async function handleToggleWishlist(productId) {
     const {
@@ -565,16 +658,206 @@ export default function CatalogPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="border-b border-gray-100 py-6 md:py-8">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <h1 className="text-2xl font-bold tracking-[0.05em] text-gray-900">{pageTitle}</h1>
-          {!categoryName && (
-            <p className="mt-1 text-sm text-gray-500">Женская одежда Capriccio</p>
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+        <div className="px-6 pb-2 pt-4 md:px-8 md:pb-3 md:pt-5">
+          <div className="flex items-center gap-2 rounded-xl bg-[#f5f2ed] px-4 py-2.5 md:gap-3 md:rounded-2xl md:px-5 md:py-3.5">
+            <Search size={15} className="flex-shrink-0 text-[#888780] md:hidden" />
+            <Search size={18} className="hidden flex-shrink-0 text-[#888780] md:block" />
+            <input
+              placeholder="Поиск образов и товаров..."
+              className="flex-1 bg-transparent text-sm text-[#1a1a18] outline-none placeholder:text-[#aaa] md:text-base"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="scrollbar-hide flex gap-2 overflow-x-auto px-6 pb-3">
+          {['Все', 'Пуховики', 'Костюмы', 'Платья', 'Трикотаж', 'Обувь', 'Шапки', 'Сумки', 'Аксессуары', 'Скидки', 'Новинки'].map((catLabel) => (
+            <button
+              key={catLabel}
+              type="button"
+              onClick={() => setActiveCategory(catLabel)}
+              className={`flex-shrink-0 rounded-full border px-3 py-1.5 text-xs transition-colors md:px-5 md:py-2 md:text-sm ${
+                activeCategory === catLabel
+                  ? 'border-[#1a1a18] bg-[#1a1a18] text-white'
+                  : 'border-[#e0ddd8] text-[#888780] hover:border-[#1a1a18]'
+              }`}
+            >
+              {catLabel}
+            </button>
+          ))}
+        </div>
+
+        <div ref={desktopFiltersRef} className="hidden items-center gap-3 px-8 pb-4 md:flex">
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setDesktopDropdown((v) => (v === 'price' ? null : 'price'))}
+              className="flex items-center gap-2 rounded-full border border-[#e0ddd8] px-4 py-2 text-sm text-[#888780] transition-colors hover:border-[#1a1a18]"
+            >
+              Цена
+              <ChevronDown size={14} className="text-[#888780]" />
+            </button>
+            {desktopDropdown === 'price' && (
+              <div className="absolute left-0 top-full z-50 mt-2 w-[320px] rounded-xl border border-[#f0ede8] bg-white p-4">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={0}
+                    max={MAX_PRICE}
+                    value={filters.priceMin}
+                    onChange={(e) => {
+                      const val = Math.max(0, Math.min(Number(e.target.value || 0), filters.priceMax - 1000))
+                      setFilters((p) => ({ ...p, priceMin: val }))
+                    }}
+                    placeholder="от"
+                    className="h-10 w-full rounded-lg border border-[#e0ddd8] px-3 text-sm text-[#1a1a18] outline-none focus:border-[#1a1a18]"
+                  />
+                  <input
+                    type="number"
+                    min={0}
+                    max={MAX_PRICE}
+                    value={filters.priceMax}
+                    onChange={(e) => {
+                      const val = Math.max(filters.priceMin + 1000, Math.min(Number(e.target.value || 0), MAX_PRICE))
+                      setFilters((p) => ({ ...p, priceMax: val }))
+                    }}
+                    placeholder="до"
+                    className="h-10 w-full rounded-lg border border-[#e0ddd8] px-3 text-sm text-[#1a1a18] outline-none focus:border-[#1a1a18]"
+                  />
+                </div>
+                <div className="mt-3 space-y-2">
+                  <input
+                    type="range"
+                    min={0}
+                    max={MAX_PRICE}
+                    step={1000}
+                    value={filters.priceMin}
+                    onChange={(e) =>
+                      setFilters((p) => ({ ...p, priceMin: Math.min(Number(e.target.value), p.priceMax - 1000) }))
+                    }
+                    className="w-full accent-[#1a1a18]"
+                  />
+                  <input
+                    type="range"
+                    min={0}
+                    max={MAX_PRICE}
+                    step={1000}
+                    value={filters.priceMax}
+                    onChange={(e) =>
+                      setFilters((p) => ({ ...p, priceMax: Math.max(Number(e.target.value), p.priceMin + 1000) }))
+                    }
+                    className="w-full accent-[#1a1a18]"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setDesktopDropdown((v) => (v === 'size' ? null : 'size'))}
+              className="flex items-center gap-2 rounded-full border border-[#e0ddd8] px-4 py-2 text-sm text-[#888780] transition-colors hover:border-[#1a1a18]"
+            >
+              Размер
+              <ChevronDown size={14} className="text-[#888780]" />
+            </button>
+            {desktopDropdown === 'size' && (
+              <div className="absolute left-0 top-full z-50 mt-2 w-[360px] rounded-xl border border-[#f0ede8] bg-white p-4">
+                <div className="flex flex-wrap gap-2">
+                  {['XS', 'S', 'M', 'L', 'XL', 'XXL', '44', '46', '48', '50', '52'].map((s) => {
+                    const active = filters.sizes.includes(s)
+                    return (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() =>
+                          setFilters((p) => ({
+                            ...p,
+                            sizes: active ? p.sizes.filter((v) => v !== s) : [...p.sizes, s],
+                          }))
+                        }
+                        className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                          active
+                            ? 'border-[#1a1a18] bg-[#1a1a18] text-white'
+                            : 'border-[#e0ddd8] text-[#888780] hover:border-[#1a1a18]'
+                        }`}
+                      >
+                        {s}
+                      </button>
+                    )
+                  })}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDesktopDropdown(null)}
+                  className="mt-4 h-10 w-full rounded-lg border border-[#e0ddd8] text-sm text-[#1a1a18] transition-colors hover:border-[#1a1a18]"
+                >
+                  Применить
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setDesktopDropdown((v) => (v === 'season' ? null : 'season'))}
+              className="flex items-center gap-2 rounded-full border border-[#e0ddd8] px-4 py-2 text-sm text-[#888780] transition-colors hover:border-[#1a1a18]"
+            >
+              Сезон
+              <ChevronDown size={14} className="text-[#888780]" />
+            </button>
+            {desktopDropdown === 'season' && (
+              <div className="absolute left-0 top-full z-50 mt-2 w-[260px] rounded-xl border border-[#f0ede8] bg-white p-4">
+                <div className="flex flex-wrap gap-2">
+                  {SEASONS.map((season) => {
+                    const active = filters.seasons.includes(season)
+                    return (
+                      <button
+                        key={season}
+                        type="button"
+                        onClick={() => setFilters((p) => ({ ...p, seasons: active ? [] : [season] }))}
+                        className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                          active
+                            ? 'border-[#1a1a18] bg-[#1a1a18] text-white'
+                            : 'border-[#e0ddd8] text-[#888780] hover:border-[#1a1a18]'
+                        }`}
+                      >
+                        {season}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <button
+            type="button"
+            className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors ${
+              onlyDiscount
+                ? 'border-[#1a1a18] bg-[#1a1a18] text-white'
+                : 'border-[#e0ddd8] text-[#888780] hover:border-[#1a1a18]'
+            }`}
+            onClick={() => setOnlyDiscount(!onlyDiscount)}
+          >
+            Скидки
+          </button>
+
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={clearAllFilters}
+              className="ml-auto text-sm text-[#888780] underline"
+            >
+              Сбросить всё
+            </button>
           )}
         </div>
-      </div>
 
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
         <div className="mb-4 lg:hidden">
           <button
             onClick={() => setDrawerOpen(true)}
@@ -585,89 +868,70 @@ export default function CatalogPage() {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[280px_1fr]">
-          <aside className="hidden lg:block">
-            <div className="sticky top-20">
-              <FilterPanel
-                filters={filters}
-                setFilters={setFilters}
-                category={category}
-                onReset={resetFilters}
-              />
-            </div>
-          </aside>
-
-          <div>
-            <div className="mb-6 flex flex-col gap-4 border-b border-gray-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-gray-500">
-                Найдено: <span className="font-medium text-gray-900">{loading ? '...' : filtered.length}</span> товаров
-              </p>
-              <div className="flex flex-wrap items-center gap-3">
-                <select
-                  value={sort}
-                  onChange={(e) => setSort(e.target.value)}
-                  className="min-h-12 rounded border border-gray-200 px-3 text-sm text-gray-700 focus:border-gray-900 focus:outline-none"
+        <div className="w-full">
+          <div className="mb-6 flex flex-col gap-4 border-b border-gray-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-gray-500">
+              Найдено: <span className="font-medium text-gray-900">{loading ? '...' : filtered.length}</span> товаров
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value)}
+                className="min-h-12 rounded border border-gray-200 px-3 text-sm text-gray-700 focus:border-gray-900 focus:outline-none"
+              >
+                {SORT_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+              <div className="flex overflow-hidden rounded border border-gray-200">
+                <button
+                  onClick={() => setView('grid')}
+                  className={`flex h-12 w-12 items-center justify-center transition-colors ${view === 'grid' ? 'bg-gray-900 text-white' : 'text-gray-400 hover:text-gray-900'}`}
+                  aria-label="Сетка"
                 >
-                  {SORT_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
-                <div className="flex overflow-hidden rounded border border-gray-200">
-                  <button
-                    onClick={() => setView('grid')}
-                    className={`flex h-12 w-12 items-center justify-center transition-colors ${view === 'grid' ? 'bg-gray-900 text-white' : 'text-gray-400 hover:text-gray-900'}`}
-                    aria-label="Сетка"
-                  >
-                    <LayoutGrid className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => setView('list')}
-                    className={`flex h-12 w-12 items-center justify-center transition-colors ${view === 'list' ? 'bg-gray-900 text-white' : 'text-gray-400 hover:text-gray-900'}`}
-                    aria-label="Список"
-                  >
-                    <List className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {loading ? (
-              <div className="grid grid-cols-2 gap-5 lg:grid-cols-3">
-                {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="py-20 text-center text-gray-400">
-                <p className="mb-2 text-lg">Товары не найдены</p>
-                <button onClick={resetFilters} className="text-sm underline hover:text-gray-700">
-                  Сбросить фильтры
+                  <LayoutGrid className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setView('feed')}
+                  className={`flex h-12 w-12 items-center justify-center transition-colors ${view === 'feed' ? 'bg-gray-900 text-white' : 'text-gray-400 hover:text-gray-900'}`}
+                  aria-label="Лента"
+                >
+                  <List className="h-4 w-4" />
                 </button>
               </div>
-            ) : view === 'grid' ? (
-              <div className="grid grid-cols-2 gap-x-4 gap-y-8 lg:grid-cols-3">
-                {filtered.map((p) => (
-                  <ProductCard
-                    key={p.id}
-                    product={p}
-                    view="grid"
-                    wished={wishlistIds.includes(p.id)}
-                    onToggleWishlist={handleToggleWishlist}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col gap-6">
-                {filtered.map((p) => (
-                  <ProductCard
-                    key={p.id}
-                    product={p}
-                    view="list"
-                    wished={wishlistIds.includes(p.id)}
-                    onToggleWishlist={handleToggleWishlist}
-                  />
-                ))}
-              </div>
-            )}
+            </div>
           </div>
+
+          {loading ? (
+            <div className="grid grid-cols-2 gap-5 md:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="py-20 text-center text-gray-400">
+              <p className="mb-2 text-lg">Товары не найдены</p>
+              <button onClick={resetFilters} className="text-sm underline hover:text-gray-700">
+                Сбросить фильтры
+              </button>
+            </div>
+          ) : view === 'feed' ? (
+            <ProductFeed
+              products={filtered}
+              wishlistIds={wishlistIds}
+              onToggleWishlist={handleToggleWishlist}
+            />
+          ) : (
+            <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3">
+              {filtered.map((p) => (
+                <ProductCard
+                  key={p.id}
+                  product={p}
+                  view="grid"
+                  wished={wishlistIds.includes(p.id)}
+                  onToggleWishlist={handleToggleWishlist}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

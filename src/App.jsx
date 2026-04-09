@@ -52,7 +52,11 @@ function AuthRedirector() {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session) {
-        navigate('/catalog')
+        const currentPath = window.location.pathname
+        if (currentPath.startsWith('/admin')) return
+        if (currentPath === '/') {
+          navigate('/catalog')
+        }
       }
     })
 
@@ -114,7 +118,7 @@ function App() {
 
         {/* Admin layout */}
         <Route
-          path="/admin"
+          path="/admin/*"
           element={<ProtectedRoute adminOnly><AdminLayout /></ProtectedRoute>}
         >
           <Route index element={<AdminPage />} />

@@ -1,0 +1,475 @@
+import { useMemo, useState } from 'react'
+import { Briefcase, Heart, Lock, Palette, Shirt, Sparkles, Star, X } from 'lucide-react'
+import { supabase } from '../lib/supabase'
+import { useAuthStore } from '../store/authStore'
+
+const HERO_IMAGE = 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=1200&q=80'
+
+function WaitlistModal({ open, onClose, defaultEmail = '', title }) {
+  const user = useAuthStore((state) => state.user)
+  const [email, setEmail] = useState(defaultEmail)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState(false)
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    if (!email.trim()) return
+    setLoading(true)
+    setError('')
+
+    const { error: insertError } = await supabase.from('notifications_queue').insert({
+      user_id: user?.id || null,
+      type: 'academy_waitlist',
+      channel: 'email',
+      payload: { email: email.trim() },
+    })
+
+    if (insertError) {
+      setError('Не удалось отправить. Попробуйте ещё раз.')
+      setLoading(false)
+      return
+    }
+
+    setSuccess(true)
+    setLoading(false)
+  }
+
+  if (!open) return null
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className="w-full max-w-lg rounded-2xl bg-white border border-[#f0ede8] p-5 sm:p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <div className="text-base sm:text-lg font-medium text-[#1a1a18]">
+              {title || 'Академия откроется совсем скоро!'}
+            </div>
+            <p className="text-sm text-[#888780] mt-1">
+              Оставь email и получи ранний доступ со скидкой 30%
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-9 w-9 rounded-lg border border-[#f0ede8] flex items-center justify-center text-[#888780] hover:text-[#1a1a18] hover:border-[#1a1a18] transition-colors"
+            aria-label="Закрыть"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {success ? (
+          <div className="rounded-xl bg-[#f5f2ed] border border-[#f0ede8] px-4 py-3 text-sm text-[#1a1a18]">
+            Спасибо! Мы уведомим тебя о старте Академии.
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Ваш email"
+              className="w-full h-12 rounded-xl border border-[#e0ddd8] px-4 text-sm outline-none focus:border-[#1a1a18] placeholder:text-[#aaa]"
+              required
+            />
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full h-12 rounded-xl bg-[#1a1a18] text-white text-sm font-medium disabled:opacity-60"
+            >
+              {loading ? 'Отправляем...' : 'Уведомить меня'}
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default function AcademyPage() {
+  const user = useAuthStore((state) => state.user)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [ctaEmail, setCtaEmail] = useState(user?.email || '')
+  const [ctaLoading, setCtaLoading] = useState(false)
+  const [ctaError, setCtaError] = useState('')
+  const [ctaSuccess, setCtaSuccess] = useState(false)
+
+  const directions = useMemo(
+    () => [
+      {
+        title: 'Стиль и гардероб',
+        icon: Shirt,
+        bg: '#FBEAF0',
+        color: '#72243E',
+        desc: 'Капсульный гардероб, цветотип, образы для любого случая',
+      },
+      {
+        title: 'Красота и уход',
+        icon: Sparkles,
+        bg: '#E1F5EE',
+        color: '#085041',
+        desc: 'Уход за кожей 35+, макияж который молодит, уход за волосами',
+      },
+      {
+        title: 'Здоровье и энергия',
+        icon: Heart,
+        bg: '#EEEDFE',
+        color: '#3C3489',
+        desc: 'Питание, движение, сон — как выглядеть и чувствовать себя лучше',
+      },
+      {
+        title: 'Уверенность',
+        icon: Star,
+        bg: '#FAEEDA',
+        color: '#633806',
+        desc: 'Психология стиля, истории трансформации, найди себя',
+      },
+    ],
+    []
+  )
+
+  const courses = useMemo(
+    () => [
+      {
+        title: 'Капсульный гардероб за 7 дней',
+        lessons: 8,
+        hours: 3,
+        bg: '#f5f0eb',
+        icon: Shirt,
+        image: 'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=600&q=80',
+      },
+      {
+        title: 'Твой цветотип',
+        lessons: 5,
+        hours: 2,
+        bg: '#e8f0f5',
+        icon: Palette,
+        image: 'https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=600&q=80',
+      },
+      {
+        title: 'Уход за кожей 35+',
+        lessons: 6,
+        hours: 2.5,
+        bg: '#f0ebe8',
+        icon: Sparkles,
+        image: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=600&q=80',
+      },
+      {
+        title: 'Образы для работы и жизни',
+        lessons: 10,
+        hours: 4,
+        bg: '#ebe8f0',
+        icon: Briefcase,
+        image: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=600&q=80',
+      },
+      {
+        title: 'Макияж который молодит',
+        lessons: 7,
+        hours: 2.5,
+        bg: '#e8f0eb',
+        icon: Star,
+        image: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=600&q=80',
+      },
+      {
+        title: 'Уверенность через стиль',
+        lessons: 4,
+        hours: 1.5,
+        bg: '#f0e8eb',
+        icon: Heart,
+        image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=600&q=80',
+      },
+    ],
+    []
+  )
+
+  async function submitCta(e) {
+    e.preventDefault()
+    if (!ctaEmail.trim()) return
+    setCtaLoading(true)
+    setCtaError('')
+
+    const { error } = await supabase.from('notifications_queue').insert({
+      user_id: user?.id || null,
+      type: 'academy_waitlist',
+      channel: 'email',
+      payload: { email: ctaEmail.trim() },
+    })
+
+    if (error) {
+      setCtaError('Не удалось отправить. Попробуйте ещё раз.')
+      setCtaLoading(false)
+      return
+    }
+
+    setCtaSuccess(true)
+    setCtaLoading(false)
+  }
+
+  return (
+    <div className="min-h-screen bg-white pb-24 md:pb-0">
+      {/* Block 1: Hero */}
+      <section className="relative min-h-screen flex flex-col justify-center px-6 md:px-16 py-20 overflow-hidden">
+        <img src={HERO_IMAGE} className="absolute inset-0 w-full h-full object-cover" alt="" />
+
+        <div className="absolute inset-0 bg-[#1a1a18]/70" />
+
+        <div className="relative z-10 max-w-5xl mx-auto w-full text-center md:text-left">
+          <span className="inline-flex items-center rounded-full bg-pink-50 text-pink-800 text-xs font-medium px-3 py-1">
+            Скоро открытие
+          </span>
+          <h1 className="mt-5 text-white text-4xl md:text-7xl font-medium">
+            Академия Capriccio
+          </h1>
+          <p className="mt-3 text-[#c0bdb8] text-base max-w-2xl mx-auto md:mx-0">
+            Обучение стилю, красоте и уверенности для женщин 35+
+          </p>
+          <button
+            type="button"
+            onClick={() => setModalOpen(true)}
+            className="mt-6 w-full md:w-auto inline-flex items-center justify-center rounded-xl bg-white text-[#1a1a18] px-6 py-3 text-sm font-medium"
+          >
+            Хочу попасть первой
+          </button>
+          <div className="mt-2 text-xs text-[#c0bdb8]">Ранний доступ со скидкой 30%</div>
+        </div>
+      </section>
+
+      {/* Block 2: Directions */}
+      <section className="px-6 py-14">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-2xl font-medium text-[#1a1a18] mb-8">Всё для твоего преображения</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {directions.map((dir) => {
+              const Icon = dir.icon
+              return (
+                <button
+                  key={dir.title}
+                  type="button"
+                  onClick={() => setModalOpen(true)}
+                  className="rounded-2xl p-4 md:p-6 cursor-pointer hover:scale-105 transition-transform text-left"
+                  style={{ background: dir.bg }}
+                >
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
+                    style={{ background: 'rgba(255,255,255,0.5)' }}
+                  >
+                    <Icon size={20} style={{ color: dir.color }} />
+                  </div>
+                  <h3 className="font-medium text-sm mb-2" style={{ color: dir.color }}>
+                    {dir.title}
+                  </h3>
+                  <p className="hidden md:block text-xs leading-relaxed" style={{ color: dir.color, opacity: 0.8 }}>
+                    {dir.desc}
+                  </p>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Block 3: Courses */}
+      <section className="px-6 pb-14">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-2xl font-medium text-[#1a1a18] mb-8">Что тебя ждёт</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {courses.map((c, index) => {
+              return (
+                <div key={c.title} className="border border-[#f0ede8] rounded-2xl overflow-hidden">
+                  <div className="h-48 rounded-t-xl overflow-hidden relative" style={{ background: c.bg }}>
+                    <img src={c.image} className="w-full h-full object-cover" alt={c.title} />
+                    <div className="absolute inset-0 bg-black/30" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                        <Lock size={18} className="text-white" />
+                      </div>
+                    </div>
+                    <span className="absolute top-3 left-3 bg-white/20 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full">
+                      Скоро
+                    </span>
+                  </div>
+                  <div className="p-4">
+                    <div className="text-sm font-medium text-[#1a1a18] mb-2">{c.title}</div>
+                    <div className="text-xs text-[#888780]">
+                      {c.lessons} уроков · {c.hours} часа
+                    </div>
+                    <button
+                      type="button"
+                      disabled
+                    className="mt-4 w-full h-11 rounded-xl border border-[#e0ddd8] text-sm text-[#888780] cursor-not-allowed"
+                  >
+                    Узнать больше
+                  </button>
+                </div>
+              </div>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Block 4: Pricing */}
+      <section className="py-16">
+        <div className="text-center px-6">
+          <h2 className="text-2xl font-medium text-[#1a1a18] mb-10">Выбери свой формат</h2>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start max-w-5xl mx-auto px-6">
+          {/* START */}
+          <div className="border border-[#e0ddd8] rounded-2xl p-6">
+            <div className="text-2xl mb-1">🌱</div>
+            <h3 className="font-medium text-lg mb-1">Старт</h3>
+            <div className="text-3xl font-medium mb-1">Бесплатно</div>
+            <p className="text-sm text-[#888780] mb-4">Попробуй Академию без риска</p>
+            <div className="flex flex-col gap-2 mb-6 text-sm">
+              <div className="flex items-center gap-2">
+                <span>👀</span> Превью всех курсов
+              </div>
+              <div className="flex items-center gap-2">
+                <span>📖</span> 1 статья в неделю
+              </div>
+              <div className="flex items-center gap-2">
+                <span>💬</span> Доступ к сообществу
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              className="w-full border border-[#1a1a18] text-[#1a1a18] py-3 rounded-xl text-sm font-medium hover:bg-[#f5f2ed] transition-colors"
+            >
+              Начать бесплатно
+            </button>
+          </div>
+
+          {/* BASE */}
+          <div className="bg-[#1a1a18] rounded-2xl p-6 relative shadow-2xl scale-105">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#D4537E] text-white text-xs px-4 py-1 rounded-full font-medium whitespace-nowrap">
+              🔥 Самый популярный
+            </div>
+            <div className="text-2xl mb-1">⭐️</div>
+            <h3 className="font-medium text-lg mb-1 text-white">Базовый</h3>
+            <div className="flex items-baseline gap-1 mb-1">
+              <span className="text-3xl font-medium text-white">4 900 ₸</span>
+              <span className="text-[#888780] text-sm">/месяц</span>
+            </div>
+            <p className="text-sm text-[#888780] mb-4">Полный доступ к знаниям</p>
+            <div className="flex flex-col gap-2 mb-6 text-sm text-white">
+              <div className="flex items-center gap-2">
+                <span>✅</span> Все статьи и гайды
+              </div>
+              <div className="flex items-center gap-2">
+                <span>🎥</span> Записи вебинаров
+              </div>
+              <div className="flex items-center gap-2">
+                <span>💎</span> Закрытый чат участниц
+              </div>
+              <div className="flex items-center gap-2">
+                <span>🛍️</span> Скидка 10% на товары
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              className="w-full bg-white text-[#1a1a18] py-3 rounded-xl text-sm font-medium hover:bg-[#f5f2ed] transition-colors"
+            >
+              Выбрать →
+            </button>
+          </div>
+
+          {/* PREMIUM */}
+          <div className="border border-[#e0ddd8] rounded-2xl p-6 bg-gradient-to-b from-[#FBEAF0] to-white">
+            <div className="text-2xl mb-1">👑</div>
+            <h3 className="font-medium text-lg mb-1">Премиум</h3>
+            <div className="flex items-baseline gap-1 mb-1">
+              <span className="text-3xl font-medium">12 900 ₸</span>
+              <span className="text-[#888780] text-sm">/месяц</span>
+            </div>
+            <p className="text-sm text-[#888780] mb-4">Персональный подход к твоему стилю</p>
+            <div className="flex flex-col gap-2 mb-6 text-sm">
+              <div className="flex items-center gap-2">
+                <span>✅</span> Всё из Базового
+              </div>
+              <div className="flex items-center gap-2">
+                <span>🎙️</span> Живые вебинары
+              </div>
+              <div className="flex items-center gap-2">
+                <span>👗</span> Разбор гардероба лично
+              </div>
+              <div className="flex items-center gap-2">
+                <span>💌</span> Чат со стилистом
+              </div>
+              <div className="flex items-center gap-2">
+                <span>🛍️</span> Скидка 20% на товары
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              className="w-full bg-[#D4537E] text-white py-3 rounded-xl text-sm font-medium hover:bg-[#c44370] transition-colors"
+            >
+              Выбрать →
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Block 5: Quote */}
+      <section className="bg-[#FBEAF0] py-14 px-6 text-center">
+        <div className="text-4xl mb-4">💬</div>
+        <blockquote className="text-xl md:text-2xl font-medium text-[#1a1a18] max-w-2xl mx-auto mb-4 leading-relaxed">
+          "Я всегда думала что стиль — это не для меня. После первого урока я поняла что просто не знала правил."
+        </blockquote>
+        <p className="text-[#888780] text-sm">— Айгерим, 42 года, Алматы ⭐️⭐️⭐️⭐️⭐️</p>
+      </section>
+
+      {/* Block 6: CTA */}
+      <section className="bg-[#1a1a18] py-16 px-6 text-center">
+        <div className="text-4xl mb-4">🚀</div>
+        <h2 className="text-3xl font-medium text-white mb-3">Не пропусти открытие Академии</h2>
+        <p className="text-[#888780] mb-2">Первые 100 участниц получат скидку 30% на любой тариф</p>
+        <p className="text-[#D4537E] text-sm mb-8 font-medium">⏰ Осталось мест: 47 из 100</p>
+
+        {ctaSuccess ? (
+          <div className="max-w-md mx-auto rounded-xl bg-white/10 border border-white/15 px-4 py-3 text-sm text-white">
+            Спасибо! Мы уведомим тебя о старте.
+          </div>
+        ) : (
+          <form onSubmit={submitCta} className="flex flex-col md:flex-row gap-3 max-w-md mx-auto">
+            <input
+              type="email"
+              value={ctaEmail}
+              onChange={(e) => setCtaEmail(e.target.value)}
+              placeholder="Твой email"
+              className="flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/40 outline-none focus:border-white/40"
+              required
+            />
+            <button
+              type="submit"
+              disabled={ctaLoading}
+              className="bg-[#D4537E] text-white px-8 py-3 rounded-xl text-sm font-medium whitespace-nowrap hover:bg-[#c44370] transition-colors disabled:opacity-60"
+            >
+              {ctaLoading ? '...' : 'Хочу попасть первой 🎉'}
+            </button>
+          </form>
+        )}
+        {ctaError && <p className="mt-4 text-sm text-red-300">{ctaError}</p>}
+      </section>
+
+      <WaitlistModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        defaultEmail={user?.email || ''}
+      />
+    </div>
+  )
+}

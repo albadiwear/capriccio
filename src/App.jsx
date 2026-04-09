@@ -30,6 +30,7 @@ import AccountAddressesPage from './pages/AccountAddressesPage'
 import PartnerPage from './pages/PartnerPage'
 import CheckoutPage from './pages/CheckoutPage'
 import CartPage from './pages/CartPage'
+import AcademyPage from './pages/AcademyPage'
 
 // Admin pages
 import AdminPage from './pages/AdminPage'
@@ -112,6 +113,7 @@ function App() {
           <Route path="account/addresses" element={<ProtectedRoute><AccountAddressesPage /></ProtectedRoute>} />
           <Route path="account/partner" element={<ProtectedRoute><PartnerPage /></ProtectedRoute>} />
           <Route path="cart" element={<ProtectedRoute><CartPage /></ProtectedRoute>} />
+          <Route path="academy" element={<AcademyPage />} />
           <Route path="checkout" element={<CheckoutPage />} />
           <Route path="order-success/:id" element={<OrderSuccessPage />} />
 

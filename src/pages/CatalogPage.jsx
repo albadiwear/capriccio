@@ -62,7 +62,7 @@ const MAX_PRICE = 200000
 function SkeletonCard() {
   return (
     <div className="animate-pulse">
-      <div className="mb-3 aspect-[3/4] rounded-lg bg-gray-200" />
+      <div className="mb-3 aspect-[4/5] rounded-lg bg-gray-200" />
       <div className="mb-2 h-3 w-1/3 rounded bg-gray-200" />
       <div className="mb-2 h-4 w-2/3 rounded bg-gray-200" />
       <div className="h-4 w-1/2 rounded bg-gray-200" />
@@ -72,8 +72,11 @@ function SkeletonCard() {
 
 function ProductCard({ product, view, wished, onToggleWishlist, onAddedToCart }) {
   const addItem = useCartStore((state) => state.addItem)
+  const navigate = useNavigate()
 
   const [reviewCount, setReviewCount] = useState(0)
+  const [showCartBtn, setShowCartBtn] = useState(false)
+  const timerRef = useRef(null)
 
   const price = product.sale_price || product.price
   const oldPrice = product.old_price ?? (product.sale_price ? product.price : null)
@@ -107,6 +110,12 @@ function ProductCard({ product, view, wished, onToggleWishlist, onAddedToCart })
     e.preventDefault()
     addItem({ id: product.id, name: product.name, price, image, quantity: 1 })
     onAddedToCart?.()
+  }
+
+  const handleCardTap = () => {
+    setShowCartBtn(true)
+    clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => setShowCartBtn(false), 2000)
   }
 
   if (view === 'list') {
@@ -149,8 +158,15 @@ function ProductCard({ product, view, wished, onToggleWishlist, onAddedToCart })
   }
 
   return (
-    <Link to={`/product/${product.id}`} className="block rounded-xl border border-[#f0ede8]">
-      <div className="relative group aspect-[3/4] overflow-hidden rounded-t-xl bg-[#f0ede8]">
+    <div className="group block rounded-xl border border-[#f0ede8] cursor-pointer">
+      <div
+        className="relative aspect-[4/5] overflow-hidden rounded-t-xl bg-[#f0ede8]"
+        onClick={(e) => {
+          if (showCartBtn) return
+          e.preventDefault()
+          handleCardTap()
+        }}
+      >
         <img
           src={product.images?.[0]}
           alt={product.name}
@@ -185,7 +201,7 @@ function ProductCard({ product, view, wished, onToggleWishlist, onAddedToCart })
         <button
           type="button"
           onClick={async (e) => {
-            e.preventDefault()
+            e.stopPropagation()
             await onToggleWishlist(product.id)
           }}
           className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-white/90"
@@ -194,13 +210,14 @@ function ProductCard({ product, view, wished, onToggleWishlist, onAddedToCart })
           <Heart size={12} className={`${wished ? 'fill-[#1a1a18] text-[#1a1a18]' : 'text-[#1a1a18]'}`} />
         </button>
 
-        <div className="absolute bottom-0 left-0 right-0 bg-[#1a1a18] px-4 py-3 translate-y-0 transition-transform duration-200 md:translate-y-full md:group-hover:translate-y-0">
+        <div className={`absolute bottom-0 left-0 right-0 bg-[#1a1a18] px-4 py-3 transition-transform duration-200 md:translate-y-full md:group-hover:translate-y-0 ${showCartBtn ? 'translate-y-0' : 'translate-y-full'}`}>
           <button
             type="button"
             onClick={(e) => {
-              e.preventDefault()
               e.stopPropagation()
               handleAddToCart(e)
+              setShowCartBtn(false)
+              clearTimeout(timerRef.current)
             }}
             className="flex w-full items-center justify-center gap-2 text-sm font-medium text-white"
           >
@@ -210,7 +227,7 @@ function ProductCard({ product, view, wished, onToggleWishlist, onAddedToCart })
         </div>
       </div>
 
-      <div className="p-2">
+      <div className="p-2" onClick={() => navigate(`/product/${product.id}`)}>
         <div className="mb-0.5 text-[9px] uppercase tracking-wide text-[#aaa]">
           {product.category}
         </div>
@@ -233,7 +250,7 @@ function ProductCard({ product, view, wished, onToggleWishlist, onAddedToCart })
           </div>
         )}
       </div>
-    </Link>
+    </div>
   )
 }
 

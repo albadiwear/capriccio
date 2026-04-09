@@ -14,12 +14,6 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {!isHome && !user && (
-        <div style={{ background: '#111111', padding: '7px 16px', textAlign: 'center', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.6)' }}>
-          Бесплатная доставка от 50 000 ₸ · Возврат 14 дней
-        </div>
-      )}
-
       {!isHome && !user && <Header />}
 
       {!isHome && user && (

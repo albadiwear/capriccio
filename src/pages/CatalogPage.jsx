@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ChevronDown, Heart, LayoutGrid, List, Search, SlidersHorizontal, X } from 'lucide-react'
+import { ChevronDown, Heart, LayoutGrid, List, Search, ShoppingBag, SlidersHorizontal, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useCartStore } from '../store/cartStore'
 import { useSEO } from '../hooks/useSEO'
 import ProductFeed from '../components/catalog/ProductFeed'
+import Toast from '../components/ui/Toast'
 
 const CATEGORY_MAP = {
   puhoviki: 'Пуховики',
@@ -69,7 +70,7 @@ function SkeletonCard() {
   )
 }
 
-function ProductCard({ product, view, wished, onToggleWishlist }) {
+function ProductCard({ product, view, wished, onToggleWishlist, onAddedToCart }) {
   const addItem = useCartStore((state) => state.addItem)
 
   const [reviewCount, setReviewCount] = useState(0)
@@ -105,6 +106,7 @@ function ProductCard({ product, view, wished, onToggleWishlist }) {
   const handleAddToCart = (e) => {
     e.preventDefault()
     addItem({ id: product.id, name: product.name, price, image, quantity: 1 })
+    onAddedToCart?.()
   }
 
   if (view === 'list') {
@@ -148,11 +150,11 @@ function ProductCard({ product, view, wished, onToggleWishlist }) {
 
   return (
     <Link to={`/product/${product.id}`} className="block rounded-xl border border-[#f0ede8]">
-      <div className="relative aspect-[3/4] overflow-hidden rounded-t-xl bg-[#f0ede8]">
+      <div className="relative group aspect-[3/4] overflow-hidden rounded-t-xl bg-[#f0ede8]">
         <img
           src={product.images?.[0]}
           alt={product.name}
-          className="h-full w-full object-cover"
+          className="h-full w-full object-cover transition-transform duration-300 md:group-hover:scale-105"
           onError={(e) => {
             e.currentTarget.style.display = 'none'
           }}
@@ -191,6 +193,21 @@ function ProductCard({ product, view, wished, onToggleWishlist }) {
         >
           <Heart size={12} className={`${wished ? 'fill-[#1a1a18] text-[#1a1a18]' : 'text-[#1a1a18]'}`} />
         </button>
+
+        <div className="absolute bottom-0 left-0 right-0 bg-[#1a1a18] px-4 py-3 translate-y-0 transition-transform duration-200 md:translate-y-full md:group-hover:translate-y-0">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              handleAddToCart(e)
+            }}
+            className="flex w-full items-center justify-center gap-2 text-sm font-medium text-white"
+          >
+            <ShoppingBag size={15} />
+            В корзину
+          </button>
+        </div>
       </div>
 
       <div className="p-2">
@@ -422,6 +439,8 @@ export default function CatalogPage() {
   const [activeCategory, setActiveCategory] = useState(categoryName || 'Все')
   const [desktopDropdown, setDesktopDropdown] = useState(null) // 'price' | 'size' | 'season' | null
   const desktopFiltersRef = useRef(null)
+  const [drawerFilters, setDrawerFilters] = useState(DEFAULT_FILTERS)
+  const [added, setAdded] = useState(false)
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
@@ -434,17 +453,57 @@ export default function CatalogPage() {
   }, [])
 
   useEffect(() => {
-    setLoading(true)
-    supabase
-      .from('products')
-      .select('*, product_variants(*)')
-      .eq('is_active', true)
-      .then(({ data, error }) => {
-        if (error) console.error(error)
-        setProducts(data || [])
-        setLoading(false)
-      })
-  }, [])
+    const loadProducts = async () => {
+      setLoading(true)
+      let query = supabase
+        .from('products')
+        .select('*, product_variants(*)')
+        .eq('is_active', true)
+
+      if (searchQuery.trim()) {
+        query = query.ilike('name', `%${searchQuery.trim()}%`)
+      }
+
+      if (activeCategory !== 'Все') {
+        if (activeCategory === 'Скидки') {
+          query = query.not('sale_price', 'is', null)
+        } else if (activeCategory === 'Новинки') {
+          query = query.eq('is_new', true)
+        } else {
+          query = query.eq('category', activeCategory)
+        }
+      }
+
+      if (filters.onSale) query = query.not('sale_price', 'is', null)
+      if (filters.priceMin) query = query.gte('price', filters.priceMin)
+      if (filters.priceMax) query = query.lte('price', filters.priceMax)
+      if (filters.seasons?.length > 0) query = query.in('season', filters.seasons)
+      if (filters.sizes?.length > 0) query = query.eq('product_variants.size', filters.sizes[0])
+
+      switch (sort) {
+        case 'price_asc':
+          query = query.order('price', { ascending: true })
+          break
+        case 'price_desc':
+          query = query.order('price', { ascending: false })
+          break
+        case 'newest':
+          query = query.order('created_at', { ascending: false })
+          break
+        default:
+          query = query.order('created_at', { ascending: false })
+          break
+      }
+
+      const { data, error } = await query
+      if (error) console.error(error)
+      setProducts(data || [])
+      setLoading(false)
+    }
+
+    const timer = window.setTimeout(loadProducts, 300)
+    return () => window.clearTimeout(timer)
+  }, [searchQuery, activeCategory, filters, sort])
 
   useEffect(() => {
     async function loadWishlist() {
@@ -659,9 +718,9 @@ export default function CatalogPage() {
   return (
     <div className="min-h-screen bg-white">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-        <div className="px-6 pb-2 pt-4 md:px-8 md:pb-3 md:pt-5">
-          <div className="flex items-center gap-2 rounded-xl bg-[#f5f2ed] px-4 py-2.5 md:gap-3 md:rounded-2xl md:px-5 md:py-3.5">
-            <Search size={15} className="flex-shrink-0 text-[#888780] md:hidden" />
+        <div className="px-4 pb-2 pt-3 md:px-8 md:pb-3 md:pt-5">
+          <div className="flex w-full items-center gap-2 rounded-2xl bg-[#f5f2ed] px-4 py-3 md:gap-3 md:px-5 md:py-3.5">
+            <Search size={16} className="flex-shrink-0 text-[#888780] md:hidden" />
             <Search size={18} className="hidden flex-shrink-0 text-[#888780] md:block" />
             <input
               placeholder="Поиск образов и товаров..."
@@ -672,13 +731,13 @@ export default function CatalogPage() {
           </div>
         </div>
 
-        <div className="scrollbar-hide flex gap-2 overflow-x-auto px-6 pb-3">
+        <div className="scrollbar-hide flex gap-2 overflow-x-auto px-4 pb-3 md:px-8">
           {['Все', 'Пуховики', 'Костюмы', 'Платья', 'Трикотаж', 'Обувь', 'Шапки', 'Сумки', 'Аксессуары', 'Скидки', 'Новинки'].map((catLabel) => (
             <button
               key={catLabel}
               type="button"
               onClick={() => setActiveCategory(catLabel)}
-              className={`flex-shrink-0 rounded-full border px-3 py-1.5 text-xs transition-colors md:px-5 md:py-2 md:text-sm ${
+              className={`flex-shrink-0 rounded-full border px-4 py-2 text-sm transition-colors md:px-5 md:py-2 md:text-sm ${
                 activeCategory === catLabel
                   ? 'border-[#1a1a18] bg-[#1a1a18] text-white'
                   : 'border-[#e0ddd8] text-[#888780] hover:border-[#1a1a18]'
@@ -858,12 +917,16 @@ export default function CatalogPage() {
           )}
         </div>
 
-        <div className="mb-4 lg:hidden">
+        <div className="px-4 pb-2 lg:hidden">
           <button
-            onClick={() => setDrawerOpen(true)}
-            className="flex min-h-12 items-center gap-2 rounded border border-gray-200 px-4 text-sm text-gray-700 transition-colors hover:border-gray-900"
+            type="button"
+            onClick={() => {
+              setDrawerFilters(filters)
+              setDrawerOpen(true)
+            }}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#e0ddd8] px-4 py-2.5 text-sm text-[#1a1a18]"
           >
-            <SlidersHorizontal className="h-4 w-4" />
+            <SlidersHorizontal size={15} />
             Фильтры
           </button>
         </div>
@@ -928,6 +991,10 @@ export default function CatalogPage() {
                   view="grid"
                   wished={wishlistIds.includes(p.id)}
                   onToggleWishlist={handleToggleWishlist}
+                  onAddedToCart={() => {
+                    setAdded(true)
+                    window.setTimeout(() => setAdded(false), 1500)
+                  }}
                 />
               ))}
             </div>
@@ -935,7 +1002,7 @@ export default function CatalogPage() {
         </div>
       </div>
 
-      {drawerOpen && (
+          {drawerOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div
             className="absolute inset-0 bg-black/40"
@@ -950,26 +1017,35 @@ export default function CatalogPage() {
             </div>
             <div className="px-4 py-6 sm:px-6">
               <FilterPanel
-                filters={filters}
-                setFilters={setFilters}
+                filters={drawerFilters}
+                setFilters={setDrawerFilters}
                 category={category}
                 onReset={() => {
-                  resetFilters()
-                  setDrawerOpen(false)
+                  setDrawerFilters(DEFAULT_FILTERS)
                 }}
               />
             </div>
             <div className="px-4 pb-6 sm:px-6">
               <button
-                onClick={() => setDrawerOpen(false)}
+                type="button"
+                onClick={() => {
+                  setFilters(drawerFilters)
+                  setDrawerOpen(false)
+                }}
                 className="h-12 w-full rounded bg-gray-900 text-sm tracking-wide text-white transition-colors hover:bg-gray-700"
               >
-                Показать {filtered.length} товаров
+                Показать товары
               </button>
             </div>
           </div>
         </div>
       )}
+
+      <Toast
+        message="Добавлено в корзину"
+        isVisible={added}
+        type="success"
+      />
     </div>
   )
 }

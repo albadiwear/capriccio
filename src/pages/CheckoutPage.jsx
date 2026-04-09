@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Tag, CheckCircle } from 'lucide-react'
+import { Tag, CheckCircle, Check } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useCartStore } from '../store/cartStore'
 import { useAuthStore } from '../store/authStore'
@@ -19,21 +19,13 @@ const PAYMENT_OPTIONS = [
   { value: 'crypto', label: 'Криптовалюта (USDT)' },
 ]
 
-function SectionTitle({ children }) {
-  return (
-    <h2 className="text-base font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-100">
-      {children}
-    </h2>
-  )
-}
-
 function InputField({ label, ...props }) {
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-xs text-gray-500 font-medium">{label}</label>
+      <label className="text-xs text-[#888780] font-medium">{label}</label>
       <input
         {...props}
-        className="h-12 rounded border border-gray-200 px-3 text-sm text-gray-900 transition-colors focus:border-gray-900 focus:outline-none"
+        className="h-12 rounded-xl border border-[#e0ddd8] px-4 text-sm text-[#1a1a18] transition-colors focus:border-[#1a1a18] focus:outline-none placeholder:text-[#aaa] bg-white"
       />
     </div>
   )
@@ -58,8 +50,13 @@ export default function CheckoutPage() {
   const [house, setHouse] = useState('')
   const [apartment, setApartment] = useState('')
   const [postalCode, setPostalCode] = useState('')
+  const [comment, setComment] = useState('')
 
   const [selectedPayment, setSelectedPayment] = useState('card')
+
+  const [step, setStep] = useState(1)
+  const [direction, setDirection] = useState('forward')
+  const [stepError, setStepError] = useState('')
 
   const [promoCode, setPromoCode] = useState('')
   const [promoInput, setPromoInput] = useState('')
@@ -130,6 +127,40 @@ export default function CheckoutPage() {
   const deliveryCost = DELIVERY_OPTIONS.find((o) => o.value === selectedDelivery)?.cost || 0
   const total = subtotal + deliveryCost - discount
 
+  function goNext() {
+    setStepError('')
+
+    if (step === 1) {
+      if (!name.trim() || !phone.trim() || !email.trim()) {
+        setStepError('Заполните имя, телефон и email')
+        return
+      }
+    }
+
+    if (step === 2) {
+      if (!selectedDelivery) {
+        setStepError('Выберите способ доставки')
+        return
+      }
+    }
+
+    if (step === 3) {
+      if (!city.trim() || !street.trim() || !house.trim()) {
+        setStepError('Заполните город, улицу и дом')
+        return
+      }
+    }
+
+    setDirection('forward')
+    setStep((s) => Math.min(4, s + 1))
+  }
+
+  function goBack() {
+    setStepError('')
+    setDirection('back')
+    setStep((s) => Math.max(1, s - 1))
+  }
+
   async function applyPromo() {
     if (!promoInput.trim()) return
     setPromoLoading(true)
@@ -157,8 +188,7 @@ export default function CheckoutPage() {
     setPromoLoading(false)
   }
 
-  async function handleSubmit(e) {
-    e.preventDefault()
+  async function submitOrder() {
     if (items.length === 0) return
     setSubmitting(true)
     setSubmitError('')
@@ -274,6 +304,15 @@ export default function CheckoutPage() {
     }
   }
 
+  function handleSubmit(e) {
+    e.preventDefault()
+    if (step < 4) {
+      goNext()
+      return
+    }
+    submitOrder()
+  }
+
   if (items.length === 0) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center px-4 sm:px-6">
@@ -288,28 +327,56 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto px-4 py-8 sm:px-6 md:py-10">
-        <h1 className="text-2xl font-bold text-gray-900 mb-8 tracking-wide">Оформление заказа</h1>
+    <div className="min-h-screen bg-white">
+      <div className="max-w-3xl mx-auto px-4 py-8 sm:px-6 md:py-10">
+        <h1 className="text-2xl font-semibold text-[#1a1a18] mb-6">Оформление заказа</h1>
 
-        <form onSubmit={handleSubmit}>
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-8 items-start">
+        <div className="mb-4">
+          <div className="flex items-center gap-2 mb-5">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex items-center gap-2 flex-1">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+                    step >= i ? 'bg-[#1a1a18] text-white' : 'bg-[#f0ede8] text-[#888780]'
+                  }`}
+                >
+                  {step > i ? <Check size={14} /> : i}
+                </div>
+                {i < 4 && (
+                  <div
+                    className={`flex-1 h-0.5 transition-colors ${
+                      step > i ? 'bg-[#1a1a18]' : 'bg-[#f0ede8]'
+                    }`}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
 
-            <div className="space-y-6">
+          <div className="grid grid-cols-4 gap-2 text-[11px] text-[#888780]">
+            <div className={step === 1 ? 'text-[#1a1a18] font-medium' : ''}>Контакты</div>
+            <div className={step === 2 ? 'text-[#1a1a18] font-medium text-center' : 'text-center'}>Доставка</div>
+            <div className={step === 3 ? 'text-[#1a1a18] font-medium text-center' : 'text-center'}>Адрес</div>
+            <div className={step === 4 ? 'text-[#1a1a18] font-medium text-right' : 'text-right'}>Оплата</div>
+          </div>
+        </div>
 
-              <div className="bg-white rounded-xl p-6">
-                <SectionTitle>Данные получателя</SectionTitle>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="sm:col-span-2">
-                    <InputField
-                      label="Имя и фамилия"
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Айгерим Ахметова"
-                      required
-                    />
-                  </div>
+        <form onSubmit={handleSubmit} className="bg-white border border-[#f0ede8] rounded-2xl p-5 sm:p-6">
+          <div className={`transition-all duration-300 ${direction === 'forward' ? 'animate-slide-left' : 'animate-slide-right'}`}>
+            {step === 1 && (
+              <div>
+                <h2 className="text-xl font-semibold text-[#1a1a18]">Как вас зовут?</h2>
+                <p className="text-sm text-[#888780] mt-1 mb-6">Заполните данные для оформления</p>
+
+                <div className="grid grid-cols-1 gap-4">
+                  <InputField
+                    label="Имя и фамилия"
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Айгерим Ахметова"
+                    required
+                  />
                   <InputField
                     label="Телефон"
                     type="tel"
@@ -327,72 +394,115 @@ export default function CheckoutPage() {
                     required
                   />
                 </div>
-              </div>
 
-              <div className="bg-white rounded-xl p-6">
-                <SectionTitle>Способ доставки</SectionTitle>
-                <div className="space-y-2 mb-5">
+                {stepError && <p className="mt-4 text-sm text-red-600">{stepError}</p>}
+
+                <div className="mt-6 flex items-center justify-end">
+                  <button
+                    type="submit"
+                    className="h-12 px-6 rounded-xl bg-[#1a1a18] text-white text-sm font-medium"
+                  >
+                    Далее →
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {step === 2 && (
+              <div>
+                <h2 className="text-xl font-semibold text-[#1a1a18]">Как доставить?</h2>
+                <p className="text-sm text-[#888780] mt-1 mb-6">Выберите удобный способ доставки</p>
+
+                <div className="space-y-3">
                   {DELIVERY_OPTIONS.map((opt) => (
-                    <label
+                    <div
                       key={opt.value}
-                      className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors ${
-                        selectedDelivery === opt.value
-                          ? 'border-gray-900 bg-gray-50'
-                          : 'border-gray-100 hover:border-gray-300'
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setSelectedDelivery(opt.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') setSelectedDelivery(opt.value)
+                      }}
+                      className={`border rounded-xl p-4 cursor-pointer transition-colors ${
+                        selectedDelivery === opt.value ? 'border-[#1a1a18] bg-[#f5f2ed]' : 'border-[#e0ddd8] hover:border-[#888780]'
                       }`}
                     >
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="radio"
-                          name="delivery"
-                          value={opt.value}
-                          checked={selectedDelivery === opt.value}
-                          onChange={() => setSelectedDelivery(opt.value)}
-                          className="accent-gray-900"
-                        />
-                        <span className="text-sm text-gray-800">{opt.label}</span>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                              selectedDelivery === opt.value ? 'border-[#1a1a18]' : 'border-[#e0ddd8]'
+                            }`}
+                          >
+                            {selectedDelivery === opt.value && <div className="w-2.5 h-2.5 rounded-full bg-[#1a1a18]" />}
+                          </div>
+                          <span className="text-sm font-medium text-[#1a1a18]">{opt.label}</span>
+                        </div>
+                        <span className="text-sm text-[#888780]">от {opt.cost.toLocaleString('ru-RU')} ₸</span>
                       </div>
-                      <span className="text-sm text-gray-500">от {opt.cost.toLocaleString('ru-RU')} ₸</span>
-                    </label>
+                    </div>
                   ))}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="sm:col-span-2">
-                    <InputField
-                      label="Город"
-                      type="text"
-                      value={city}
-                      onChange={(e) => setCity(e.target.value)}
-                      placeholder="Алматы"
-                      required
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <InputField
-                      label="Улица"
-                      type="text"
-                      value={street}
-                      onChange={(e) => setStreet(e.target.value)}
-                      placeholder="ул. Абая"
-                      required
-                    />
-                  </div>
+                {stepError && <p className="mt-4 text-sm text-red-600">{stepError}</p>}
+
+                <div className="mt-6 flex items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    onClick={goBack}
+                    className="h-12 px-5 rounded-xl border border-[#e0ddd8] text-sm text-[#1a1a18]"
+                  >
+                    ← Назад
+                  </button>
+                  <button
+                    type="submit"
+                    className="h-12 px-6 rounded-xl bg-[#1a1a18] text-white text-sm font-medium"
+                  >
+                    Далее →
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {step === 3 && (
+              <div>
+                <h2 className="text-xl font-semibold text-[#1a1a18]">Куда доставить?</h2>
+                <p className="text-sm text-[#888780] mt-1 mb-6">Укажите адрес доставки</p>
+
+                <div className="grid grid-cols-1 gap-4">
                   <InputField
-                    label="Дом"
+                    label="Город"
                     type="text"
-                    value={house}
-                    onChange={(e) => setHouse(e.target.value)}
-                    placeholder="12"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    placeholder="Алматы"
                     required
                   />
                   <InputField
-                    label="Квартира"
+                    label="Улица"
                     type="text"
-                    value={apartment}
-                    onChange={(e) => setApartment(e.target.value)}
-                    placeholder="34"
+                    value={street}
+                    onChange={(e) => setStreet(e.target.value)}
+                    placeholder="ул. Абая"
+                    required
                   />
+                  <div className="grid grid-cols-2 gap-4">
+                    <InputField
+                      label="Дом"
+                      type="text"
+                      value={house}
+                      onChange={(e) => setHouse(e.target.value)}
+                      placeholder="12"
+                      required
+                    />
+                    <InputField
+                      label="Квартира"
+                      type="text"
+                      value={apartment}
+                      onChange={(e) => setApartment(e.target.value)}
+                      placeholder="34"
+                    />
+                  </div>
                   <InputField
                     label="Индекс"
                     type="text"
@@ -400,135 +510,145 @@ export default function CheckoutPage() {
                     onChange={(e) => setPostalCode(e.target.value)}
                     placeholder="050000"
                   />
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-[#888780] font-medium">Комментарий для курьера</label>
+                    <textarea
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value)}
+                      placeholder="Подъезд, этаж, домофон..."
+                      rows={3}
+                      className="rounded-xl border border-[#e0ddd8] px-4 py-3 text-sm text-[#1a1a18] transition-colors focus:border-[#1a1a18] focus:outline-none placeholder:text-[#aaa] bg-white resize-none"
+                    />
+                  </div>
+                </div>
+
+                {stepError && <p className="mt-4 text-sm text-red-600">{stepError}</p>}
+
+                <div className="mt-6 flex items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    onClick={goBack}
+                    className="h-12 px-5 rounded-xl border border-[#e0ddd8] text-sm text-[#1a1a18]"
+                  >
+                    ← Назад
+                  </button>
+                  <button
+                    type="submit"
+                    className="h-12 px-6 rounded-xl bg-[#1a1a18] text-white text-sm font-medium"
+                  >
+                    Далее →
+                  </button>
                 </div>
               </div>
+            )}
 
-              <div className="bg-white rounded-xl p-6">
-                <SectionTitle>Способ оплаты</SectionTitle>
-                <div className="space-y-2">
+            {step === 4 && (
+              <div>
+                <h2 className="text-xl font-semibold text-[#1a1a18]">Как оплатить?</h2>
+                <p className="text-sm text-[#888780] mt-1 mb-6">Выберите способ оплаты и подтвердите заказ</p>
+
+                <div className="space-y-3">
                   {PAYMENT_OPTIONS.map((opt) => (
-                    <label
+                    <div
                       key={opt.value}
-                      className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
-                        selectedPayment === opt.value
-                          ? 'border-gray-900 bg-gray-50'
-                          : 'border-gray-100 hover:border-gray-300'
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setSelectedPayment(opt.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') setSelectedPayment(opt.value)
+                      }}
+                      className={`border rounded-xl p-4 cursor-pointer transition-colors ${
+                        selectedPayment === opt.value ? 'border-[#1a1a18] bg-[#f5f2ed]' : 'border-[#e0ddd8] hover:border-[#888780]'
                       }`}
                     >
-                      <input
-                        type="radio"
-                        name="payment"
-                        value={opt.value}
-                        checked={selectedPayment === opt.value}
-                        onChange={() => setSelectedPayment(opt.value)}
-                        className="accent-gray-900"
-                      />
-                      <span className="text-sm text-gray-800">{opt.label}</span>
-                    </label>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                              selectedPayment === opt.value ? 'border-[#1a1a18]' : 'border-[#e0ddd8]'
+                            }`}
+                          >
+                            {selectedPayment === opt.value && <div className="w-2.5 h-2.5 rounded-full bg-[#1a1a18]" />}
+                          </div>
+                          <span className="text-sm font-medium text-[#1a1a18]">{opt.label}</span>
+                        </div>
+                      </div>
+                    </div>
                   ))}
                 </div>
-              </div>
 
-              <div className="bg-white rounded-xl p-6">
-                <SectionTitle>Промокод</SectionTitle>
-                <div className="flex flex-col gap-2 sm:flex-row">
+                <div className="flex gap-2 mt-4">
                   <div className="relative flex-1">
-                    <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+                    <Tag className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#bbb]" />
                     <input
-                      type="text"
-                      value={promoInput}
-                      onChange={(e) => { setPromoInput(e.target.value); setPromoError(''); setPromoValid(false) }}
                       placeholder="Введите промокод"
-                      className="h-12 w-full rounded border border-gray-200 py-2.5 pl-9 pr-3 text-sm uppercase transition-colors focus:border-gray-900 focus:outline-none"
+                      className="w-full border border-[#e0ddd8] rounded-xl pl-10 pr-4 py-3 text-sm outline-none focus:border-[#1a1a18] uppercase"
+                      value={promoInput}
+                      onChange={(e) => {
+                        setPromoInput(e.target.value)
+                        setPromoError('')
+                        setPromoValid(false)
+                      }}
                     />
                   </div>
                   <button
                     type="button"
                     onClick={applyPromo}
                     disabled={promoLoading || !promoInput.trim()}
-                    className="h-12 rounded bg-gray-900 px-4 text-sm text-white transition-colors hover:bg-gray-700 disabled:opacity-50"
+                    className="bg-[#1a1a18] text-white px-5 py-3 rounded-xl text-sm font-medium disabled:opacity-60"
                   >
                     {promoLoading ? '...' : 'Применить'}
                   </button>
                 </div>
-                {promoError && <p className="mt-2 text-xs text-red-500">{promoError}</p>}
+                {promoError && <p className="mt-2 text-sm text-red-600">{promoError}</p>}
                 {promoValid && (
-                  <div className="mt-2 flex items-center gap-2 text-xs text-green-600">
-                    <CheckCircle className="w-3.5 h-3.5" />
-                    Промокод применён — скидка {discount.toLocaleString('ru-RU')} ₸
+                  <div className="mt-2 flex items-center gap-2 text-sm text-green-700">
+                    <CheckCircle className="w-4 h-4" />
+                    Скидка {discount.toLocaleString('ru-RU')} ₸ применена
                   </div>
                 )}
-              </div>
-            </div>
 
-            <div className="lg:sticky lg:top-20">
-              <div className="bg-white rounded-xl p-6">
-                <SectionTitle>Ваш заказ</SectionTitle>
-
-                <div className="space-y-4 mb-5">
-                  {items.map((item, idx) => (
-                    <div key={`${item.id}-${item.color}-${item.size}-${idx}`} className="flex gap-3">
-                      <div className="w-14 flex-shrink-0 rounded overflow-hidden bg-gray-50">
-                        <img
-                          src={item.image || `https://picsum.photos/seed/${item.id}/120/160`}
-                          alt={item.name}
-                          className="w-full aspect-[3/4] object-cover"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-gray-800 font-medium line-clamp-2 leading-snug">
-                          {item.name}
-                        </p>
-                        {(item.color || item.size) && (
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            {[item.color, item.size].filter(Boolean).join(' · ')}
-                          </p>
-                        )}
-                        <p className="text-xs text-gray-500 mt-1">
-                          {item.price.toLocaleString('ru-RU')} ₸ × {item.quantity}
-                        </p>
-                      </div>
-                      <p className="text-xs font-semibold text-gray-900 flex-shrink-0">
-                        {(item.price * item.quantity).toLocaleString('ru-RU')} ₸
-                      </p>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="border-t border-gray-100 pt-4 space-y-2">
-                  <div className="flex justify-between text-sm text-gray-600">
-                    <span>Подытог</span>
-                    <span>{subtotal.toLocaleString('ru-RU')} ₸</span>
+                <div className="border border-[#f0ede8] rounded-xl p-4 mt-4">
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="text-[#888780]">Товары</span>
+                    <span className="text-[#1a1a18]">{subtotal.toLocaleString('ru-RU')} ₸</span>
                   </div>
-                  <div className="flex justify-between text-sm text-gray-600">
-                    <span>Доставка</span>
-                    <span>{deliveryCost.toLocaleString('ru-RU')} ₸</span>
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="text-[#888780]">Доставка</span>
+                    <span className="text-[#1a1a18]">{deliveryCost.toLocaleString('ru-RU')} ₸</span>
                   </div>
                   {discount > 0 && (
-                    <div className="flex justify-between text-sm text-green-600">
+                    <div className="flex justify-between text-sm mb-2 text-green-700">
                       <span>Скидка по промокоду</span>
-                      <span>−{discount.toLocaleString('ru-RU')} ₸</span>
+                      <span>-{discount.toLocaleString('ru-RU')} ₸</span>
                     </div>
                   )}
-                  <div className="flex justify-between text-base font-bold text-gray-900 pt-2 border-t border-gray-100">
+                  <div className="flex justify-between font-medium text-base pt-2 border-t border-[#f0ede8]">
                     <span>Итого</span>
                     <span>{total.toLocaleString('ru-RU')} ₸</span>
                   </div>
                 </div>
 
-                {submitError && (
-                  <p className="mt-3 text-xs text-red-500 text-center">{submitError}</p>
-                )}
+                {submitError && <p className="mt-4 text-sm text-red-600">{submitError}</p>}
 
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="mt-5 h-12 w-full rounded bg-gray-900 text-sm font-medium tracking-wide text-white transition-colors hover:bg-gray-700 disabled:opacity-60"
-                >
-                  {submitting ? 'Оформляем...' : 'Подтвердить заказ'}
-                </button>
+                <div className="mt-6 flex items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    onClick={goBack}
+                    className="h-12 px-5 rounded-xl border border-[#e0ddd8] text-sm text-[#1a1a18]"
+                  >
+                    ← Назад
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="h-12 px-6 rounded-xl bg-[#1a1a18] text-white text-sm font-medium disabled:opacity-60"
+                  >
+                    {submitting ? 'Оформляем...' : 'Подтвердить заказ ✓'}
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </form>
       </div>

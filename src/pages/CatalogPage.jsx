@@ -55,10 +55,13 @@ const MAX_PRICE = 200000
 function SkeletonCard() {
   return (
     <div className="animate-pulse">
-      <div className="mb-3 aspect-[4/5] rounded-lg bg-gray-200" />
-      <div className="mb-2 h-3 w-1/3 rounded bg-gray-200" />
-      <div className="mb-2 h-4 w-2/3 rounded bg-gray-200" />
-      <div className="h-4 w-1/2 rounded bg-gray-200" />
+      <div className="aspect-[2/3] bg-gray-200" />
+      <div className="px-2 pt-2 pb-1">
+        <div className="mb-2 h-3 w-1/3 rounded bg-gray-200" />
+        <div className="mb-2 h-4 w-2/3 rounded bg-gray-200" />
+        <div className="h-4 w-1/2 rounded bg-gray-200" />
+        <div className="mt-2 h-9 w-full rounded bg-gray-200" />
+      </div>
     </div>
   )
 }
@@ -761,7 +764,7 @@ export default function CatalogPage() {
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-2 gap-5 md:grid-cols-3">
+            <div className="grid grid-cols-2 gap-[2px] px-0">
               {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
             </div>
           ) : filtered.length === 0 ? (
@@ -778,7 +781,7 @@ export default function CatalogPage() {
               onToggleWishlist={handleToggleWishlist}
             />
           ) : (
-            <div className="grid grid-cols-2 gap-1.5 px-2 md:px-8 md:grid-cols-3 md:gap-x-4 md:gap-y-8">
+            <div className="grid grid-cols-2 gap-[2px] px-0">
               {filtered.map((p) => (
                 <ProductCard
                   key={p.id}

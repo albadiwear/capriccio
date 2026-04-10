@@ -6,6 +6,7 @@ import {
   ShoppingBag,
   Users,
   Handshake,
+  GraduationCap,
   ChevronDown,
   ChevronRight,
   LogOut,
@@ -13,6 +14,7 @@ import {
   X,
 } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
+import { supabase } from '../../lib/supabase'
 
 const NAV_ITEMS = [
   { label: 'Дашборд', icon: LayoutDashboard, to: '/admin' },
@@ -20,6 +22,7 @@ const NAV_ITEMS = [
   { label: 'Лиды', icon: Users, to: '/admin/leads' },
   { label: 'Заказы', icon: ShoppingBag, to: '/admin/orders' },
   { label: 'Партнёры', icon: Handshake, to: '/admin/partners' },
+  { label: 'Академия', icon: GraduationCap, to: '/admin/academy', badgeKey: 'academy' },
 ]
 
 const CONTENT_ITEMS = [
@@ -35,12 +38,24 @@ function SidebarContent({ onClose }) {
   const signOut = useAuthStore((state) => state.signOut)
   const isContentRoute = CONTENT_ITEMS.some((item) => location.pathname === item.to)
   const [contentOpen, setContentOpen] = useState(isContentRoute)
+  const [pendingCount, setPendingCount] = useState(0)
 
   useEffect(() => {
     if (isContentRoute) {
       setContentOpen(true)
     }
   }, [isContentRoute])
+
+  useEffect(() => {
+    async function loadPending() {
+      const { count } = await supabase
+        .from('academy_orders')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'pending')
+      setPendingCount(count || 0)
+    }
+    loadPending()
+  }, [])
 
   async function handleLogout() {
     await signOut()
@@ -59,24 +74,32 @@ function SidebarContent({ onClose }) {
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {NAV_ITEMS.map(({ label, icon: Icon, to }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === '/admin'}
-            onClick={onClose}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                isActive
-                  ? 'bg-gray-700 text-white'
-                  : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-              }`
-            }
-          >
-            <Icon className="w-4 h-4 flex-shrink-0" />
-            {label}
-          </NavLink>
-        ))}
+        {NAV_ITEMS.map(({ label, icon: Icon, to, badgeKey }) => {
+          const badge = badgeKey === 'academy' && pendingCount > 0 ? pendingCount : 0
+          return (
+            <NavLink
+              key={to}
+              to={to}
+              end={to === '/admin'}
+              onClick={onClose}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                  isActive
+                    ? 'bg-gray-700 text-white'
+                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                }`
+              }
+            >
+              <Icon className="w-4 h-4 flex-shrink-0" />
+              {label}
+              {badge > 0 && (
+                <span className="ml-auto bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full leading-none">
+                  {badge}
+                </span>
+              )}
+            </NavLink>
+          )
+        })}
 
         <div className="pt-1">
           <button

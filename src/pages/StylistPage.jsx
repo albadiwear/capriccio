@@ -138,15 +138,30 @@ export default function StylistPage() {
     const history = messages.map((m) => ({ role: m.role, content: m.content }))
 
     try {
-      const { data: result, error: fnError } = await supabase.functions.invoke('stylist', {
+      // Edge Functions require the user's access token for auth-protected endpoints
+      const { data: { session } } = await supabase.auth.getSession()
+
+      const { data, error } = await supabase.functions.invoke('stylist', {
         body: {
           system: STYLIST_PROMPT,
           messages: [...history, { role: 'user', content: userMessage }],
         },
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+        },
       })
 
-      if (fnError) throw fnError
-      const rawText = result?.content?.[0]?.text || ''
+      if (error) {
+        console.error('Stylist error:', error)
+        throw error
+      }
+
+      console.log('Stylist response:', data)
+      const rawText = data?.content?.[0]?.text
+
+      if (!rawText) {
+        throw new Error('Empty response from stylist')
+      }
 
       const productMatch = rawText.match(/<products>(.*?)<\/products>/s)
       const cleanText = rawText.replace(/<products>.*?<\/products>/s, '').trim()
@@ -196,12 +211,12 @@ export default function StylistPage() {
         await loadChats()
       }
     } catch (e) {
-      console.error('Stylist API error:', e)
+      console.error('Full error:', e)
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
-          content: 'Произошла ошибка. Пожалуйста, попробуй ещё раз.',
+          content: 'Произошла ошибка: ' + e.message,
           created_at: new Date().toISOString(),
         },
       ])
@@ -249,7 +264,7 @@ export default function StylistPage() {
   )
 
   const MessageList = (
-    <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-4 md:px-6">
+    <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 flex flex-col gap-4">
       {messages.length === 0 && !loading ? EmptyState : null}
 
       {messages.map((msg, i) => (
@@ -319,7 +334,7 @@ export default function StylistPage() {
   )
 
   const InputArea = (
-    <div className="px-4 py-4 border-t border-[#f0ede8] md:px-6">
+    <div className="flex-shrink-0 px-4 py-3 border-t border-[#f0ede8] bg-white pb-24 md:pb-4 md:px-6 md:py-4">
       <div className="flex gap-3 items-end">
         <textarea
           ref={textareaRef}
@@ -394,7 +409,7 @@ export default function StylistPage() {
       </div>
 
       {/* Основная колонка */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0">
 
         {/* Мобиль: хедер с кнопками истории / нового чата */}
         <div className="md:hidden flex items-center gap-2 px-4 py-3 border-b border-[#f0ede8]">

@@ -12,12 +12,16 @@ serve(async (req) => {
 
   try {
     const { messages, system } = await req.json()
+    
+    const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
+    console.log('API Key exists:', !!apiKey)
+    console.log('Messages count:', messages?.length)
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': Deno.env.get('ANTHROPIC_API_KEY') ?? '',
+        'x-api-key': apiKey ?? '',
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
@@ -29,11 +33,21 @@ serve(async (req) => {
     })
 
     const data = await response.json()
+    console.log('Anthropic status:', response.status)
+    console.log('Anthropic response:', JSON.stringify(data))
+
+    if (!response.ok) {
+      return new Response(JSON.stringify({ error: data }), {
+        status: response.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
 
     return new Response(JSON.stringify(data), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (error) {
+    console.log('Error:', error.message)
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

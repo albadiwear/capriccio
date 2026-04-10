@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Briefcase, Heart, Lock, Palette, Shirt, Sparkles, Star, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/authStore'
@@ -103,6 +103,51 @@ export default function AcademyPage() {
   const [ctaLoading, setCtaLoading] = useState(false)
   const [ctaError, setCtaError] = useState('')
   const [ctaSuccess, setCtaSuccess] = useState(false)
+
+  const [orderModal, setOrderModal] = useState(null)
+  const [userProfile, setUserProfile] = useState(null)
+  const [orderLoading, setOrderLoading] = useState(false)
+  const [orderSuccess, setOrderSuccess] = useState(false)
+
+  useEffect(() => {
+    if (user) {
+      setUserProfile({
+        name: user.user_metadata?.full_name || '',
+        email: user.email,
+        phone: user.user_metadata?.phone || '',
+      })
+    }
+  }, [user])
+
+  const handleSelectTariff = (tariff, name, price) => {
+    if (!user) {
+      window.location.href = '/#access'
+      return
+    }
+    setOrderModal({ tariff, name, price })
+  }
+
+  const handleConfirmOrder = async () => {
+    setOrderLoading(true)
+    try {
+      const { error } = await supabase.from('academy_orders').insert({
+        user_id: user.id,
+        user_name: userProfile?.name,
+        user_email: userProfile?.email,
+        user_phone: userProfile?.phone,
+        tariff: orderModal.tariff,
+        tariff_name: orderModal.name,
+        tariff_price: orderModal.price,
+        status: 'pending',
+      })
+      if (error) throw error
+      setOrderSuccess(true)
+    } catch (e) {
+      console.error(e)
+      alert('Ошибка при отправке заявки. Попробуйте ещё раз.')
+    }
+    setOrderLoading(false)
+  }
 
   const directions = useMemo(
     () => [
@@ -344,7 +389,7 @@ export default function AcademyPage() {
             </div>
             <button
               type="button"
-              onClick={() => setModalOpen(true)}
+              onClick={() => handleSelectTariff('start', 'Старт', 0)}
               className="w-full border border-[#1a1a18] text-[#1a1a18] py-3 rounded-xl text-sm font-medium hover:bg-[#f5f2ed] transition-colors"
             >
               Начать бесплатно
@@ -379,7 +424,7 @@ export default function AcademyPage() {
             </div>
             <button
               type="button"
-              onClick={() => setModalOpen(true)}
+              onClick={() => handleSelectTariff('basic', 'Базовый', 4900)}
               className="w-full bg-white text-[#1a1a18] py-3 rounded-xl text-sm font-medium hover:bg-[#f5f2ed] transition-colors"
             >
               Выбрать →
@@ -414,7 +459,7 @@ export default function AcademyPage() {
             </div>
             <button
               type="button"
-              onClick={() => setModalOpen(true)}
+              onClick={() => handleSelectTariff('premium', 'Премиум', 12900)}
               className="w-full bg-[#D4537E] text-white py-3 rounded-xl text-sm font-medium hover:bg-[#c44370] transition-colors"
             >
               Выбрать →
@@ -470,6 +515,94 @@ export default function AcademyPage() {
         onClose={() => setModalOpen(false)}
         defaultEmail={user?.email || ''}
       />
+
+      {orderModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          onClick={() => !orderSuccess && setOrderModal(null)}
+        >
+          <div className="absolute inset-0 bg-black/50" />
+          <div
+            className="relative bg-white rounded-2xl p-6 w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {!orderSuccess ? (
+              <>
+                <h3 className="text-lg font-medium mb-1">Подтвердить заявку</h3>
+                <p className="text-sm text-[#888780] mb-5">
+                  Тариф:{' '}
+                  <span className="font-medium text-[#1a1a18]">{orderModal.name}</span>
+                  {orderModal.price > 0 && (
+                    <span> · {orderModal.price.toLocaleString()} ₸/мес</span>
+                  )}
+                </p>
+
+                <div className="bg-[#f5f2ed] rounded-xl p-4 mb-5">
+                  <p className="text-xs text-[#888780] mb-3 font-medium">Ваши данные</p>
+                  <div className="flex flex-col gap-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-[#888780]">Имя</span>
+                      <span className="font-medium">{userProfile?.name || '—'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#888780]">Email</span>
+                      <span className="font-medium">{userProfile?.email}</span>
+                    </div>
+                    {userProfile?.phone && (
+                      <div className="flex justify-between">
+                        <span className="text-[#888780]">Телефон</span>
+                        <span className="font-medium">{userProfile.phone}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <p className="text-xs text-[#888780] mb-5 leading-relaxed">
+                  После подтверждения заявка будет отправлена. Мы активируем доступ в течение 24 часов
+                  и отправим уведомление на email.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={handleConfirmOrder}
+                  disabled={orderLoading}
+                  className="w-full bg-[#1a1a18] text-white py-3.5 rounded-xl text-sm font-medium mb-3 disabled:opacity-50"
+                >
+                  {orderLoading ? 'Отправляем заявку...' : 'Подтвердить заявку →'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOrderModal(null)}
+                  className="w-full text-sm text-[#888780] py-2"
+                >
+                  Отмена
+                </button>
+              </>
+            ) : (
+              <div className="text-center py-4">
+                <div className="w-16 h-16 rounded-full bg-[#E1F5EE] flex items-center justify-center mx-auto mb-4">
+                  <span className="text-3xl">✅</span>
+                </div>
+                <h3 className="text-lg font-medium mb-2">Заявка отправлена!</h3>
+                <p className="text-sm text-[#888780] mb-6 leading-relaxed">
+                  Мы получили вашу заявку на тариф <strong>{orderModal.name}</strong>.
+                  Активируем доступ в течение 24 часов и отправим уведомление на email.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOrderModal(null)
+                    setOrderSuccess(false)
+                  }}
+                  className="w-full bg-[#1a1a18] text-white py-3 rounded-xl text-sm font-medium"
+                >
+                  Закрыть
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

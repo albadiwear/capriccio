@@ -1,18 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Heart, ShoppingBag } from 'lucide-react'
 import { useCartStore } from '../../store/cartStore'
 
 export default function ProductCard({ product, wished, onToggleWishlist, onAddedToCart }) {
   const addItem = useCartStore((state) => state.addItem)
-  const [showCart, setShowCart] = useState(false)
-  const timerRef = useRef(null)
-
-  useEffect(() => {
-    return () => {
-      clearTimeout(timerRef.current)
-    }
-  }, [])
 
   const oldPrice = product.old_price ?? (product.sale_price ? product.price : null)
   const price = product.sale_price || product.price || 0
@@ -79,26 +70,17 @@ export default function ProductCard({ product, wished, onToggleWishlist, onAdded
           </button>
 
           <div
-            className={`
-              absolute bottom-0 left-0 right-0 bg-[#1a1a18] py-2.5 z-30 transition-transform duration-200
-              ${showCart ? 'translate-y-0' : 'translate-y-full'}
-              md:translate-y-full md:group-hover:translate-y-0
-            `}
-            onClick={(e) => e.preventDefault()}
+            className="absolute bottom-0 left-0 right-0 bg-[#1a1a18] py-2.5 z-30 md:translate-y-full md:group-hover:translate-y-0 transition-transform duration-200"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              handleAdd()
+            }}
           >
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                handleAdd()
-                setShowCart(false)
-              }}
-              className="w-full text-white text-xs font-medium flex items-center justify-center gap-1.5"
-            >
-              <ShoppingBag size={13} />
-              В корзину
-            </button>
+            <div className="flex items-center justify-center gap-1.5">
+              <ShoppingBag size={13} className="text-white" />
+              <span className="text-white text-xs font-medium">В корзину</span>
+            </div>
           </div>
         </div>
 
@@ -121,22 +103,6 @@ export default function ProductCard({ product, wished, onToggleWishlist, onAdded
           </div>
         </div>
       </Link>
-
-      <div
-        className="absolute inset-0 z-20 md:hidden"
-        style={{ bottom: '60px' }}
-        onClick={(e) => {
-          e.preventDefault()
-          if (showCart) {
-            window.location.href = `/product/${product.id}`
-            return
-          }
-          setShowCart(true)
-          clearTimeout(timerRef.current)
-          timerRef.current = setTimeout(() => setShowCart(false), 2000)
-        }}
-      />
     </div>
   )
 }
-

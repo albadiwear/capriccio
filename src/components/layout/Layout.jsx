@@ -11,12 +11,15 @@ export default function Layout() {
   const pathname = location.pathname
   const user = useAuthStore((state) => state.user)
   const isHome = pathname === '/'
+  const isAdmin = pathname.startsWith('/admin')
 
   return (
     <div className="min-h-screen flex flex-col">
-      {!isHome && !user && <Header />}
+      {/* Старый хедер — только незалогиненным и не на главной/админке */}
+      {!user && !isHome && !isAdmin && <Header />}
 
-      {!isHome && user && (
+      {/* Новый хедер — только залогиненным и не на главной/админке */}
+      {user && !isHome && !isAdmin && (
         <>
           <div className="md:hidden">
             <InnerHeader />
@@ -27,13 +30,14 @@ export default function Layout() {
         </>
       )}
 
-      <main className={`flex-1 ${user && !isHome ? 'pb-20 md:pb-0' : ''}`}>
+      <main className={`flex-1 ${user && !isHome && !isAdmin ? 'pb-20 md:pb-0' : ''}`}>
         <Outlet />
       </main>
 
-      <BottomNav />
+      {/* Нижний бар + корзина — только залогиненным и не на главной/админке */}
+      {user && !isHome && !isAdmin && <BottomNav />}
 
-      <CartDrawer />
+      {user && !isHome && !isAdmin && <CartDrawer />}
     </div>
   )
 }

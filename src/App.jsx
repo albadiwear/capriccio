@@ -18,10 +18,6 @@ import AboutPage from './pages/AboutPage'
 import DeliveryPage from './pages/DeliveryPage'
 import ContactsPage from './pages/ContactsPage'
 
-// Auth pages
-import LoginPage from './pages/LoginPage'
-import RegisterPage from './pages/RegisterPage'
-
 // Protected pages
 import AccountPage from './pages/AccountPage'
 import AccountOrdersPage from './pages/AccountOrdersPage'
@@ -104,8 +100,8 @@ function App() {
           <Route path="delivery" element={<DeliveryPage />} />
           <Route path="contacts" element={<ContactsPage />} />
 
-          <Route path="login" element={<LoginPage />} />
-          <Route path="register" element={<RegisterPage />} />
+          <Route path="login" element={<Navigate to="/" replace />} />
+          <Route path="register" element={<Navigate to="/" replace />} />
 
           <Route path="account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
           <Route path="account/orders" element={<ProtectedRoute><AccountOrdersPage /></ProtectedRoute>} />

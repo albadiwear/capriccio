@@ -1,6 +1,3 @@
-// Layout
-export { Header, Footer } from './layout';
-
 // Catalog
 export { ProductCard } from './catalog';
 

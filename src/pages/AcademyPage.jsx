@@ -112,6 +112,10 @@ export default function AcademyPage() {
   const [accessStatus, setAccessStatus] = useState(null)
   const [userOrder, setUserOrder] = useState(null)
   const [content, setContent] = useState([])
+  const [points, setPoints] = useState(null)
+  const [progress, setProgress] = useState([])
+  const [achievements, setAchievements] = useState([])
+  const [activeTab, setActiveTab] = useState('lessons')
 
   useEffect(() => {
     if (user) {
@@ -141,27 +145,91 @@ export default function AcademyPage() {
       setAccessStatus(data.status)
       setUserOrder(data)
       if (data.status === 'active') {
-        loadContent(data.tariff)
+        loadAcademyData(data.tariff)
       }
     }
   }
 
-  const loadContent = async (tariff) => {
+  const loadAcademyData = async (tariff) => {
+    const t = tariff || userOrder?.tariff
     const levels =
-      tariff === 'premium'
+      t === 'premium'
         ? ['start', 'basic', 'premium']
-        : tariff === 'basic'
+        : t === 'basic'
           ? ['start', 'basic']
           : ['start']
 
-    const { data } = await supabase
-      .from('academy_content')
-      .select('*')
-      .in('tariff_level', levels)
-      .eq('is_published', true)
-      .order('sort_order')
+    const [contentRes, progressRes, pointsRes, achRes] = await Promise.all([
+      supabase
+        .from('academy_content')
+        .select('*')
+        .in('tariff_level', levels)
+        .eq('is_published', true)
+        .order('sort_order'),
+      supabase.from('academy_progress').select('*').eq('user_id', user.id),
+      supabase.from('academy_points').select('*').eq('user_id', user.id).maybeSingle(),
+      supabase.from('academy_achievements').select('*').eq('user_id', user.id),
+    ])
 
-    setContent(data || [])
+    setContent(contentRes.data || [])
+    setProgress(progressRes.data || [])
+    setPoints(pointsRes.data || null)
+    setAchievements(achRes.data || [])
+  }
+
+  const isCompleted = (contentId) =>
+    progress.some((p) => p.content_id === contentId && p.completed)
+
+  const isUnlocked = (index, items) => {
+    if (index === 0) return true
+    return isCompleted(items[index - 1].id)
+  }
+
+  const handleComplete = async (item) => {
+    if (isCompleted(item.id)) return
+
+    await supabase.from('academy_progress').upsert({
+      user_id: user.id,
+      content_id: item.id,
+      completed: true,
+      completed_at: new Date().toISOString(),
+    })
+
+    const earnedPoints = item.type === 'video' ? 10 : item.type === 'article' ? 5 : 3
+    const currentPoints = points?.points || 0
+    const currentTotal = points?.total_earned || 0
+
+    await supabase.from('academy_points').upsert({
+      user_id: user.id,
+      points: currentPoints + earnedPoints,
+      total_earned: currentTotal + earnedPoints,
+      last_activity: new Date().toISOString().split('T')[0],
+      updated_at: new Date().toISOString(),
+    })
+
+    await supabase.from('academy_points_log').insert({
+      user_id: user.id,
+      points: earnedPoints,
+      reason: `Завершено: ${item.title}`,
+      content_id: item.id,
+    })
+
+    const completedCount = progress.filter((p) => p.completed).length + 1
+    const existing = achievements.map((a) => a.achievement)
+    const toAdd = []
+
+    if (completedCount >= 1 && !existing.includes('first_lesson'))
+      toAdd.push({ user_id: user.id, achievement: 'first_lesson' })
+    if (completedCount >= 5 && !existing.includes('five_lessons'))
+      toAdd.push({ user_id: user.id, achievement: 'five_lessons' })
+    if (completedCount >= 10 && !existing.includes('ten_lessons'))
+      toAdd.push({ user_id: user.id, achievement: 'ten_lessons' })
+
+    if (toAdd.length > 0) {
+      await supabase.from('academy_achievements').insert(toAdd)
+    }
+
+    loadAcademyData()
   }
 
   const handleSelectTariff = (tariff, name, price) => {
@@ -335,51 +403,268 @@ export default function AcademyPage() {
 
   // Дашборд академии
   if (accessStatus === 'active') {
+    const lessons = content.filter((c) => c.type === 'video')
+    const articles = content.filter((c) => c.type === 'article')
+    const resources = content.filter((c) => c.type === 'telegram' || c.type === 'link')
+    const completedCount = progress.filter((p) => p.completed).length
+    const trackableCount = content.filter((c) => c.type !== 'telegram' && c.type !== 'link').length
+    const progressPct = trackableCount > 0 ? Math.round((completedCount / trackableCount) * 100) : 0
+
+    const ACH_LABEL = {
+      first_lesson: '🎯 Первый урок',
+      five_lessons: '🔥 5 уроков',
+      ten_lessons: '⭐ 10 уроков',
+    }
+
     return (
-      <div className="max-w-4xl mx-auto px-4 py-8 pb-28 md:pb-8">
-        <div className="bg-[#1a1a18] rounded-2xl p-6 mb-6 text-white">
-          <p className="text-[#888780] text-sm mb-1">Добро пожаловать</p>
-          <h1 className="text-2xl font-medium mb-1">Академия Capriccio 🎓</h1>
-          <p className="text-[#888780] text-sm">
-            Тариф: {userOrder?.tariff_name} · Активен с{' '}
-            {new Date(userOrder?.activated_at).toLocaleDateString('ru')}
-          </p>
+      <div className="max-w-3xl mx-auto px-4 py-6 pb-28 md:pb-8">
+
+        {/* Приветствие + баллы */}
+        <div className="bg-[#1a1a18] rounded-2xl p-5 mb-4 text-white">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <p className="text-[#888780] text-xs mb-1">Академия Capriccio</p>
+              <h2 className="text-xl font-medium">
+                Привет, {user?.user_metadata?.full_name?.split(' ')[0] || 'подруга'}! 👋
+              </h2>
+              <p className="text-[#888780] text-xs mt-1">Тариф: {userOrder?.tariff_name}</p>
+            </div>
+            <div className="bg-white/10 rounded-xl px-4 py-3 text-center flex-shrink-0">
+              <p className="text-2xl font-medium">{points?.points || 0}</p>
+              <p className="text-[#888780] text-xs">баллов</p>
+              <p className="text-[10px] text-[#888780]">= {points?.points || 0} ₸ скидки</p>
+            </div>
+          </div>
+
+          <div>
+            <div className="flex justify-between text-xs text-[#888780] mb-1.5">
+              <span>Прогресс</span>
+              <span>{completedCount} / {trackableCount} уроков</span>
+            </div>
+            <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[#D4537E] rounded-full transition-all duration-500"
+                style={{ width: `${progressPct}%` }}
+              />
+            </div>
+          </div>
+
+          {points?.streak_days > 0 && (
+            <div className="mt-3 flex items-center gap-1.5">
+              <span>🔥</span>
+              <span className="text-sm">{points.streak_days} дней подряд</span>
+            </div>
+          )}
         </div>
 
-        <h2 className="text-lg font-medium mb-4">Ваши материалы</h2>
-
-        {content.length === 0 ? (
-          <div className="text-center py-16 text-[#888780]">
-            <div className="text-4xl mb-4">📚</div>
-            <p className="font-medium mb-2 text-[#1a1a18]">Материалы скоро появятся</p>
-            <p className="text-sm">Мы готовим контент для вас. Следите за обновлениями.</p>
+        {/* Достижения */}
+        {achievements.length > 0 && (
+          <div className="mb-4 overflow-x-auto">
+            <div className="flex gap-2 pb-1">
+              {achievements.map((ach) => (
+                <div
+                  key={ach.id}
+                  className="flex-shrink-0 bg-[#FBEAF0] rounded-xl px-3 py-2 text-xs font-medium text-[#72243E]"
+                >
+                  {ACH_LABEL[ach.achievement] || ach.achievement}
+                </div>
+              ))}
+            </div>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {content.map((item) => (
-              <div
-                key={item.id}
-                className="border border-[#f0ede8] rounded-2xl p-5 hover:border-[#1a1a18] transition-colors"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center text-xl bg-[#f5f2ed]">
-                    {item.type === 'video' ? '🎥' : item.type === 'article' ? '📖' : item.type === 'telegram' ? '✈️' : '🔗'}
+        )}
+
+        {/* Табы */}
+        <div className="flex gap-1 border-b border-[#f0ede8] mb-4">
+          {[
+            { key: 'lessons', label: '🎥 Уроки' },
+            { key: 'articles', label: '📖 Статьи' },
+            { key: 'resources', label: '🔗 Ресурсы' },
+          ].map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setActiveTab(t.key)}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
+                activeTab === t.key
+                  ? 'border-[#1a1a18] text-[#1a1a18]'
+                  : 'border-transparent text-[#888780]'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Уроки */}
+        {activeTab === 'lessons' && (
+          <div className="flex flex-col gap-3">
+            {lessons.length === 0 && (
+              <div className="text-center py-12 text-[#888780]">
+                <div className="text-3xl mb-3">🎥</div>
+                <p className="text-sm">Видеоуроки скоро появятся</p>
+              </div>
+            )}
+            {lessons.map((item, index, arr) => {
+              const completed = isCompleted(item.id)
+              const unlocked = isUnlocked(index, arr)
+              return (
+                <div
+                  key={item.id}
+                  className={`border rounded-2xl overflow-hidden transition-all ${
+                    completed
+                      ? 'border-[#1D9E75] bg-[#E1F5EE]'
+                      : unlocked
+                        ? 'border-[#f0ede8] bg-white hover:border-[#1a1a18]'
+                        : 'border-[#f0ede8] bg-[#f5f2ed] opacity-60'
+                  }`}
+                >
+                  <div className="flex gap-4 p-4">
+                    <div
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-medium flex-shrink-0 ${
+                        completed
+                          ? 'bg-[#1D9E75] text-white'
+                          : unlocked
+                            ? 'bg-[#1a1a18] text-white'
+                            : 'bg-[#e0ddd8] text-[#888780]'
+                      }`}
+                    >
+                      {completed ? '✓' : unlocked ? index + 1 : '🔒'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm text-[#1a1a18] mb-0.5">{item.title}</p>
+                      <p className="text-xs text-[#888780] line-clamp-2 mb-2">{item.description}</p>
+                      <div className="flex items-center gap-3">
+                        {item.duration_minutes > 0 && (
+                          <span className="text-xs text-[#888780]">⏱ {item.duration_minutes} мин</span>
+                        )}
+                        <span className="text-xs text-[#1D9E75] font-medium">+10 баллов</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-sm mb-1">{item.title}</p>
-                    <p className="text-xs text-[#888780] leading-relaxed">{item.description}</p>
+                  {unlocked && (
+                    <div className="px-4 pb-4 flex gap-2">
+                      {item.content_url && (
+                        <a
+                          href={item.content_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 bg-[#1a1a18] text-white text-xs font-medium py-2.5 rounded-xl text-center"
+                        >
+                          {completed ? 'Смотреть снова' : '▶ Смотреть урок'}
+                        </a>
+                      )}
+                      {!completed && (
+                        <button
+                          type="button"
+                          onClick={() => handleComplete(item)}
+                          className="flex-1 border border-[#1D9E75] text-[#1D9E75] text-xs font-medium py-2.5 rounded-xl"
+                        >
+                          ✓ Отметить просмотренным
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Статьи */}
+        {activeTab === 'articles' && (
+          <div className="flex flex-col gap-3">
+            {articles.length === 0 && (
+              <div className="text-center py-12 text-[#888780]">
+                <div className="text-3xl mb-3">📖</div>
+                <p className="text-sm">Статьи скоро появятся</p>
+              </div>
+            )}
+            {articles.map((item, index, arr) => {
+              const completed = isCompleted(item.id)
+              const unlocked = isUnlocked(index, arr)
+              return (
+                <div
+                  key={item.id}
+                  className={`border rounded-2xl p-4 transition-all ${
+                    completed
+                      ? 'border-[#1D9E75] bg-[#E1F5EE]'
+                      : unlocked
+                        ? 'border-[#f0ede8] bg-white'
+                        : 'border-[#f0ede8] bg-[#f5f2ed] opacity-60'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg flex-shrink-0 ${
+                        completed ? 'bg-[#1D9E75]' : 'bg-[#f5f2ed]'
+                      }`}
+                    >
+                      {completed ? '✓' : '📖'}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-sm mb-0.5">{item.title}</p>
+                      <p className="text-xs text-[#888780] mb-3">{item.description}</p>
+                      {unlocked && (
+                        <div className="flex gap-4">
+                          {item.content_url && (
+                            <a
+                              href={item.content_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs font-medium text-[#1a1a18] underline"
+                            >
+                              Читать →
+                            </a>
+                          )}
+                          {!completed && (
+                            <button
+                              type="button"
+                              onClick={() => handleComplete(item)}
+                              className="text-xs font-medium text-[#1D9E75]"
+                            >
+                              ✓ Прочитано (+5 баллов)
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-                {item.content_url && (
-                  <a
-                    href={item.content_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-3 block w-full bg-[#1a1a18] text-white text-xs font-medium py-2.5 rounded-xl text-center hover:bg-[#333] transition-colors"
-                  >
-                    Открыть →
-                  </a>
-                )}
+              )
+            })}
+          </div>
+        )}
+
+        {/* Ресурсы */}
+        {activeTab === 'resources' && (
+          <div className="flex flex-col gap-3">
+            {resources.length === 0 && (
+              <div className="text-center py-12 text-[#888780]">
+                <div className="text-3xl mb-3">🔗</div>
+                <p className="text-sm">Ресурсы скоро появятся</p>
+              </div>
+            )}
+            {resources.map((item) => (
+              <div key={item.id} className="border border-[#f0ede8] rounded-2xl p-4 bg-white">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#f5f2ed] flex items-center justify-center text-xl flex-shrink-0">
+                    {item.type === 'telegram' ? '✈️' : '🔗'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">{item.title}</p>
+                    <p className="text-xs text-[#888780]">{item.description}</p>
+                  </div>
+                  {item.content_url && (
+                    <a
+                      href={item.content_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-[#1a1a18] text-white text-xs font-medium px-4 py-2 rounded-xl flex-shrink-0"
+                    >
+                      Открыть
+                    </a>
+                  )}
+                </div>
               </div>
             ))}
           </div>

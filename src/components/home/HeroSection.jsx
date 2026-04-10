@@ -9,13 +9,15 @@ export default function HeroSection({ user, onRequireAccess }) {
     let cancelled = false
 
     async function loadHeroImage() {
-      const { data } = await supabase
-        .from('products')
-        .select('images')
+      const { data: heroBanner } = await supabase
+        .from('banners')
+        .select('image_url')
+        .eq('position', 0)
         .eq('is_active', true)
         .limit(1)
+        .maybeSingle()
 
-      const url = data?.[0]?.images?.[0] || ''
+      const url = heroBanner?.image_url || '/hero-default.jpg'
       if (!cancelled) setHeroImage(url)
     }
 

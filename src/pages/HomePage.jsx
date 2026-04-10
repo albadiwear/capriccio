@@ -1,15 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { useSEO } from '../hooks/useSEO'
 import HeroSection from '../components/home/HeroSection'
 import DirectionsSection from '../components/home/DirectionsSection'
 import CatalogPreview from '../components/home/CatalogPreview'
 import ReviewsSection from '../components/home/ReviewsSection'
-import AccessForm from '../components/home/AccessForm'
+import { supabase } from '../lib/supabase'
 
 export default function HomePage() {
   const user = useAuthStore((state) => state.user)
+  const navigate = useNavigate()
 
   useSEO({
     title: 'Capriccio — закрытый клуб',
@@ -38,9 +39,144 @@ export default function HomePage() {
 
   const [activeFilter, setActiveFilter] = useState('Все')
 
+  const [accessBg, setAccessBg] = useState('')
+  const [mode, setMode] = useState('login') // 'login' | 'register'
+  const [name, setName] = useState(user?.user_metadata?.full_name || '')
+  const [phone, setPhone] = useState(user?.user_metadata?.phone || '+7')
+  const [email, setEmail] = useState(user?.email || '')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
+
   useEffect(() => {
     setActiveFilter('Все')
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadAccessBg() {
+      const { data: photos } = await supabase
+        .from('products')
+        .select('images')
+        .eq('is_active', true)
+        .limit(3)
+
+      const bg = photos?.[1]?.images?.[0] || photos?.[0]?.images?.[0] || '/hero-default.jpg'
+      if (!cancelled) setAccessBg(bg || '')
+    }
+
+    loadAccessBg()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!user) return
+    setName(user.user_metadata?.full_name || '')
+    setPhone(user.user_metadata?.phone || '+7')
+    setEmail(user.email || '')
+    setError('')
+    setMessage('')
+  }, [user])
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    if (loading) return
+    setLoading(true)
+    setError('')
+    setMessage('')
+
+    if (mode === 'login') {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (!signInError) {
+        setLoading(false)
+        navigate('/catalog')
+        return
+      }
+
+      setError('Неверный email или пароль')
+      setLoading(false)
+      return
+    }
+
+    if (password.length < 6) {
+      setError('Пароль должен быть минимум 6 символов')
+      setLoading(false)
+      return
+    }
+
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: name, phone } },
+    })
+
+    if (signUpError) {
+      setError(signUpError.message)
+      setLoading(false)
+      return
+    }
+
+    if (data?.user) {
+      setLoading(false)
+      navigate('/catalog')
+      return
+    }
+
+    setMessage('Аккаунт создан. Проверьте почту, если требуется подтверждение.')
+    setLoading(false)
+  }
+
+  async function handleForgotPassword(e) {
+    e.preventDefault()
+    if (loading) return
+    if (!email) {
+      setError('Введите email для сброса пароля')
+      return
+    }
+
+    setLoading(true)
+    setError('')
+    setMessage('')
+
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    })
+
+    if (resetError) {
+      setError(resetError.message || 'Не удалось отправить письмо')
+      setLoading(false)
+      return
+    }
+
+    setMessage('Письмо для сброса пароля отправлено')
+    setLoading(false)
+  }
+
+  async function handleGoogle(e) {
+    e.preventDefault()
+    if (loading) return
+    setLoading(true)
+    setError('')
+    setMessage('')
+
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/catalog` },
+    })
+
+    if (oauthError) {
+      setError(oauthError.message || 'Не удалось войти через Google')
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="bg-white text-gray-900">
@@ -130,9 +266,182 @@ export default function HomePage() {
         </div>
       </section>
 
-      <div ref={accessRef}>
-        <AccessForm user={user} />
-      </div>
+      <section
+        id="access"
+        ref={accessRef}
+        className="relative min-h-screen flex flex-col items-center justify-center px-6 py-20 overflow-hidden"
+      >
+        <img
+          src={accessBg || '/hero-default.jpg'}
+          className="absolute inset-0 w-full h-full object-cover"
+          alt=""
+        />
+        <div className="absolute inset-0 bg-[#1a1a18]/65" />
+
+        <div className="relative z-10 w-full max-w-md text-center">
+          <p className="text-[#ED93B1] text-sm font-medium tracking-widest uppercase mb-4">
+            Закрытый клуб · Казахстан и СНГ
+          </p>
+          <h2 className="text-4xl md:text-5xl font-medium text-white mb-3 leading-tight">
+            Твой стиль.<br />
+            Твоё сообщество.<br />
+            Твой заработок.
+          </h2>
+          <p className="text-white/70 text-sm mb-8 leading-relaxed">
+            Доступ к 1 500+ образам, Академии стиля и закрытому сообществу женщин 35+
+          </p>
+
+          <div className="flex justify-center gap-6 mb-8">
+            <div className="flex flex-col items-center gap-1">
+              <div className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center text-lg">👗</div>
+              <span className="text-white/70 text-xs">1 500+ образов</span>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <div className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center text-lg">🎓</div>
+              <span className="text-white/70 text-xs">Академия</span>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <div className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center text-lg">👑</div>
+              <span className="text-white/70 text-xs">Сообщество</span>
+            </div>
+          </div>
+
+          <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6">
+            {user ? (
+              <div className="text-center">
+                <p className="text-white/70 text-sm">Вы уже вошли. Каталог открыт для вас.</p>
+                <button
+                  type="button"
+                  onClick={() => navigate('/catalog')}
+                  className="mt-5 w-full bg-[#D4537E] hover:bg-[#c44370] text-white py-3.5 rounded-xl text-sm font-medium transition-colors"
+                >
+                  Перейти в каталог →
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex border border-white/20 rounded-xl mb-5 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('login')
+                      setError('')
+                      setMessage('')
+                    }}
+                    className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
+                      mode === 'login' ? 'bg-white text-[#1a1a18]' : 'text-white/60'
+                    }`}
+                  >
+                    Войти
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('register')
+                      setError('')
+                      setMessage('')
+                    }}
+                    className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
+                      mode === 'register' ? 'bg-white text-[#1a1a18]' : 'text-white/60'
+                    }`}
+                  >
+                    Регистрация
+                  </button>
+                </div>
+
+                <form onSubmit={handleSubmit}>
+                  {mode === 'register' && (
+                    <>
+                      <input
+                        type="text"
+                        placeholder="Имя"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/40 outline-none mb-3 focus:border-white/60"
+                      />
+                      <input
+                        type="tel"
+                        placeholder="+7 (___) ___-__-__"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/40 outline-none mb-3 focus:border-white/60"
+                      />
+                    </>
+                  )}
+
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/40 outline-none mb-3 focus:border-white/60"
+                    required
+                  />
+                  <input
+                    type="password"
+                    placeholder="Пароль"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/40 outline-none mb-4 focus:border-white/60"
+                    required
+                  />
+
+                  {error && <p className="text-[#ED93B1] text-xs mb-3">{error}</p>}
+                  {!error && message && <p className="text-white/60 text-xs mb-3">{message}</p>}
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-[#D4537E] hover:bg-[#c44370] text-white py-3.5 rounded-xl text-sm font-medium transition-colors mb-3 disabled:opacity-50"
+                  >
+                    {loading
+                      ? 'Загрузка...'
+                      : mode === 'login'
+                        ? 'Войти в Capriccio →'
+                        : 'Начать преображение →'}
+                  </button>
+
+                  {mode === 'login' && (
+                    <button
+                      type="button"
+                      onClick={handleForgotPassword}
+                      disabled={loading}
+                      className="text-white/50 text-xs mb-3 hover:text-white/80 disabled:opacity-60"
+                    >
+                      Забыли пароль?
+                    </button>
+                  )}
+
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="flex-1 h-px bg-white/20" />
+                    <span className="text-white/40 text-xs">или</span>
+                    <div className="flex-1 h-px bg-white/20" />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleGoogle}
+                    disabled={loading}
+                    className="w-full bg-white text-[#1a1a18] py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-white/90 disabled:opacity-60"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 18 18">
+                      <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" />
+                      <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" />
+                      <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" />
+                      <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" />
+                    </svg>
+                    Войти через Google
+                  </button>
+
+                  <p className="text-white/30 text-xs text-center mt-3">
+                    Без спама · Только важное · Отписка в любой момент
+                  </p>
+                </form>
+              </>
+            )}
+          </div>
+        </div>
+      </section>
 
       <footer className="border-t border-gray-100 bg-white">
         <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">

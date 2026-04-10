@@ -45,6 +45,9 @@ const inputCls = 'border border-gray-200 rounded px-3 py-2 text-sm focus:outline
 export default function AdminBannersPage() {
   const [banners, setBanners] = useState([])
   const [loading, setLoading] = useState(true)
+  const [heroBanner, setHeroBanner] = useState(null)
+  const [heroUploading, setHeroUploading] = useState(false)
+  const [heroFile, setHeroFile] = useState(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(EMPTY_FORM)
@@ -63,9 +66,69 @@ export default function AdminBannersPage() {
     setLoading(false)
   }
 
+  async function loadHeroBanner() {
+    const { data } = await supabase
+      .from('banners')
+      .select('id, image_url, title')
+      .eq('title', 'Hero главной страницы')
+      .limit(1)
+      .maybeSingle()
+
+    setHeroBanner(data || null)
+  }
+
   useEffect(() => {
     load()
+    loadHeroBanner()
   }, [])
+
+  function handleHeroSelect(event) {
+    const file = event.target.files?.[0] || null
+    setHeroFile(file)
+  }
+
+  async function handleHeroUpload() {
+    if (!heroFile) return
+
+    setHeroUploading(true)
+
+    const fileExt = heroFile.name.split('.').pop()
+    const filePath = `hero-main.${fileExt}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('product-images')
+      .upload(filePath, heroFile, { upsert: true })
+
+    if (uploadError) {
+      setHeroUploading(false)
+      throw uploadError
+    }
+
+    const { data: urlData } = supabase.storage
+      .from('product-images')
+      .getPublicUrl(filePath)
+
+    const publicUrl = urlData.publicUrl
+
+    const payload = {
+      title: 'Hero главной страницы',
+      image_url: publicUrl,
+      is_active: true,
+      type: 'image',
+      position: 0,
+    }
+
+    if (heroBanner?.id) {
+      await supabase.from('banners').update(payload).eq('id', heroBanner.id)
+    } else {
+      await supabase.from('banners').insert(payload)
+    }
+
+    setHeroUploading(false)
+    setHeroFile(null)
+    loadHeroBanner()
+    load()
+  }
 
   function openCreate() {
     setEditing(null)
@@ -179,6 +242,61 @@ export default function AdminBannersPage() {
           <Plus className="h-4 w-4" />
           Добавить баннер
         </button>
+      </div>
+
+      <div className="mb-6 rounded-xl border border-gray-100 bg-white p-6">
+        <h2 className="text-base font-semibold text-gray-900 mb-4">Главный баннер (Hero)</h2>
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[280px_1fr] lg:items-start">
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
+            {heroFile ? (
+              <img
+                src={URL.createObjectURL(heroFile)}
+                alt="Hero preview"
+                className="h-44 w-full object-cover"
+              />
+            ) : heroBanner?.image_url ? (
+              <img
+                src={heroBanner.image_url}
+                alt="Hero banner"
+                className="h-44 w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-44 items-center justify-center text-sm text-gray-400">
+                Нет изображения
+              </div>
+            )}
+          </div>
+
+          <div>
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="inline-flex cursor-pointer items-center justify-center rounded bg-gray-900 px-4 py-2 text-sm text-white transition-colors hover:bg-gray-700">
+                Загрузить новое фото
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleHeroSelect}
+                  className="hidden"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={handleHeroUpload}
+                disabled={!heroFile || heroUploading}
+                className="inline-flex items-center justify-center rounded border border-gray-200 px-4 py-2 text-sm text-gray-700 transition-colors hover:border-gray-900 disabled:opacity-60"
+              >
+                {heroUploading ? 'Загрузка...' : 'Сохранить'}
+              </button>
+            </div>
+
+            <p className="mt-3 text-xs text-gray-500 whitespace-pre-line">
+              Рекомендуемый размер: 1920×1080px
+              {'\n'}
+              Форматы: JPG, PNG, WebP
+              {'\n'}
+              После загрузки фото обновится на сайте автоматически
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white">

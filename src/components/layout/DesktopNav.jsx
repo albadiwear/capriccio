@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Heart, Search, ShoppingBag } from 'lucide-react'
+import { Heart, Search, ShoppingBag, Sparkles } from 'lucide-react'
 import { useCartStore } from '../../store/cartStore'
 import { useAuthStore } from '../../store/authStore'
 import { useWishlistStore } from '../../store/wishlistStore'
@@ -26,6 +26,7 @@ export default function DesktopNav() {
 
   const links = [
     { label: 'Каталог', to: '/catalog' },
+    { label: 'Стилист', to: '/stylist' },
     { label: 'Академия', to: '/academy' },
     { label: 'Избранное', to: '/account/wishlist' },
     { label: 'Кабинет', to: '/account' },
@@ -40,14 +41,27 @@ export default function DesktopNav() {
 
         <nav className="flex items-center gap-7 text-sm">
           {links.map((l) => {
-            const active = isActive(pathname, l.to)
+            const active = l.to === '/stylist' ? pathname === '/stylist' : isActive(pathname, l.to)
             return (
               <Link
                 key={l.to}
                 to={l.to}
-                className={`${active ? 'font-medium text-[#1a1a18]' : 'text-[#888780]'} transition-colors hover:text-[#1a1a18]`}
+                className={`${
+                  l.to === '/stylist'
+                    ? `text-sm flex items-center gap-1.5 ${
+                        active ? 'text-[#1a1a18] font-medium' : 'text-[#888780] hover:text-[#1a1a18]'
+                      }`
+                    : `${active ? 'font-medium text-[#1a1a18]' : 'text-[#888780]'} transition-colors hover:text-[#1a1a18]`
+                }`}
               >
-                {l.label}
+                {l.to === '/stylist' ? (
+                  <>
+                    <Sparkles size={14} />
+                    Стилист
+                  </>
+                ) : (
+                  l.label
+                )}
                 {l.to === '/account/wishlist' && wishlistCount > 0 ? ` (${wishlistCount})` : ''}
               </Link>
             )
@@ -81,4 +95,3 @@ export default function DesktopNav() {
     </header>
   )
 }
-

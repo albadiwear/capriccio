@@ -48,7 +48,7 @@ export default function StylistPage() {
   const [loading, setLoading] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
 
-  const messagesEndRef = useRef(null)
+  const bottomRef = useRef(null)
   const textareaRef = useRef(null)
 
   useEffect(() => {
@@ -56,7 +56,7 @@ export default function StylistPage() {
   }, [user])
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
 
   const loadChats = async () => {
@@ -228,14 +228,27 @@ export default function StylistPage() {
   // --- Shared UI blocks ---
 
   const ChatHeader = (
-    <div className="flex items-center gap-3 px-4 py-4 border-b border-[#f0ede8] md:px-6">
-      <div className="w-9 h-9 rounded-full bg-[#1a1a18] flex items-center justify-center flex-shrink-0">
-        <Sparkles size={16} className="text-white" />
+    <div className="flex items-center justify-between px-4 py-3 border-b border-[#f0ede8] flex-shrink-0 bg-white">
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-full bg-[#1a1a18] flex items-center justify-center">
+          <Sparkles size={16} className="text-white" />
+        </div>
+        <div>
+          <p className="text-sm font-medium">Стилист Capriccio</p>
+          <p className="text-xs text-[#1D9E75] flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#1D9E75] inline-block" />
+            онлайн
+          </p>
+        </div>
       </div>
-      <div className="flex-1">
-        <p className="text-sm font-medium text-[#1a1a18]">Стилист Capriccio</p>
-        <p className="text-xs text-[#1D9E75]">● онлайн</p>
-      </div>
+      <button
+        type="button"
+        onClick={() => setShowHistory(true)}
+        className="flex items-center gap-1.5 text-xs text-[#888780] border border-[#e0ddd8] rounded-full px-3 py-1.5"
+      >
+        <History size={13} />
+        История
+      </button>
     </div>
   )
 
@@ -253,8 +266,8 @@ export default function StylistPage() {
           <button
             key={q}
             type="button"
-            onClick={() => sendMessage(q)}
-            className="border border-[#e0ddd8] rounded-xl px-4 py-2.5 text-sm text-[#1a1a18] hover:border-[#1a1a18] text-left transition-colors"
+            onClick={() => setInput(q)}
+            className="border border-[#e0ddd8] rounded-2xl px-4 py-3 text-sm text-[#1a1a18] text-left hover:border-[#1a1a18] active:bg-[#f5f2ed]"
           >
             {q}
           </button>
@@ -264,47 +277,47 @@ export default function StylistPage() {
   )
 
   const MessageList = (
-    <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 flex flex-col gap-4">
+    <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 flex flex-col gap-3">
       {messages.length === 0 && !loading ? EmptyState : null}
 
       {messages.map((msg, i) => (
-        <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+        <div key={i} className={`flex gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
           {msg.role === 'assistant' && (
-            <div className="w-8 h-8 rounded-full bg-[#1a1a18] flex items-center justify-center flex-shrink-0 mt-0.5">
-              <Sparkles size={14} className="text-white" />
+            <div className="w-7 h-7 rounded-full bg-[#1a1a18] flex items-center justify-center flex-shrink-0 mt-1">
+              <Sparkles size={12} className="text-white" />
             </div>
           )}
-          <div className={`max-w-[75%] flex flex-col gap-2 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+          <div className="flex flex-col gap-2 max-w-[80%]">
             <div
-              className={`rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap
-                ${msg.role === 'user'
+              className={`rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+                msg.role === 'user'
                   ? 'bg-[#1a1a18] text-white rounded-tr-sm'
                   : 'bg-[#f5f2ed] text-[#1a1a18] rounded-tl-sm'
-                }`}
+              }`}
             >
               {msg.content}
             </div>
 
             {msg.products && msg.products.length > 0 && (
-              <div className="flex gap-2 overflow-x-auto pb-1 max-w-full">
+              <div className="flex gap-2 overflow-x-auto pb-1">
                 {msg.products.map((product) => (
                   <Link
                     key={product.id}
                     to={`/product/${product.id}`}
-                    className="flex-shrink-0 w-28 border border-[#f0ede8] rounded-xl overflow-hidden hover:border-[#1a1a18] transition-colors"
+                    className="flex-shrink-0 w-24 border border-[#f0ede8] rounded-xl overflow-hidden"
                   >
-                    <div className="aspect-[3/4] overflow-hidden bg-[#f5f2ed]">
+                    <div className="aspect-[3/4] overflow-hidden bg-[#f0ede8]">
                       <img
                         src={product.images?.[0]}
                         alt={product.name}
                         className="w-full h-full object-cover"
                       />
                     </div>
-                    <div className="p-2">
-                      <p className="text-[10px] text-[#1a1a18] leading-tight line-clamp-2 mb-1">
+                    <div className="p-1.5">
+                      <p className="text-[10px] text-[#1a1a18] leading-tight line-clamp-2 mb-0.5">
                         {product.name}
                       </p>
-                      <p className="text-xs font-medium text-[#1a1a18]">
+                      <p className="text-[10px] font-medium">
                         {Number(product.sale_price || product.price || 0).toLocaleString('ru-RU')} ₸
                       </p>
                     </div>
@@ -317,25 +330,25 @@ export default function StylistPage() {
       ))}
 
       {loading && (
-        <div className="flex gap-3">
-          <div className="w-8 h-8 rounded-full bg-[#1a1a18] flex items-center justify-center flex-shrink-0">
-            <Sparkles size={14} className="text-white" />
+        <div className="flex gap-2">
+          <div className="w-7 h-7 rounded-full bg-[#1a1a18] flex items-center justify-center flex-shrink-0">
+            <Sparkles size={12} className="text-white" />
           </div>
           <div className="bg-[#f5f2ed] rounded-2xl rounded-tl-sm px-4 py-3 flex gap-1 items-center">
-            <div className="w-1.5 h-1.5 rounded-full bg-[#888780] animate-bounce" style={{ animationDelay: '0ms' }} />
-            <div className="w-1.5 h-1.5 rounded-full bg-[#888780] animate-bounce" style={{ animationDelay: '150ms' }} />
-            <div className="w-1.5 h-1.5 rounded-full bg-[#888780] animate-bounce" style={{ animationDelay: '300ms' }} />
+            <div className="w-1.5 h-1.5 rounded-full bg-[#888780] animate-bounce [animation-delay:0ms]" />
+            <div className="w-1.5 h-1.5 rounded-full bg-[#888780] animate-bounce [animation-delay:150ms]" />
+            <div className="w-1.5 h-1.5 rounded-full bg-[#888780] animate-bounce [animation-delay:300ms]" />
           </div>
         </div>
       )}
 
-      <div ref={messagesEndRef} />
+      <div ref={bottomRef} />
     </div>
   )
 
   const InputArea = (
-    <div className="flex-shrink-0 px-4 py-3 border-t border-[#f0ede8] bg-white pb-24 md:pb-4 md:px-6 md:py-4">
-      <div className="flex gap-3 items-end">
+    <div className="flex-shrink-0 px-4 py-3 bg-white border-t border-[#f0ede8]">
+      <div className="flex gap-2 items-end">
         <textarea
           ref={textareaRef}
           value={input}
@@ -350,16 +363,16 @@ export default function StylistPage() {
               sendMessage()
             }
           }}
-          placeholder="Напиши что хочешь найти или спроси совет..."
+          placeholder="Напиши что хочешь найти..."
           rows={1}
-          className="flex-1 bg-[#f5f2ed] rounded-xl px-4 py-3 text-sm outline-none resize-none text-[#1a1a18] placeholder:text-[#aaa] overflow-hidden"
-          style={{ minHeight: '44px', maxHeight: '128px' }}
+          className="flex-1 bg-[#f5f2ed] rounded-2xl px-4 py-3 text-sm outline-none resize-none text-[#1a1a18] placeholder:text-[#aaa] overflow-hidden"
+          style={{ minHeight: '44px', maxHeight: '120px' }}
         />
         <button
           type="button"
           onClick={() => sendMessage()}
           disabled={loading || !input.trim()}
-          className="w-10 h-10 rounded-xl bg-[#1a1a18] flex items-center justify-center flex-shrink-0 disabled:opacity-40 hover:bg-[#333] transition-colors"
+          className="w-11 h-11 rounded-2xl bg-[#1a1a18] flex items-center justify-center flex-shrink-0 disabled:opacity-30 active:scale-95 transition-transform"
         >
           <Send size={16} className="text-white" />
         </button>
@@ -401,8 +414,7 @@ export default function StylistPage() {
   )
 
   return (
-    <div className="flex h-[calc(100svh-52px)] bg-white">
-
+    <div className="flex bg-white h-[calc(100dvh-120px)] md:h-[calc(100vh-52px)]">
       {/* Десктоп: левая панель */}
       <div className="hidden md:flex w-72 border-r border-[#f0ede8] flex-col flex-shrink-0">
         {ChatListContent}
@@ -410,29 +422,6 @@ export default function StylistPage() {
 
       {/* Основная колонка */}
       <div className="flex-1 flex flex-col min-w-0 min-h-0">
-
-        {/* Мобиль: хедер с кнопками истории / нового чата */}
-        <div className="md:hidden flex items-center gap-2 px-4 py-3 border-b border-[#f0ede8]">
-          <button
-            type="button"
-            onClick={() => setShowHistory(true)}
-            className="flex items-center gap-2 text-sm text-[#888780]"
-          >
-            <History size={16} />
-            История
-          </button>
-          <div className="flex-1" />
-          <button
-            type="button"
-            onClick={createChat}
-            className="text-sm font-medium text-[#1a1a18] flex items-center gap-1"
-          >
-            <Plus size={16} />
-            Новый
-          </button>
-        </div>
-
-        {/* Шапка чата */}
         {ChatHeader}
 
         {/* Сообщения */}
@@ -444,16 +433,49 @@ export default function StylistPage() {
 
       {/* Мобиль: drawer с историей чатов */}
       {showHistory && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setShowHistory(false)} />
-          <div className="absolute left-0 top-0 bottom-0 w-72 bg-white flex flex-col shadow-xl">
-            <div className="flex items-center justify-between px-4 py-4 border-b border-[#f0ede8]">
-              <p className="text-sm font-medium text-[#1a1a18]">История чатов</p>
+        <div
+          className="fixed inset-0 z-50 md:hidden"
+          onClick={() => setShowHistory(false)}
+        >
+          <div className="absolute inset-0 bg-black/40" />
+          <div
+            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl p-4 max-h-[70vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <p className="font-medium">История диалогов</p>
               <button type="button" onClick={() => setShowHistory(false)}>
-                <X size={18} className="text-[#888780]" />
+                <X size={20} className="text-[#888780]" />
               </button>
             </div>
-            {ChatListContent}
+            <button
+              type="button"
+              onClick={() => {
+                createChat()
+                setShowHistory(false)
+              }}
+              className="w-full bg-[#1a1a18] text-white py-3 rounded-xl text-sm font-medium mb-3 flex items-center justify-center gap-2"
+            >
+              <Plus size={16} />
+              Новый диалог
+            </button>
+            {chats.map((chat) => (
+              <div
+                key={chat.id}
+                onClick={() => {
+                  selectChat(chat.id)
+                  setShowHistory(false)
+                }}
+                className={`px-4 py-3 rounded-xl cursor-pointer mb-1 ${
+                  activeChatId === chat.id ? 'bg-[#f5f2ed]' : 'hover:bg-[#f5f2ed]'
+                }`}
+              >
+                <p className="text-sm font-medium truncate">{chat.title}</p>
+                <p className="text-xs text-[#888780]">
+                  {new Date(chat.created_at).toLocaleDateString('ru')}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       )}

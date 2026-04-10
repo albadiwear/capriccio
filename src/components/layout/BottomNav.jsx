@@ -23,7 +23,7 @@ export default function BottomNav() {
   ]
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-[#f0ede8] bg-white">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-[#f0ede8] bg-white md:hidden">
       <div className="mx-auto max-w-7xl px-4">
         <div className="grid grid-cols-5 items-end py-2">
           {items.map(({ label, to, Icon, isCenter }) => {
@@ -57,4 +57,3 @@ export default function BottomNav() {
     </nav>
   )
 }
-

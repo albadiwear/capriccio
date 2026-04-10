@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ChevronDown, Heart, LayoutGrid, List, Search, ShoppingBag, SlidersHorizontal, X } from 'lucide-react'
+import { ChevronDown, LayoutGrid, List, SlidersHorizontal, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { useCartStore } from '../store/cartStore'
 import { useSEO } from '../hooks/useSEO'
 import ProductFeed from '../components/catalog/ProductFeed'
 import Toast from '../components/ui/Toast'
+import ProductCard from '../components/catalog/ProductCard'
 
 const CATEGORY_MAP = {
   puhoviki: 'Пуховики',
@@ -50,13 +50,6 @@ const ALL_CATEGORIES = [
 ]
 const SEASONS = ['Весна', 'Лето', 'Осень', 'Зима']
 
-const SORT_OPTIONS = [
-  { value: 'popular', label: 'По популярности' },
-  { value: 'price_asc', label: 'Цена ↑' },
-  { value: 'price_desc', label: 'Цена ↓' },
-  { value: 'newest', label: 'Новинки' },
-]
-
 const MAX_PRICE = 200000
 
 function SkeletonCard() {
@@ -70,212 +63,7 @@ function SkeletonCard() {
   )
 }
 
-function ProductCard({ product, view, wished, onToggleWishlist, onAddedToCart }) {
-  const addItem = useCartStore((state) => state.addItem)
-
-  const [reviewCount, setReviewCount] = useState(0)
-  const [showCartBtn, setShowCartBtn] = useState(false)
-  const timerRef = useRef(null)
-
-  const price = product.sale_price || product.price
-  const oldPrice = product.old_price ?? (product.sale_price ? product.price : null)
-  const image = product.images?.[0] || `https://picsum.photos/seed/${product.id}/400/533`
-  const stock =
-    typeof product.stock === 'number'
-      ? product.stock
-      : (product.product_variants || []).reduce((sum, v) => sum + (v.stock || 0), 0)
-
-  useEffect(() => {
-    let cancelled = false
-    if (!product?.id) return undefined
-
-    async function loadCount() {
-      const { count } = await supabase
-        .from('reviews')
-        .select('id', { count: 'exact', head: true })
-        .eq('is_approved', true)
-        .eq('product_id', product.id)
-
-      if (!cancelled) setReviewCount(count || 0)
-    }
-
-    loadCount()
-    return () => {
-      cancelled = true
-    }
-  }, [product?.id])
-
-  const handleAddToCart = () => {
-    addItem({
-      id: product.id,
-      product_id: product.id,
-      name: product.name,
-      price: product.price,
-      image: product.images?.[0],
-      quantity: 1,
-      size: null,
-    })
-    onAddedToCart?.()
-  }
-
-  const handleCardTap = () => {
-    setShowCartBtn(true)
-    clearTimeout(timerRef.current)
-    timerRef.current = setTimeout(() => setShowCartBtn(false), 2000)
-  }
-
-  const shouldInterceptPhotoClick = () => {
-    // On desktop we want the whole card (including photo) to navigate.
-    // On touch/mobile we use photo tap to reveal the cart bar instead.
-    if (typeof window === 'undefined') return false
-    if (window.innerWidth < 768) return true
-    return window.matchMedia?.('(hover: none)').matches || false
-  }
-
-  if (view === 'list') {
-    return (
-      <Link to={`/product/${product.id}`} className="group flex gap-4 border-b border-gray-100 pb-6">
-        <div className="relative w-32 flex-shrink-0">
-          <img src={image} alt={product.name} className="aspect-[3/4] w-full rounded-lg object-cover" />
-          {product.badges?.[0] && (
-            <span className="absolute left-2 top-2 rounded bg-gray-900 px-2 py-0.5 text-xs text-white">
-              {product.badges[0]}
-            </span>
-          )}
-        </div>
-        <div className="flex flex-1 flex-col justify-between py-1">
-          <div>
-            {product.brand && <p className="mb-1 text-xs uppercase tracking-wider text-gray-400">{product.brand}</p>}
-            <h3 className="line-clamp-2 text-sm font-medium text-gray-900 transition-colors group-hover:text-gray-600">
-              {product.name}
-            </h3>
-            <div className="mt-2 flex items-center gap-2">
-              <span className="text-base font-semibold text-gray-900">
-                {price?.toLocaleString('ru-KZ')} ₸
-              </span>
-              {originalPrice && (
-                <span className="text-sm text-gray-400 line-through">
-                  {originalPrice?.toLocaleString('ru-KZ')} ₸
-                </span>
-              )}
-            </div>
-          </div>
-          <button
-            onClick={handleAddToCart}
-            className="mt-3 self-start rounded bg-gray-900 px-5 py-2 text-xs tracking-wide text-white transition-colors hover:bg-gray-700"
-          >
-            В корзину
-          </button>
-        </div>
-      </Link>
-    )
-  }
-
-  return (
-    <Link to={`/product/${product.id}`} className="block rounded-xl border border-[#f0ede8]">
-      <div
-        className="relative aspect-[4/5] overflow-hidden rounded-t-xl bg-[#f0ede8] group"
-        onClick={(e) => {
-          if (!shouldInterceptPhotoClick()) return
-          e.preventDefault() // don't follow Link on mobile tap
-          handleCardTap() // reveal cart bar
-        }}
-      >
-        <img
-          src={product.images?.[0]}
-          alt={product.name}
-          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-          onError={(e) => {
-            e.currentTarget.style.display = 'none'
-          }}
-        />
-
-        {product.is_hit && (
-          <span className="absolute left-2 top-2 rounded bg-[#1a1a18] px-1.5 py-0.5 text-[9px] font-medium text-white">
-            hit
-          </span>
-        )}
-        {!product.is_hit && product.is_new && (
-          <span className="absolute left-2 top-2 rounded bg-[#f0ede8] px-1.5 py-0.5 text-[9px] font-medium text-[#1a1a18]">
-            new
-          </span>
-        )}
-        {!product.is_hit && !product.is_new && oldPrice && (
-          <span className="absolute left-2 top-2 rounded bg-[#e8453c] px-1.5 py-0.5 text-[9px] font-medium text-white">
-            -{Math.round((1 - (price || 0) / oldPrice) * 100)}%
-          </span>
-        )}
-
-        {stock <= 3 && stock > 0 && (
-          <span className="absolute bottom-14 left-2 rounded bg-[#e8453c] px-1.5 py-0.5 text-[9px] font-medium text-white">
-            Осталось {stock}
-          </span>
-        )}
-
-        <button
-          type="button"
-          onClick={async (e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            await onToggleWishlist(product.id)
-          }}
-          className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 z-10"
-          aria-label="В избранное"
-        >
-          <Heart size={12} className={`${wished ? 'fill-[#1a1a18] text-[#1a1a18]' : 'text-[#1a1a18]'}`} />
-        </button>
-
-        <div
-          className={`
-            absolute bottom-0 left-0 right-0 bg-[#1a1a18] px-4 py-3 z-10
-            transition-transform duration-200
-            md:translate-y-full md:group-hover:translate-y-0
-            ${showCartBtn ? 'translate-y-0' : 'translate-y-full md:translate-y-full'}
-          `}
-        >
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              handleAddToCart()
-              setShowCartBtn(false)
-              clearTimeout(timerRef.current)
-            }}
-            className="flex w-full items-center justify-center gap-2 text-sm font-medium text-white"
-          >
-            <ShoppingBag size={15} />
-            В корзину
-          </button>
-        </div>
-      </div>
-
-      <div className="p-2">
-        <div className="mb-0.5 text-[9px] uppercase tracking-wide text-[#aaa]">
-          {product.category}
-        </div>
-        <div className="mb-1 text-[11px] leading-tight text-[#1a1a18]">
-          {product.name}
-        </div>
-        <div className="flex items-baseline gap-1">
-          {oldPrice && (
-            <span className="text-[10px] text-[#bbb] line-through">
-              {Number(oldPrice).toLocaleString('ru-RU')} ₸
-            </span>
-          )}
-          <span className="text-[12px] font-medium text-[#1a1a18]">
-            {Number(price || 0).toLocaleString('ru-RU')} ₸
-          </span>
-        </div>
-        {reviewCount > 0 && (
-          <div className="mt-0.5 text-[9px] text-[#888780]">
-            Носят {reviewCount} женщин
-          </div>
-        )}
-      </div>
-    </Link>
-  )
-}
+// ProductCard moved to src/components/catalog/ProductCard.jsx
 
 function FilterPanel({ filters, setFilters, category, onReset }) {
   const isPuhoviki = category === 'puhoviki'
@@ -472,10 +260,8 @@ export default function CatalogPage() {
   const [wishlistIds, setWishlistIds] = useState([])
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState(DEFAULT_FILTERS)
-  const [sort, setSort] = useState('popular')
   const [view, setView] = useState(() => localStorage.getItem('capriccio_catalog_view') || 'grid')
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState(categoryName || 'Все')
   const [desktopDropdown, setDesktopDropdown] = useState(null) // 'price' | 'size' | 'season' | null
   const desktopFiltersRef = useRef(null)
@@ -500,10 +286,6 @@ export default function CatalogPage() {
         .select('*, product_variants(*)')
         .eq('is_active', true)
 
-      if (searchQuery.trim()) {
-        query = query.ilike('name', `%${searchQuery.trim()}%`)
-      }
-
       if (activeCategory !== 'Все') {
         if (activeCategory === 'Скидки') {
           query = query.not('sale_price', 'is', null)
@@ -520,20 +302,8 @@ export default function CatalogPage() {
       if (filters.seasons?.length > 0) query = query.in('season', filters.seasons)
       if (filters.sizes?.length > 0) query = query.eq('product_variants.size', filters.sizes[0])
 
-      switch (sort) {
-        case 'price_asc':
-          query = query.order('price', { ascending: true })
-          break
-        case 'price_desc':
-          query = query.order('price', { ascending: false })
-          break
-        case 'newest':
-          query = query.order('created_at', { ascending: false })
-          break
-        default:
-          query = query.order('created_at', { ascending: false })
-          break
-      }
+      // Sorting: always newest first on mobile flow
+      query = query.order('created_at', { ascending: false })
 
       const { data, error } = await query
       if (error) console.error(error)
@@ -543,7 +313,7 @@ export default function CatalogPage() {
 
     const timer = window.setTimeout(loadProducts, 300)
     return () => window.clearTimeout(timer)
-  }, [searchQuery, activeCategory, filters, sort])
+  }, [activeCategory, filters])
 
   useEffect(() => {
     async function loadWishlist() {
@@ -596,11 +366,6 @@ export default function CatalogPage() {
   const filtered = useMemo(() => {
     let list = [...products]
 
-    const q = searchQuery.trim().toLowerCase()
-    if (q) {
-      list = list.filter((p) => String(p.name || '').toLowerCase().includes(q))
-    }
-
     const hasExtraFilters =
       filters.categories.length > 0 ||
       filters.colors.length > 0 ||
@@ -613,20 +378,6 @@ export default function CatalogPage() {
       filters.priceMax !== MAX_PRICE
 
     if (!categoryName && !hasExtraFilters) {
-      switch (sort) {
-        case 'price_asc':
-          list.sort((a, b) => (a.sale_price || a.price || 0) - (b.sale_price || b.price || 0))
-          break
-        case 'price_desc':
-          list.sort((a, b) => (b.sale_price || b.price || 0) - (a.sale_price || a.price || 0))
-          break
-        case 'newest':
-          list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-          break
-        default:
-          break
-      }
-
       return list
     }
 
@@ -685,27 +436,12 @@ export default function CatalogPage() {
       return true
     })
 
-    switch (sort) {
-      case 'price_asc':
-        list.sort((a, b) => (a.sale_price || a.price || 0) - (b.sale_price || b.price || 0))
-        break
-      case 'price_desc':
-        list.sort((a, b) => (b.sale_price || b.price || 0) - (a.sale_price || a.price || 0))
-        break
-      case 'newest':
-        list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-        break
-      default:
-        break
-    }
-
     return list
-  }, [products, categoryName, filters, sort, activeCategory, searchQuery])
+  }, [products, categoryName, filters, activeCategory])
 
   const resetFilters = () => setFilters(DEFAULT_FILTERS)
   const clearAllFilters = () => {
     setFilters(DEFAULT_FILTERS)
-    setSearchQuery('')
     setActiveCategory(categoryName || 'Все')
     setDesktopDropdown(null)
   }
@@ -714,7 +450,6 @@ export default function CatalogPage() {
   const setOnlyDiscount = (val) => setFilters((p) => ({ ...p, onSale: val }))
 
   const hasActiveFilters =
-    searchQuery.trim().length > 0 ||
     (activeCategory && activeCategory !== 'Все') ||
     filters.categories.length > 0 ||
     filters.colors.length > 0 ||
@@ -757,27 +492,14 @@ export default function CatalogPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-        <div className="px-4 pb-2 pt-3 md:px-8 md:pb-3 md:pt-5">
-          <div className="flex w-full items-center gap-2 rounded-2xl bg-[#f5f2ed] px-4 py-3 md:gap-3 md:px-5 md:py-3.5">
-            <Search size={16} className="flex-shrink-0 text-[#888780] md:hidden" />
-            <Search size={18} className="hidden flex-shrink-0 text-[#888780] md:block" />
-            <input
-              placeholder="Поиск образов и товаров..."
-              className="flex-1 bg-transparent text-sm text-[#1a1a18] outline-none placeholder:text-[#aaa] md:text-base"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div className="scrollbar-hide flex gap-2 overflow-x-auto px-4 pb-3 md:px-8">
+      <div className="mx-auto max-w-7xl px-2 py-5 sm:px-6">
+        <div className="scrollbar-hide flex gap-2 overflow-x-auto px-2 py-1.5 md:px-8 md:pb-3 md:pt-5">
           {['Все', 'Пуховики', 'Костюмы', 'Платья', 'Трикотаж', 'Обувь', 'Шапки', 'Сумки', 'Аксессуары', 'Скидки', 'Новинки'].map((catLabel) => (
             <button
               key={catLabel}
               type="button"
               onClick={() => setActiveCategory(catLabel)}
-              className={`flex-shrink-0 rounded-full border px-4 py-2 text-sm transition-colors md:px-5 md:py-2 md:text-sm ${
+              className={`flex-shrink-0 rounded-full border px-3 py-2 text-sm transition-colors md:px-5 md:py-2 md:text-sm ${
                 activeCategory === catLabel
                   ? 'border-[#1a1a18] bg-[#1a1a18] text-white'
                   : 'border-[#e0ddd8] text-[#888780] hover:border-[#1a1a18]'
@@ -957,37 +679,69 @@ export default function CatalogPage() {
           )}
         </div>
 
-        <div className="px-4 pb-2 lg:hidden">
+        <div className="flex items-center gap-2 px-4 pb-2 md:hidden">
           <button
             type="button"
             onClick={() => {
               setDrawerFilters(filters)
               setDrawerOpen(true)
             }}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#e0ddd8] px-4 py-2.5 text-sm text-[#1a1a18]"
+            className="flex items-center gap-1.5 border border-[#e0ddd8] rounded-full px-3 py-1.5 text-xs text-[#1a1a18] flex-shrink-0"
           >
-            <SlidersHorizontal size={15} />
+            <SlidersHorizontal size={12} />
             Фильтры
+            {hasActiveFilters && (
+              <span className="w-4 h-4 rounded-full bg-[#1a1a18] text-white text-[9px] flex items-center justify-center">
+                {[
+                  filters.categories.length,
+                  filters.colors.length,
+                  filters.sizes.length,
+                  filters.lengths.length,
+                  filters.seasons.length,
+                  filters.onSale ? 1 : 0,
+                  filters.inStock ? 1 : 0,
+                  filters.priceMin !== 0 ? 1 : 0,
+                  filters.priceMax !== MAX_PRICE ? 1 : 0,
+                ].reduce((sum, n) => sum + n, 0)}
+              </span>
+            )}
           </button>
+          <span className="text-xs text-[#888780] flex-1">
+            {loading ? '...' : `${filtered.length} товаров`}
+          </span>
+          <div className="flex gap-1">
+            <button
+              type="button"
+              onClick={() => setView('grid')}
+              className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                view === 'grid' ? 'bg-[#1a1a18] text-white' : 'border border-[#e0ddd8] text-[#888780]'
+              }`}
+              aria-label="Сетка"
+            >
+              <LayoutGrid size={13} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setView('feed')}
+              className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                view === 'feed' ? 'bg-[#1a1a18] text-white' : 'border border-[#e0ddd8] text-[#888780]'
+              }`}
+              aria-label="Лента"
+            >
+              <List size={13} />
+            </button>
+          </div>
         </div>
 
         <div className="w-full">
-          <div className="mb-6 flex flex-col gap-4 border-b border-gray-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="hidden md:flex mb-6 flex-col gap-4 border-b border-gray-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-gray-500">
               Найдено: <span className="font-medium text-gray-900">{loading ? '...' : filtered.length}</span> товаров
             </p>
             <div className="flex flex-wrap items-center gap-3">
-              <select
-                value={sort}
-                onChange={(e) => setSort(e.target.value)}
-                className="min-h-12 rounded border border-gray-200 px-3 text-sm text-gray-700 focus:border-gray-900 focus:outline-none"
-              >
-                {SORT_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
               <div className="flex overflow-hidden rounded border border-gray-200">
                 <button
+                  type="button"
                   onClick={() => setView('grid')}
                   className={`flex h-12 w-12 items-center justify-center transition-colors ${view === 'grid' ? 'bg-gray-900 text-white' : 'text-gray-400 hover:text-gray-900'}`}
                   aria-label="Сетка"
@@ -995,6 +749,7 @@ export default function CatalogPage() {
                   <LayoutGrid className="h-4 w-4" />
                 </button>
                 <button
+                  type="button"
                   onClick={() => setView('feed')}
                   className={`flex h-12 w-12 items-center justify-center transition-colors ${view === 'feed' ? 'bg-gray-900 text-white' : 'text-gray-400 hover:text-gray-900'}`}
                   aria-label="Лента"
@@ -1023,12 +778,11 @@ export default function CatalogPage() {
               onToggleWishlist={handleToggleWishlist}
             />
           ) : (
-            <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3">
+            <div className="grid grid-cols-2 gap-1.5 px-2 md:px-8 md:grid-cols-3 md:gap-x-4 md:gap-y-8">
               {filtered.map((p) => (
                 <ProductCard
                   key={p.id}
                   product={p}
-                  view="grid"
                   wished={wishlistIds.includes(p.id)}
                   onToggleWishlist={handleToggleWishlist}
                   onAddedToCart={() => {

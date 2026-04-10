@@ -109,6 +109,10 @@ export default function AcademyPage() {
   const [orderLoading, setOrderLoading] = useState(false)
   const [orderSuccess, setOrderSuccess] = useState(false)
 
+  const [accessStatus, setAccessStatus] = useState(null)
+  const [userOrder, setUserOrder] = useState(null)
+  const [content, setContent] = useState([])
+
   useEffect(() => {
     if (user) {
       setUserProfile({
@@ -116,8 +120,49 @@ export default function AcademyPage() {
         email: user.email,
         phone: user.user_metadata?.phone || '',
       })
+      checkAccess()
+    } else {
+      setAccessStatus('none')
     }
   }, [user])
+
+  const checkAccess = async () => {
+    const { data } = await supabase
+      .from('academy_orders')
+      .select('status, tariff, tariff_name, activated_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (!data) {
+      setAccessStatus('none')
+    } else {
+      setAccessStatus(data.status)
+      setUserOrder(data)
+      if (data.status === 'active') {
+        loadContent(data.tariff)
+      }
+    }
+  }
+
+  const loadContent = async (tariff) => {
+    const levels =
+      tariff === 'premium'
+        ? ['start', 'basic', 'premium']
+        : tariff === 'basic'
+          ? ['start', 'basic']
+          : ['start']
+
+    const { data } = await supabase
+      .from('academy_content')
+      .select('*')
+      .in('tariff_level', levels)
+      .eq('is_published', true)
+      .order('sort_order')
+
+    setContent(data || [])
+  }
 
   const handleSelectTariff = (tariff, name, price) => {
     if (!user) {
@@ -260,6 +305,90 @@ export default function AcademyPage() {
     setCtaLoading(false)
   }
 
+  // Загрузка
+  if (accessStatus === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-[#1a1a18] border-t-transparent animate-spin" />
+      </div>
+    )
+  }
+
+  // Ожидание активации
+  if (accessStatus === 'pending') {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center text-center px-6 py-20 pb-32 md:pb-20">
+        <div className="w-20 h-20 rounded-full bg-[#FAEEDA] flex items-center justify-center mb-6 text-4xl">
+          ⏳
+        </div>
+        <h2 className="text-2xl font-medium mb-3">Заявка на рассмотрении</h2>
+        <p className="text-[#888780] max-w-sm leading-relaxed mb-4">
+          Ваша заявка на тариф <strong className="text-[#1a1a18]">{userOrder?.tariff_name}</strong> получена.
+          Мы активируем доступ в течение 24 часов и отправим уведомление на email.
+        </p>
+        <div className="bg-[#f5f2ed] rounded-xl px-6 py-4 text-sm text-[#888780]">
+          Если есть вопросы — напишите нам в WhatsApp
+        </div>
+      </div>
+    )
+  }
+
+  // Дашборд академии
+  if (accessStatus === 'active') {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-8 pb-28 md:pb-8">
+        <div className="bg-[#1a1a18] rounded-2xl p-6 mb-6 text-white">
+          <p className="text-[#888780] text-sm mb-1">Добро пожаловать</p>
+          <h1 className="text-2xl font-medium mb-1">Академия Capriccio 🎓</h1>
+          <p className="text-[#888780] text-sm">
+            Тариф: {userOrder?.tariff_name} · Активен с{' '}
+            {new Date(userOrder?.activated_at).toLocaleDateString('ru')}
+          </p>
+        </div>
+
+        <h2 className="text-lg font-medium mb-4">Ваши материалы</h2>
+
+        {content.length === 0 ? (
+          <div className="text-center py-16 text-[#888780]">
+            <div className="text-4xl mb-4">📚</div>
+            <p className="font-medium mb-2 text-[#1a1a18]">Материалы скоро появятся</p>
+            <p className="text-sm">Мы готовим контент для вас. Следите за обновлениями.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {content.map((item) => (
+              <div
+                key={item.id}
+                className="border border-[#f0ede8] rounded-2xl p-5 hover:border-[#1a1a18] transition-colors"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center text-xl bg-[#f5f2ed]">
+                    {item.type === 'video' ? '🎥' : item.type === 'article' ? '📖' : item.type === 'telegram' ? '✈️' : '🔗'}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-sm mb-1">{item.title}</p>
+                    <p className="text-xs text-[#888780] leading-relaxed">{item.description}</p>
+                  </div>
+                </div>
+                {item.content_url && (
+                  <a
+                    href={item.content_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-3 block w-full bg-[#1a1a18] text-white text-xs font-medium py-2.5 rounded-xl text-center hover:bg-[#333] transition-colors"
+                  >
+                    Открыть →
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Лендинг (none / cancelled)
   return (
     <div className="min-h-screen bg-white pb-24 md:pb-0">
       {/* Block 1: Hero */}

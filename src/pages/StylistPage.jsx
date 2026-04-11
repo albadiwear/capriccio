@@ -1,39 +1,69 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { History, Plus, Send, Sparkles, X } from 'lucide-react'
+import { History, Plus, Send, Sparkles, X, Paperclip, Image } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/authStore'
 
-const STYLIST_PROMPT = `
+const buildSystemPrompt = (profile) => {
+  const profileInfo = profile ? `
+Профиль клиента:
+- Имя: ${profile.name || 'не указано'}
+- Возраст: ${profile.age || 'не указан'}
+- Рост: ${profile.height ? profile.height + ' см' : 'не указан'}
+- Размер одежды: ${profile.clothing_size || 'не указан'}
+- Тип фигуры: ${profile.body_type || 'не определён'}
+- Цветотип: ${profile.color_type || 'не определён'}
+- Параметры: грудь ${profile.chest || '?'} / талия ${profile.waist || '?'} / бёдра ${profile.hips || '?'}
+- Бюджет: ${profile.budget_min && profile.budget_max ? profile.budget_min + '–' + profile.budget_max + ' ₸' : 'не указан'}
+- Предпочтения: ${profile.style_preferences?.join(', ') || 'не указаны'}
+- Заметки: ${profile.notes || ''}
+` : 'Профиль клиента ещё не заполнен — нужно познакомиться.'
+
+  return `
 Ты — Амина, персональный стилист магазина Capriccio.
 Capriccio — премиум интернет-магазин женской одежды для женщин 35+ в Казахстане и СНГ.
-Концепция — "второе дыхание": помочь женщине открыть свой стиль заново.
+Ты одновременно подруга, стилист и продавец-консультант в одном лице.
 
-Отвечай на том языке на котором пишет пользователь (русский или казахский).
+${profileInfo}
 
-Твои задачи:
-- Давать конкретные советы по стилю, образам, гардеробу
-- Помогать подобрать образ под случай, тип фигуры, цветотип, возраст
-- Рекомендовать конкретные вещи из каталога Capriccio
-- Поддерживать и вдохновлять — ты как подруга которая разбирается в моде
+ПРАВИЛА ОБЩЕНИЯ:
+- Пиши коротко — 2-4 предложения максимум, как в переписке с подругой
+- Задавай только ОДИН вопрос за раз, не засыпай вопросами
+- Будь тёплой, живой, с юмором — не как робот
+- Отвечай на том языке на котором пишет клиент (русский или казахский)
+- Никогда не пиши длинные списки — лучше короткий конкретный совет
 
-Типы фигур которые ты знаешь: груша, яблоко, песочные часы, прямоугольник, перевёрнутый треугольник.
-Цветотипы: весна, лето, осень, зима.
+СБОР ПРОФИЛЯ:
+Если профиль не заполнен или заполнен частично — в процессе разговора естественно узнавай:
+имя, возраст, рост, размер, тип фигуры, цветотип, бюджет, предпочтения.
+Делай это органично, не анкетой. Например: "Кстати, какой у тебя размер? Хочу точнее подобрать"
 
-Когда рекомендуешь товары — в конце ответа добавь JSON блок:
+Когда узнала новые данные о клиенте — в конце ответа добавь блок:
+<profile>{"field": "название_поля", "value": "значение"}</profile>
+
+Поля для обновления: name, age, height, clothing_size, body_type, color_type, 
+chest, waist, hips, budget_min, budget_max, notes, style_preferences (массив строк)
+
+РАБОТА С КАТАЛОГОМ:
+Когда рекомендуешь товары — добавь в конце:
 <products>{"search": "ключевые слова", "category": "категория"}</products>
 
-Категории каталога: Пуховики, Костюмы, Платья, Трикотаж, Обувь, Шапки, Сумки, Аксессуары
+Категории: Пуховики, Костюмы, Платья, Трикотаж, Обувь, Шапки, Сумки, Аксессуары
 
-Примеры:
-- советуешь пуховик → <products>{"search": "пуховик", "category": "Пуховики"}</products>
-- советуешь деловой костюм → <products>{"search": "костюм", "category": "Костюмы"}</products>
-- советуешь платье на вечер → <products>{"search": "платье", "category": "Платья"}</products>
+РАБОТА С ФОТО:
+Если клиент прислал фото себя — оцени образ, скажи что работает и что можно улучшить.
+Если фото гардероба — скажи что оставить, что убрать и чего не хватает.
+Будь честной но тактичной — как настоящая подруга.
 
-Тон: тёплый, дружеский, уверенный. Как подруга которая разбирается в моде.
-Не используй сложные термины. Будь конкретной и практичной.
-Максимум 3-4 абзаца. Заканчивай советом или вопросом который поможет уточнить образ.
+СЦЕНАРИИ:
+- Клиент идёт на событие → спроси детали (куда, с кем, дресс-код) → предложи конкретный образ → покажи товары
+- Клиент хочет обновить гардероб → спроси бюджет и что уже есть → составь капсулу
+- Клиент не знает что хочет → задай 1-2 вопроса чтобы понять → предложи направление
+
+Магазин Capriccio предлагает: пуховики, костюмы, платья, трикотаж, обувь, шапки, сумки, аксессуары.
+Цены от 8 000 до 150 000 ₸.
 `
+}
 
 const QUICK_QUESTIONS = [
   'Хочу образ для деловой встречи',
@@ -51,17 +81,54 @@ export default function StylistPage() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
+  const [profile, setProfile] = useState(null)
+  const [selectedImage, setSelectedImage] = useState(null)
+  const [imagePreview, setImagePreview] = useState(null)
 
   const bottomRef = useRef(null)
   const textareaRef = useRef(null)
+  const fileInputRef = useRef(null)
 
   useEffect(() => {
-    if (user) loadChats()
+    if (user) {
+      loadChats()
+      loadProfile()
+    }
   }, [user])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
+
+  const loadProfile = async () => {
+    const { data } = await supabase
+      .from('stylist_profiles')
+      .select('*')
+      .eq('user_id', user.id)
+      .single()
+    setProfile(data || null)
+  }
+
+  const updateProfile = async (field, value) => {
+    const { data: existing } = await supabase
+      .from('stylist_profiles')
+      .select('id')
+      .eq('user_id', user.id)
+      .single()
+
+    if (existing) {
+      await supabase
+        .from('stylist_profiles')
+        .update({ [field]: value, updated_at: new Date().toISOString() })
+        .eq('user_id', user.id)
+    } else {
+      await supabase
+        .from('stylist_profiles')
+        .insert({ user_id: user.id, [field]: value })
+    }
+
+    setProfile((prev) => ({ ...(prev || { user_id: user.id }), [field]: value }))
+  }
 
   const loadChats = async () => {
     const { data } = await supabase
@@ -99,24 +166,38 @@ export default function StylistPage() {
     setShowHistory(false)
   }
 
+  const handleImageSelect = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setSelectedImage(file)
+    const reader = new FileReader()
+    reader.onload = (ev) => setImagePreview(ev.target.result)
+    reader.readAsDataURL(file)
+  }
+
+  const clearImage = () => {
+    setSelectedImage(null)
+    setImagePreview(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
   const sendMessage = async (text) => {
     const userMessage = (text || input).trim()
-    if (!userMessage || loading) return
+    if ((!userMessage && !selectedImage) || loading) return
 
     setInput('')
     setLoading(true)
 
-    // Авто-ресайз textarea
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
     }
 
-    // Создать чат если нет активного
     let chatId = activeChatId
     if (!chatId) {
+      const title = userMessage.slice(0, 50) || 'Фото от клиента'
       const { data } = await supabase
         .from('stylist_chats')
-        .insert({ user_id: user.id, title: userMessage.slice(0, 50) })
+        .insert({ user_id: user.id, title })
         .select()
         .single()
       chatId = data.id
@@ -128,47 +209,72 @@ export default function StylistPage() {
     await supabase.from('stylist_messages').insert({
       chat_id: chatId,
       role: 'user',
-      content: userMessage,
+      content: userMessage || '📷 Фото',
     })
 
     const optimisticUser = {
       role: 'user',
-      content: userMessage,
+      content: userMessage || '📷 Фото',
+      imagePreview: imagePreview,
       created_at: new Date().toISOString(),
     }
     setMessages((prev) => [...prev, optimisticUser])
 
-    // История для API
+    // Подготовить сообщение для API
     const history = messages.map((m) => ({ role: m.role, content: m.content }))
 
+    let userContent
+    if (selectedImage && imagePreview) {
+      const base64 = imagePreview.split(',')[1]
+      const mediaType = selectedImage.type || 'image/jpeg'
+      userContent = [
+        {
+          type: 'image',
+          source: { type: 'base64', media_type: mediaType, data: base64 },
+        },
+        ...(userMessage ? [{ type: 'text', text: userMessage }] : [{ type: 'text', text: 'Посмотри на фото и дай совет по стилю' }]),
+      ]
+    } else {
+      userContent = userMessage
+    }
+
+    clearImage()
+
     try {
-      // Edge Functions require the user's access token for auth-protected endpoints
       const { data: { session } } = await supabase.auth.getSession()
 
       const { data, error } = await supabase.functions.invoke('stylist', {
         body: {
-          system: STYLIST_PROMPT,
-          messages: [...history, { role: 'user', content: userMessage }],
+          system: buildSystemPrompt(profile),
+          messages: [...history, { role: 'user', content: userContent }],
         },
         headers: {
           Authorization: `Bearer ${session?.access_token}`,
         },
       })
 
-      if (error) {
-        console.error('Stylist error:', error)
-        throw error
-      }
+      if (error) throw error
 
-      console.log('Stylist response:', data)
       const rawText = data?.content?.[0]?.text
+      if (!rawText) throw new Error('Empty response')
 
-      if (!rawText) {
-        throw new Error('Empty response from stylist')
+      // Парсим профиль
+      const profileMatches = [...rawText.matchAll(/<profile>(.*?)<\/profile>/gs)]
+      for (const match of profileMatches) {
+        try {
+          const { field, value } = JSON.parse(match[1])
+          if (field && value !== undefined) {
+            await updateProfile(field, value)
+          }
+        } catch { /* skip */ }
       }
 
+      // Парсим товары
       const productMatch = rawText.match(/<products>(.*?)<\/products>/s)
-      const cleanText = rawText.replace(/<products>.*?<\/products>/s, '').trim()
+      const cleanText = rawText
+        .replace(/<profile>.*?<\/profile>/gs, '')
+        .replace(/<products>.*?<\/products>/gs, '')
+        .trim()
 
       let products = []
       let productIds = []
@@ -176,7 +282,6 @@ export default function StylistPage() {
       if (productMatch) {
         try {
           const { search, category } = JSON.parse(productMatch[1])
-
           let query = supabase
             .from('products')
             .select('id, name, price, sale_price, images, category')
@@ -190,7 +295,6 @@ export default function StylistPage() {
           }
 
           const { data: found } = await query
-
           if (!found || found.length === 0) {
             const { data: fallback } = await supabase
               .from('products')
@@ -202,11 +306,8 @@ export default function StylistPage() {
           } else {
             products = found
           }
-
           productIds = products.map((p) => p.id)
-        } catch {
-          // продолжить без товаров
-        }
+        } catch { /* skip */ }
       }
 
       await supabase.from('stylist_messages').insert({
@@ -226,21 +327,19 @@ export default function StylistPage() {
         },
       ])
 
-      // Обновить заголовок чата первым сообщением
       if (messages.length === 0) {
         await supabase
           .from('stylist_chats')
-          .update({ title: userMessage.slice(0, 50) })
+          .update({ title: (userMessage || 'Фото').slice(0, 50) })
           .eq('id', chatId)
         await loadChats()
       }
     } catch (e) {
-      console.error('Full error:', e)
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
-          content: 'Произошла ошибка: ' + e.message,
+          content: 'Что-то пошло не так, попробуй ещё раз 🙈',
           created_at: new Date().toISOString(),
         },
       ])
@@ -249,7 +348,7 @@ export default function StylistPage() {
     setLoading(false)
   }
 
-  // --- Shared UI blocks ---
+  // --- UI ---
 
   const ChatHeader = (
     <div className="flex items-center justify-between px-4 py-3 border-b border-[#f0ede8] flex-shrink-0 bg-white">
@@ -258,7 +357,7 @@ export default function StylistPage() {
           <Sparkles size={16} className="text-white" />
         </div>
         <div>
-          <p className="text-sm font-medium">Стилист Capriccio</p>
+          <p className="text-sm font-medium">Амина · Стилист Capriccio</p>
           <p className="text-xs text-[#1D9E75] flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-[#1D9E75] inline-block" />
             онлайн
@@ -281,9 +380,9 @@ export default function StylistPage() {
       <div className="w-16 h-16 rounded-full bg-[#FBEAF0] flex items-center justify-center mb-4">
         <Sparkles size={28} className="text-[#D4537E]" />
       </div>
-      <h3 className="font-medium text-[#1a1a18] mb-2">Привет! Я твой стилист</h3>
+      <h3 className="font-medium text-[#1a1a18] mb-1">Привет! Я Амина, твой стилист</h3>
       <p className="text-sm text-[#888780] max-w-xs mb-6">
-        Помогу подобрать образ, разобраться с гардеробом или найти идеальный лук для любого случая
+        Помогу собрать образ, разобраться с гардеробом или найти идеальную вещь в каталоге
       </p>
       <div className="flex flex-col gap-2 w-full max-w-xs">
         {QUICK_QUESTIONS.map((q) => (
@@ -312,15 +411,24 @@ export default function StylistPage() {
             </div>
           )}
           <div className="flex flex-col gap-2 max-w-[80%]">
-            <div
-              className={`rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
-                msg.role === 'user'
-                  ? 'bg-[#1a1a18] text-white rounded-tr-sm'
-                  : 'bg-[#f5f2ed] text-[#1a1a18] rounded-tl-sm'
-              }`}
-            >
-              {msg.content}
-            </div>
+            {msg.imagePreview && (
+              <img
+                src={msg.imagePreview}
+                alt="Фото"
+                className="rounded-xl max-w-[200px] max-h-[200px] object-cover"
+              />
+            )}
+            {msg.content && msg.content !== '📷 Фото' && (
+              <div
+                className={`rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+                  msg.role === 'user'
+                    ? 'bg-[#1a1a18] text-white rounded-tr-sm'
+                    : 'bg-[#f5f2ed] text-[#1a1a18] rounded-tl-sm'
+                }`}
+              >
+                {msg.content}
+              </div>
+            )}
 
             {msg.products && msg.products.length > 0 && (
               <div className="flex gap-2 overflow-x-auto pb-1">
@@ -331,16 +439,10 @@ export default function StylistPage() {
                     className="flex-shrink-0 w-24 border border-[#f0ede8] rounded-xl overflow-hidden"
                   >
                     <div className="aspect-[3/4] overflow-hidden bg-[#f0ede8]">
-                      <img
-                        src={product.images?.[0]}
-                        alt={product.name}
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={product.images?.[0]} alt={product.name} className="w-full h-full object-cover" />
                     </div>
                     <div className="p-1.5">
-                      <p className="text-[10px] text-[#1a1a18] leading-tight line-clamp-2 mb-0.5">
-                        {product.name}
-                      </p>
+                      <p className="text-[10px] text-[#1a1a18] leading-tight line-clamp-2 mb-0.5">{product.name}</p>
                       <p className="text-[10px] font-medium">
                         {Number(product.sale_price || product.price || 0).toLocaleString('ru-RU')} ₸
                       </p>
@@ -372,7 +474,33 @@ export default function StylistPage() {
 
   const InputArea = (
     <div className="flex-shrink-0 px-4 py-3 bg-white border-t border-[#f0ede8]">
+      {imagePreview && (
+        <div className="relative inline-block mb-2">
+          <img src={imagePreview} alt="Preview" className="h-16 w-16 rounded-xl object-cover border border-[#f0ede8]" />
+          <button
+            type="button"
+            onClick={clearImage}
+            className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-[#1a1a18] flex items-center justify-center"
+          >
+            <X size={10} className="text-white" />
+          </button>
+        </div>
+      )}
       <div className="flex gap-2 items-end">
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="w-11 h-11 rounded-2xl bg-[#f5f2ed] flex items-center justify-center flex-shrink-0 active:scale-95 transition-transform"
+        >
+          <Paperclip size={16} className="text-[#888780]" />
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleImageSelect}
+        />
         <textarea
           ref={textareaRef}
           value={input}
@@ -387,7 +515,7 @@ export default function StylistPage() {
               sendMessage()
             }
           }}
-          placeholder="Напиши что хочешь найти..."
+          placeholder="Напиши или прикрепи фото..."
           rows={1}
           className="flex-1 bg-[#f5f2ed] rounded-2xl px-4 py-3 text-sm outline-none resize-none text-[#1a1a18] placeholder:text-[#aaa] overflow-hidden"
           style={{ minHeight: '44px', maxHeight: '120px' }}
@@ -395,7 +523,7 @@ export default function StylistPage() {
         <button
           type="button"
           onClick={() => sendMessage()}
-          disabled={loading || !input.trim()}
+          disabled={loading || (!input.trim() && !selectedImage)}
           className="w-11 h-11 rounded-2xl bg-[#1a1a18] flex items-center justify-center flex-shrink-0 disabled:opacity-30 active:scale-95 transition-transform"
         >
           <Send size={16} className="text-white" />
@@ -410,7 +538,7 @@ export default function StylistPage() {
         <button
           type="button"
           onClick={createChat}
-          className="w-full bg-[#1a1a18] text-white py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-[#333] transition-colors"
+          className="w-full bg-[#1a1a18] text-white py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
         >
           <Plus size={16} />
           Новый диалог
@@ -424,13 +552,10 @@ export default function StylistPage() {
           <div
             key={chat.id}
             onClick={() => selectChat(chat.id)}
-            className={`px-4 py-3 cursor-pointer border-b border-[#f0ede8] hover:bg-[#f5f2ed] transition-colors
-              ${activeChatId === chat.id ? 'bg-[#f5f2ed]' : ''}`}
+            className={`px-4 py-3 cursor-pointer border-b border-[#f0ede8] hover:bg-[#f5f2ed] transition-colors ${activeChatId === chat.id ? 'bg-[#f5f2ed]' : ''}`}
           >
             <p className="text-sm font-medium text-[#1a1a18] truncate">{chat.title}</p>
-            <p className="text-xs text-[#888780] mt-0.5">
-              {new Date(chat.created_at).toLocaleDateString('ru')}
-            </p>
+            <p className="text-xs text-[#888780] mt-0.5">{new Date(chat.created_at).toLocaleDateString('ru')}</p>
           </div>
         ))}
       </div>
@@ -439,28 +564,18 @@ export default function StylistPage() {
 
   return (
     <div className="flex bg-white h-[calc(100dvh-120px)] md:h-[calc(100vh-52px)]">
-      {/* Десктоп: левая панель */}
       <div className="hidden md:flex w-72 border-r border-[#f0ede8] flex-col flex-shrink-0">
         {ChatListContent}
       </div>
 
-      {/* Основная колонка */}
       <div className="flex-1 flex flex-col min-w-0 min-h-0">
         {ChatHeader}
-
-        {/* Сообщения */}
         {MessageList}
-
-        {/* Поле ввода */}
         {InputArea}
       </div>
 
-      {/* Мобиль: drawer с историей чатов */}
       {showHistory && (
-        <div
-          className="fixed inset-0 z-50 md:hidden"
-          onClick={() => setShowHistory(false)}
-        >
+        <div className="fixed inset-0 z-50 md:hidden" onClick={() => setShowHistory(false)}>
           <div className="absolute inset-0 bg-black/40" />
           <div
             className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl p-4 max-h-[70vh] overflow-y-auto"
@@ -474,10 +589,7 @@ export default function StylistPage() {
             </div>
             <button
               type="button"
-              onClick={() => {
-                createChat()
-                setShowHistory(false)
-              }}
+              onClick={() => { createChat(); setShowHistory(false) }}
               className="w-full bg-[#1a1a18] text-white py-3 rounded-xl text-sm font-medium mb-3 flex items-center justify-center gap-2"
             >
               <Plus size={16} />
@@ -486,18 +598,11 @@ export default function StylistPage() {
             {chats.map((chat) => (
               <div
                 key={chat.id}
-                onClick={() => {
-                  selectChat(chat.id)
-                  setShowHistory(false)
-                }}
-                className={`px-4 py-3 rounded-xl cursor-pointer mb-1 ${
-                  activeChatId === chat.id ? 'bg-[#f5f2ed]' : 'hover:bg-[#f5f2ed]'
-                }`}
+                onClick={() => { selectChat(chat.id); setShowHistory(false) }}
+                className={`px-4 py-3 rounded-xl cursor-pointer mb-1 ${activeChatId === chat.id ? 'bg-[#f5f2ed]' : 'hover:bg-[#f5f2ed]'}`}
               >
                 <p className="text-sm font-medium truncate">{chat.title}</p>
-                <p className="text-xs text-[#888780]">
-                  {new Date(chat.created_at).toLocaleDateString('ru')}
-                </p>
+                <p className="text-xs text-[#888780]">{new Date(chat.created_at).toLocaleDateString('ru')}</p>
               </div>
             ))}
           </div>
@@ -506,3 +611,4 @@ export default function StylistPage() {
     </div>
   )
 }
+

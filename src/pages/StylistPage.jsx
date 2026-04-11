@@ -5,30 +5,34 @@ import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/authStore'
 
 const STYLIST_PROMPT = `
-Ты — персональный стилист Capriccio.
-Помогаешь женщинам 35+ из Казахстана и СНГ
-находить свой стиль и выглядеть лучше.
+Ты — Амина, персональный стилист магазина Capriccio.
+Capriccio — премиум интернет-магазин женской одежды для женщин 35+ в Казахстане и СНГ.
+Концепция — "второе дыхание": помочь женщине открыть свой стиль заново.
 
-Отвечай на том языке на котором пишет пользователь
-(русский или казахский).
+Отвечай на том языке на котором пишет пользователь (русский или казахский).
 
 Твои задачи:
-- Давать советы по стилю, образам, гардеробу
-- Помогать подобрать образ под случай, тип фигуры, цветотип
-- Рекомендовать товары из каталога Capriccio
+- Давать конкретные советы по стилю, образам, гардеробу
+- Помогать подобрать образ под случай, тип фигуры, цветотип, возраст
+- Рекомендовать конкретные вещи из каталога Capriccio
+- Поддерживать и вдохновлять — ты как подруга которая разбирается в моде
+
+Типы фигур которые ты знаешь: груша, яблоко, песочные часы, прямоугольник, перевёрнутый треугольник.
+Цветотипы: весна, лето, осень, зима.
 
 Когда рекомендуешь товары — в конце ответа добавь JSON блок:
-<products>{"search": "ключевые слова для поиска товара"}</products>
+<products>{"search": "ключевые слова", "category": "категория"}</products>
 
-Например если советуешь пуховик — добавь:
-<products>{"search": "пуховик"}</products>
+Категории каталога: Пуховики, Костюмы, Платья, Трикотаж, Обувь, Шапки, Сумки, Аксессуары
 
-Если советуешь костюм и платье:
-<products>{"search": "костюм"}</products>
+Примеры:
+- советуешь пуховик → <products>{"search": "пуховик", "category": "Пуховики"}</products>
+- советуешь деловой костюм → <products>{"search": "костюм", "category": "Костюмы"}</products>
+- советуешь платье на вечер → <products>{"search": "платье", "category": "Платья"}</products>
 
-Тон: тёплый, дружеский, как подруга которая разбирается в моде.
+Тон: тёплый, дружеский, уверенный. Как подруга которая разбирается в моде.
 Не используй сложные термины. Будь конкретной и практичной.
-Максимум 3-4 абзаца в ответе.
+Максимум 3-4 абзаца. Заканчивай советом или вопросом который поможет уточнить образ.
 `
 
 const QUICK_QUESTIONS = [
@@ -171,14 +175,34 @@ export default function StylistPage() {
 
       if (productMatch) {
         try {
-          const { search } = JSON.parse(productMatch[1])
-          const { data: found } = await supabase
+          const { search, category } = JSON.parse(productMatch[1])
+
+          let query = supabase
             .from('products')
             .select('id, name, price, sale_price, images, category')
-            .ilike('name', `%${search}%`)
             .eq('is_active', true)
             .limit(3)
-          products = found || []
+
+          if (category) {
+            query = query.ilike('category', `%${category}%`)
+          } else {
+            query = query.ilike('name', `%${search}%`)
+          }
+
+          const { data: found } = await query
+
+          if (!found || found.length === 0) {
+            const { data: fallback } = await supabase
+              .from('products')
+              .select('id, name, price, sale_price, images, category')
+              .eq('is_active', true)
+              .ilike('name', `%${search}%`)
+              .limit(3)
+            products = fallback || []
+          } else {
+            products = found
+          }
+
           productIds = products.map((p) => p.id)
         } catch {
           // продолжить без товаров
@@ -266,7 +290,7 @@ export default function StylistPage() {
           <button
             key={q}
             type="button"
-            onClick={() => setInput(q)}
+            onClick={() => sendMessage(q)}
             className="border border-[#e0ddd8] rounded-2xl px-4 py-3 text-sm text-[#1a1a18] text-left hover:border-[#1a1a18] active:bg-[#f5f2ed]"
           >
             {q}

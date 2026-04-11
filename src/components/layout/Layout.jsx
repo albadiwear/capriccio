@@ -10,8 +10,24 @@ export default function Layout() {
   const location = useLocation()
   const pathname = location.pathname
   const user = useAuthStore((state) => state.user)
+  const loading = useAuthStore((state) => state.loading)
+
   const isHome = pathname === '/'
   const isAdmin = pathname.startsWith('/admin')
+
+  // Пока сессия загружается — показываем пустую шапку без меню
+  if (loading && !isHome && !isAdmin) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <div className="h-[52px] border-b border-[#f0ede8] bg-white flex items-center justify-center">
+          <span className="text-sm font-medium tracking-widest text-[#1a1a18]">CAPRICCIO</span>
+        </div>
+        <main className="flex-1">
+          <Outlet />
+        </main>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -34,10 +50,9 @@ export default function Layout() {
         <Outlet />
       </main>
 
-      {/* Нижний бар + корзина — только залогиненным и не на главной/админке */}
       {user && !isHome && !isAdmin && <BottomNav />}
-
       {user && !isHome && !isAdmin && <CartDrawer />}
     </div>
   )
 }
+

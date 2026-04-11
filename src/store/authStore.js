@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
 
+let authSubscription = null
+
 export const useAuthStore = create((set) => ({
   user: null,
   session: null,
@@ -20,8 +22,22 @@ export const useAuthStore = create((set) => ({
       set({ session, user: session?.user ?? null, loading: false })
     })
 
-    supabase.auth.onAuthStateChange((_event, session) => {
+    if (authSubscription) {
+      authSubscription.unsubscribe()
+      authSubscription = null
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       set({ session, user: session?.user ?? null, loading: false })
     })
+
+    authSubscription = subscription
+
+    return () => {
+      subscription.unsubscribe()
+      if (authSubscription === subscription) {
+        authSubscription = null
+      }
+    }
   }
 }))

@@ -1,9 +1,12 @@
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Heart, ShoppingBag } from 'lucide-react'
 import { useCartStore } from '../../store/cartStore'
 
 export default function ProductCard({ product, wished, onToggleWishlist, onAddedToCart }) {
   const addItem = useCartStore((state) => state.addItem)
+  const [tapped, setTapped] = useState(false)
+  const timerRef = useRef(null)
 
   const oldPrice = product.old_price ?? (product.sale_price ? product.price : null)
   const price = product.sale_price || product.price || 0
@@ -12,7 +15,30 @@ export default function ProductCard({ product, wished, onToggleWishlist, onAdded
       ? product.stock
       : (product.product_variants || []).reduce((sum, v) => sum + (v.stock || 0), 0)
 
-  const handleAdd = () => {
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) window.clearTimeout(timerRef.current)
+    }
+  }, [])
+
+  const handleTap = (e) => {
+    if (window.matchMedia('(hover: none)').matches) {
+      // Mobile: first tap shows the button for 2s (no navigation)
+      if (!tapped) {
+        e.preventDefault()
+        e.stopPropagation()
+        setTapped(true)
+        if (timerRef.current) window.clearTimeout(timerRef.current)
+        timerRef.current = window.setTimeout(() => setTapped(false), 2000)
+        return
+      }
+      // If already tapped, let the Link navigate on the next tap
+    }
+  }
+
+  const handleAdd = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
     addItem({
       product_id: product.id,
       id: product.id,
@@ -27,8 +53,8 @@ export default function ProductCard({ product, wished, onToggleWishlist, onAdded
 
   return (
     <div className="relative">
-      <Link to={`/product/${product.id}`} className="block">
-        <div className="relative w-full aspect-[2/3] overflow-hidden bg-[#f0ede8] group">
+      <Link to={`/product/${product.id}`} className="block group" onClick={handleTap}>
+        <div className="relative w-full aspect-[2/3] overflow-hidden bg-[#f0ede8]">
           <img
             src={product.images?.[0]}
             alt={product.name}
@@ -90,19 +116,27 @@ export default function ProductCard({ product, wished, onToggleWishlist, onAdded
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              handleAdd()
-            }}
-            className="w-full bg-[#1a1a18] text-white rounded-lg py-2.5 text-xs font-medium flex items-center justify-center gap-1.5"
-            aria-label="В корзину"
+          <div
+            className={`
+              overflow-hidden transition-[max-height,opacity] duration-200
+              md:max-h-0 md:opacity-0 md:group-hover:max-h-20 md:group-hover:opacity-100
+              ${tapped ? 'max-h-20 opacity-100' : 'max-h-0 opacity-0 md:max-h-0 md:opacity-0'}
+            `}
           >
-            <ShoppingBag size={13} className="text-white" />
-            В корзину
-          </button>
+            <button
+              type="button"
+              onClick={handleAdd}
+              className={`
+                w-full bg-[#1a1a18] text-white rounded-lg py-2.5 text-xs font-medium
+                flex items-center justify-center gap-1.5
+                ${tapped ? 'pointer-events-auto' : 'pointer-events-none md:pointer-events-auto'}
+              `}
+              aria-label="В корзину"
+            >
+              <ShoppingBag size={13} className="text-white" />
+              В корзину
+            </button>
+          </div>
         </div>
       </Link>
     </div>

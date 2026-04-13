@@ -161,9 +161,19 @@ export default function AdminProductsPage() {
 
     let productId = editing
     if (editing) {
-      await supabase.from('products').update(payload).eq('id', editing)
+      const { error: updateError } = await supabase.from('products').update(payload).eq('id', editing)
+      if (updateError) {
+        setSaving(false)
+        alert('Ошибка обновления товара: ' + updateError.message)
+        return
+      }
     } else {
-      const { data } = await supabase.from('products').insert(payload).select().single()
+      const { data, error: insertError } = await supabase.from('products').insert(payload).select().single()
+      if (insertError) {
+        setSaving(false)
+        alert('Ошибка добавления товара: ' + insertError.message)
+        return
+      }
       productId = data?.id
     }
 
@@ -203,7 +213,7 @@ export default function AdminProductsPage() {
 
     setSaving(false)
     setModalOpen(false)
-    alert(editing ? 'Товар обновлён' : 'Товар добавлен')
+    alert(editing ? '✅ Товар обновлён' : '✅ Товар добавлен')
     load()
   }
 

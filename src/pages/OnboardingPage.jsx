@@ -83,9 +83,10 @@ export default function OnboardingPage() {
 
   const handleFinish = async () => {
     setSaving(true)
-    if (user) {
+    const { data: { user: currentUser } } = await supabase.auth.getUser()
+    if (currentUser) {
       const payload = {
-        user_id: user.id,
+        user_id: currentUser.id,
         age: form.age ? parseInt(form.age) : null,
         city: form.city || null,
         lifestyle: form.lifestyle || null,

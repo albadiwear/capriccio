@@ -70,7 +70,7 @@ export default function AccessForm({ user }) {
 
     if (data?.user) {
       setLoading(false)
-      navigate('/catalog')
+      navigate('/onboarding')
       return
     }
 
@@ -109,7 +109,7 @@ export default function AccessForm({ user }) {
 
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/catalog` },
+      options: { redirectTo: `${window.location.origin}/onboarding` },
     })
 
     if (oauthError) {

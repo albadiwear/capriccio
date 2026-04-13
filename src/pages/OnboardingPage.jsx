@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/authStore'
@@ -43,6 +43,20 @@ export default function OnboardingPage() {
   const user = useAuthStore((state) => state.user)
   const [step, setStep] = useState(0)
   const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    async function checkProfile() {
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+      if (!currentUser) return
+      const { data } = await supabase
+        .from('stylist_profiles')
+        .select('user_id')
+        .eq('user_id', currentUser.id)
+        .maybeSingle()
+      if (data) navigate('/catalog', { replace: true })
+    }
+    checkProfile()
+  }, [])
 
   const [form, setForm] = useState({
     age: '',

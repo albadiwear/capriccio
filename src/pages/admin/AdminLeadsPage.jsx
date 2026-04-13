@@ -3,7 +3,6 @@ import { MessageCircle, Users } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 
 const STATUS_OPTIONS = ['Новый', 'Связались', 'Купил']
-const STATUS_STORAGE_KEY = 'admin_leads_statuses'
 
 function getLeadSource(lead) {
   if (lead.user_metadata?.provider === 'google') return 'Google'
@@ -21,16 +20,10 @@ export default function AdminLeadsPage() {
   const [search, setSearch] = useState('')
   const [sourceFilter, setSourceFilter] = useState('Все')
   const [statusFilter, setStatusFilter] = useState('Все')
-  const [statuses, setStatuses] = useState({})
   const [selectedLead, setSelectedLead] = useState(null)
   const [profile, setProfile] = useState(null)
   const [leadOrders, setLeadOrders] = useState([])
   const [loadingProfile, setLoadingProfile] = useState(false)
-
-  useEffect(() => {
-    const savedStatuses = JSON.parse(localStorage.getItem(STATUS_STORAGE_KEY) || '{}')
-    setStatuses(savedStatuses)
-  }, [])
 
   useEffect(() => {
     async function loadLeads() {
@@ -46,6 +39,15 @@ export default function AdminLeadsPage() {
     }
 
     loadLeads()
+
+    const channel = supabase
+      .channel('leads-realtime')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'users' }, (payload) => {
+        setLeads((prev) => [payload.new, ...prev])
+      })
+      .subscribe()
+
+    return () => supabase.removeChannel(channel)
   }, [])
 
   const filteredLeads = useMemo(() => {
@@ -53,7 +55,7 @@ export default function AdminLeadsPage() {
       const query = search.trim().toLowerCase()
       const source = getLeadSource(lead)
       const hasOrders = (lead.orders || []).length > 0
-      const status = hasOrders ? 'Купил' : (statuses[lead.id] || 'Новый')
+      const status = hasOrders ? 'Купил' : (lead.lead_status || 'Новый')
 
       const matchesSearch = !query
         || lead.full_name?.toLowerCase().includes(query)
@@ -64,12 +66,11 @@ export default function AdminLeadsPage() {
 
       return matchesSearch && matchesSource && matchesStatus
     })
-  }, [leads, search, sourceFilter, statusFilter, statuses])
+  }, [leads, search, sourceFilter, statusFilter])
 
-  function handleStatusChange(userId, nextStatus) {
-    const updatedStatuses = { ...statuses, [userId]: nextStatus }
-    setStatuses(updatedStatuses)
-    localStorage.setItem(STATUS_STORAGE_KEY, JSON.stringify(updatedStatuses))
+  async function handleStatusChange(userId, nextStatus) {
+    setLeads((prev) => prev.map((l) => l.id === userId ? { ...l, lead_status: nextStatus } : l))
+    await supabase.from('users').update({ lead_status: nextStatus }).eq('id', userId)
   }
 
   async function openCard(lead) {
@@ -160,7 +161,7 @@ export default function AdminLeadsPage() {
                 const orders = lead.orders || []
                 const hasOrders = orders.length > 0
                 const ordersTotal = orders.reduce((sum, order) => sum + Number(order.total_amount || 0), 0)
-                const status = hasOrders ? 'Купил' : (statuses[lead.id] || 'Новый')
+                const status = hasOrders ? 'Купил' : (lead.lead_status || 'Новый')
                 const whatsappPhone = formatPhoneForWhatsApp(lead.phone)
 
                 return (

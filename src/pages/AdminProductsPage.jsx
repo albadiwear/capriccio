@@ -293,7 +293,11 @@ export default function AdminProductsPage() {
             product: {
               name: String(row['Название'] || '').trim(),
               billz_id: billzId,
-              category: String(row['Категория'] || 'Пуховики').trim() || 'Пуховики',
+              category: (() => {
+                const raw = String(row['Категория'] || '').trim()
+                if (!raw) return 'Пуховики'
+                return raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase()
+              })(),
               brand: String(row['Бренд'] || '').trim(),
               price: Number(row['Цена']) || 0,
               sale_price: row['Цена со скидкой'] ? Number(row['Цена со скидкой']) : null,
@@ -365,7 +369,7 @@ export default function AdminProductsPage() {
 
   const filtered = products.filter((p) => {
     const matchSearch = !search || p.name?.toLowerCase().includes(search.toLowerCase())
-    const matchCat = !filterCat || p.category === filterCat
+    const matchCat = !filterCat || p.category?.toLowerCase() === filterCat.toLowerCase()
     return matchSearch && matchCat
   })
 

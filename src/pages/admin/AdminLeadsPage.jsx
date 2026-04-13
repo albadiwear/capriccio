@@ -22,6 +22,10 @@ export default function AdminLeadsPage() {
   const [sourceFilter, setSourceFilter] = useState('Все')
   const [statusFilter, setStatusFilter] = useState('Все')
   const [statuses, setStatuses] = useState({})
+  const [selectedLead, setSelectedLead] = useState(null)
+  const [profile, setProfile] = useState(null)
+  const [leadOrders, setLeadOrders] = useState([])
+  const [loadingProfile, setLoadingProfile] = useState(false)
 
   useEffect(() => {
     const savedStatuses = JSON.parse(localStorage.getItem(STATUS_STORAGE_KEY) || '{}')
@@ -66,6 +70,22 @@ export default function AdminLeadsPage() {
     const updatedStatuses = { ...statuses, [userId]: nextStatus }
     setStatuses(updatedStatuses)
     localStorage.setItem(STATUS_STORAGE_KEY, JSON.stringify(updatedStatuses))
+  }
+
+  async function openCard(lead) {
+    setSelectedLead(lead)
+    setLoadingProfile(true)
+    setProfile(null)
+    setLeadOrders([])
+
+    const [{ data: profileData }, { data: ordersData }] = await Promise.all([
+      supabase.from('stylist_profiles').select('*').eq('user_id', lead.id).single(),
+      supabase.from('orders').select('id, created_at, total_amount, status').eq('user_id', lead.id).order('created_at', { ascending: false }).limit(5)
+    ])
+
+    setProfile(profileData || null)
+    setLeadOrders(ordersData || [])
+    setLoadingProfile(false)
   }
 
   return (
@@ -144,7 +164,7 @@ export default function AdminLeadsPage() {
                 const whatsappPhone = formatPhoneForWhatsApp(lead.phone)
 
                 return (
-                  <tr key={lead.id} className="border-b border-gray-50 transition-colors hover:bg-gray-50">
+                  <tr key={lead.id} className="border-b border-gray-50 transition-colors hover:bg-gray-50 cursor-pointer" onClick={() => openCard(lead)}>
                     <td className="px-4 py-4 text-gray-500">{index + 1}</td>
                     <td className="px-4 py-4 font-medium text-gray-900">{lead.full_name || '—'}</td>
                     <td className="px-4 py-4 text-gray-600">{lead.phone || '—'}</td>
@@ -171,6 +191,7 @@ export default function AdminLeadsPage() {
                         value={status}
                         onChange={(event) => handleStatusChange(lead.id, event.target.value)}
                         disabled={hasOrders}
+                        onClick={e => e.stopPropagation()}
                         className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition-colors focus:border-gray-900"
                       >
                         {STATUS_OPTIONS.map((option) => (
@@ -184,6 +205,7 @@ export default function AdminLeadsPage() {
                           href={`https://wa.me/${whatsappPhone}`}
                           target="_blank"
                           rel="noreferrer"
+                          onClick={e => e.stopPropagation()}
                           className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-green-600 transition-colors hover:border-green-500 hover:text-green-700"
                           aria-label="Связаться в WhatsApp"
                         >
@@ -200,6 +222,136 @@ export default function AdminLeadsPage() {
           </table>
         )}
       </div>
+
+      {selectedLead && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setSelectedLead(null)} />
+          <div className="relative bg-white rounded-xl w-full max-w-2xl my-4 shadow-xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center text-sm font-medium text-pink-700">
+                  {selectedLead.full_name?.charAt(0) || selectedLead.email?.charAt(0) || '?'}
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900">{selectedLead.full_name || '—'}</p>
+                  <p className="text-xs text-gray-500">{selectedLead.email}</p>
+                </div>
+              </div>
+              <button onClick={() => setSelectedLead(null)} className="text-gray-400 hover:text-gray-900">✕</button>
+            </div>
+
+            <div className="px-6 py-5 space-y-5 max-h-[80vh] overflow-y-auto">
+              {loadingProfile ? (
+                <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-8 bg-gray-100 rounded animate-pulse" />)}</div>
+              ) : (
+                <>
+                  <div>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Контакты</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-gray-50 rounded-lg p-3">
+                        <p className="text-xs text-gray-400 mb-1">Телефон</p>
+                        <p className="text-sm font-medium text-gray-900">{selectedLead.phone || '—'}</p>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-3">
+                        <p className="text-xs text-gray-400 mb-1">Город</p>
+                        <p className="text-sm font-medium text-gray-900">{profile?.city || selectedLead.city || '—'}</p>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-3">
+                        <p className="text-xs text-gray-400 mb-1">Дата регистрации</p>
+                        <p className="text-sm font-medium text-gray-900">{new Date(selectedLead.created_at).toLocaleDateString('ru-RU')}</p>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-3">
+                        <p className="text-xs text-gray-400 mb-1">Источник</p>
+                        <p className="text-sm font-medium text-gray-900">{getLeadSource(selectedLead)}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {profile && (
+                    <>
+                      <div>
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Параметры</p>
+                        <div className="grid grid-cols-4 gap-2">
+                          {[
+                            { label: 'Возраст', value: profile.age ? profile.age + ' лет' : '—' },
+                            { label: 'Рост', value: profile.height ? profile.height + ' см' : '—' },
+                            { label: 'Вес', value: profile.weight ? profile.weight + ' кг' : '—' },
+                            { label: 'Размер', value: profile.clothing_size || '—' },
+                            { label: 'Грудь', value: profile.chest ? profile.chest + ' см' : '—' },
+                            { label: 'Талия', value: profile.waist ? profile.waist + ' см' : '—' },
+                            { label: 'Бёдра', value: profile.hips ? profile.hips + ' см' : '—' },
+                            { label: 'Обувь', value: profile.shoe_size || '—' },
+                          ].map(({ label, value }) => (
+                            <div key={label} className="bg-gray-50 rounded-lg p-2 text-center">
+                              <p className="text-xs text-gray-400 mb-1">{label}</p>
+                              <p className="text-sm font-medium text-gray-900">{value}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Стиль</p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="bg-gray-50 rounded-lg p-3">
+                            <p className="text-xs text-gray-400 mb-1">Тип фигуры</p>
+                            <p className="text-sm font-medium text-gray-900">{profile.body_type || '—'}</p>
+                          </div>
+                          <div className="bg-gray-50 rounded-lg p-3">
+                            <p className="text-xs text-gray-400 mb-1">Цветотип</p>
+                            <p className="text-sm font-medium text-gray-900">{profile.color_type || '—'}</p>
+                          </div>
+                          <div className="bg-gray-50 rounded-lg p-3">
+                            <p className="text-xs text-gray-400 mb-1">Образ жизни</p>
+                            <p className="text-sm font-medium text-gray-900">{profile.lifestyle || '—'}</p>
+                          </div>
+                          <div className="bg-gray-50 rounded-lg p-3">
+                            <p className="text-xs text-gray-400 mb-1">Бюджет</p>
+                            <p className="text-sm font-medium text-gray-900">
+                              {profile.budget_min || profile.budget_max ? `${(profile.budget_min || 0).toLocaleString('ru-RU')} — ${(profile.budget_max || 0).toLocaleString('ru-RU')} ₸` : '—'}
+                            </p>
+                          </div>
+                        </div>
+                        {profile.style_preferences?.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {profile.style_preferences.map(s => (
+                              <span key={s} className="px-2 py-1 bg-purple-50 text-purple-700 rounded-full text-xs">{s}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {leadOrders.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Последние заказы</p>
+                      <div className="space-y-2">
+                        {leadOrders.map(o => (
+                          <div key={o.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+                            <div>
+                              <p className="text-xs text-gray-400">{new Date(o.created_at).toLocaleDateString('ru-RU')}</p>
+                              <p className="text-xs text-gray-500">#{o.id.slice(0, 8)}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-medium text-gray-900">{o.total_amount?.toLocaleString('ru-RU')} ₸</p>
+                              <p className="text-xs text-gray-400">{o.status}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {!profile && leadOrders.length === 0 && (
+                    <p className="text-sm text-gray-400 text-center py-4">Анкета не заполнена, заказов нет</p>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -27,14 +27,19 @@ export default function AccessForm({ user }) {
     setError('')
     setMessage('')
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
 
     if (!signInError) {
+      const { data: profileData } = await supabase
+        .from('stylist_profiles')
+        .select('user_id')
+        .eq('user_id', data.user.id)
+        .single()
       setLoading(false)
-      navigate('/catalog')
+      navigate(profileData ? '/catalog' : '/onboarding')
       return
     }
 

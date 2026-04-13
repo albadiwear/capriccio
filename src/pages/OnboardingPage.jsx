@@ -47,13 +47,18 @@ export default function OnboardingPage() {
   useEffect(() => {
     async function checkProfile() {
       const { data: { user: currentUser } } = await supabase.auth.getUser()
-      if (!currentUser) return
+      if (!currentUser) {
+        navigate('/')
+        return
+      }
       const { data } = await supabase
         .from('stylist_profiles')
         .select('user_id')
         .eq('user_id', currentUser.id)
-        .maybeSingle()
-      if (data) navigate('/catalog', { replace: true })
+        .single()
+      if (data) {
+        navigate('/catalog')
+      }
     }
     checkProfile()
   }, [])

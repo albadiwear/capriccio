@@ -126,7 +126,12 @@ export default function HomePage() {
 
     if (data?.user) {
       setLoading(false)
-      navigate('/catalog')
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          subscription.unsubscribe()
+          navigate('/onboarding')
+        }
+      })
       return
     }
 
@@ -169,7 +174,7 @@ export default function HomePage() {
 
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/catalog` },
+      options: { redirectTo: `${window.location.origin}/onboarding` },
     })
 
     if (oauthError) {

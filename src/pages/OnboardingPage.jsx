@@ -104,7 +104,13 @@ export default function OnboardingPage() {
         style_preferences: form.style_preferences.length > 0 ? form.style_preferences : null,
         updated_at: new Date().toISOString(),
       }
-      await supabase.from('stylist_profiles').upsert(payload, { onConflict: 'user_id' })
+      const { error: upsertError } = await supabase.from('stylist_profiles').upsert(payload, { onConflict: 'user_id' })
+      if (upsertError) {
+        console.error('Ошибка сохранения профиля:', JSON.stringify(upsertError, null, 2))
+        alert('Ошибка: ' + upsertError.message)
+      } else {
+        console.log('Профиль сохранён успешно')
+      }
     }
     setSaving(false)
     navigate('/catalog')

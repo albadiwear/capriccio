@@ -140,8 +140,8 @@ export default function RegisterPage() {
       return
     }
 
-    setSuccessMessage('Проверьте email для подтверждения')
     setLoading(false)
+    navigate('/onboarding')
   }
 
   const handleGoogleLogin = async () => {

@@ -42,6 +42,7 @@ import AdminReviewsPage from './pages/admin/AdminReviewsPage'
 import AdminAcademyPage from './pages/admin/AdminAcademyPage'
 
 // Other
+import OnboardingPage from './pages/OnboardingPage'
 import OrderSuccessPage from './pages/OrderSuccessPage'
 import NotFoundPage from './pages/NotFoundPage'
 
@@ -68,6 +69,7 @@ function App() {
       <ScrollToTop />
       <Routes>
         <Route path="/promo" element={<PromoLanding />} />
+        <Route path="/onboarding" element={<OnboardingPage />} />
 
         {/* Public layout */}
         <Route path="/" element={<Layout />}>

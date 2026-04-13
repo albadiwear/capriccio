@@ -45,22 +45,33 @@ export default function OnboardingPage() {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    async function checkProfile() {
+    let attempts = 0
+    const maxAttempts = 10
+
+    const interval = setInterval(async () => {
+      attempts++
       const { data: { user: currentUser } } = await supabase.auth.getUser()
-      if (!currentUser) {
-        navigate('/')
+
+      if (currentUser) {
+        clearInterval(interval)
+        const { data } = await supabase
+          .from('stylist_profiles')
+          .select('user_id')
+          .eq('user_id', currentUser.id)
+          .maybeSingle()
+        if (data) {
+          navigate('/catalog')
+        }
         return
       }
-      const { data } = await supabase
-        .from('stylist_profiles')
-        .select('user_id')
-        .eq('user_id', currentUser.id)
-        .single()
-      if (data) {
-        navigate('/catalog')
+
+      if (attempts >= maxAttempts) {
+        clearInterval(interval)
+        navigate('/')
       }
-    }
-    checkProfile()
+    }, 300)
+
+    return () => clearInterval(interval)
   }, [])
 
   const [form, setForm] = useState({

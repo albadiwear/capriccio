@@ -140,8 +140,14 @@ export default function RegisterPage() {
       return
     }
 
-    setLoading(false)
-    navigate('/onboarding')
+    // Ждём пока сессия установится, потом переходим
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        subscription.unsubscribe()
+        setLoading(false)
+        navigate('/onboarding')
+      }
+    })
   }
 
   const handleGoogleLogin = async () => {

@@ -589,12 +589,12 @@ export default function AdminProductsPage() {
             </tbody>
           </table>
         )}
-        {!loading && totalCount > PAGE_SIZE && (
+        {!loading && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
             <p className="text-sm text-gray-500">
               Всего: <span className="font-medium text-gray-900">{totalCount}</span> товаров
               {' · '}Страница <span className="font-medium text-gray-900">{page + 1}</span> из{' '}
-              <span className="font-medium text-gray-900">{Math.ceil(totalCount / PAGE_SIZE)}</span>
+              <span className="font-medium text-gray-900">{Math.max(1, Math.ceil(totalCount / PAGE_SIZE))}</span>
             </p>
             <div className="flex gap-2">
               <button
@@ -606,7 +606,7 @@ export default function AdminProductsPage() {
               </button>
               <button
                 onClick={() => setPage((p) => p + 1)}
-                disabled={(page + 1) * PAGE_SIZE >= totalCount}
+                disabled={page + 1 >= Math.max(1, Math.ceil(totalCount / PAGE_SIZE))}
                 className="px-3 py-1.5 text-sm border border-gray-200 rounded hover:border-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Вперёд →

@@ -295,7 +295,7 @@ export default function CatalogPage() {
         } else if (activeCategory === 'Новинки') {
           query = query.eq('is_new', true)
         } else {
-          query = query.eq('category', activeCategory)
+          query = query.ilike('category', activeCategory)
         }
       }
 
@@ -390,10 +390,10 @@ export default function CatalogPage() {
           if (!p.sale_price) return false
         } else if (activeCategory === 'Новинки') {
           if (!p.is_new) return false
-        } else if (p.category !== activeCategory) {
+        } else if (p.category?.toLowerCase() !== activeCategory.toLowerCase()) {
           return false
         }
-      } else if (categoryName && p.category !== categoryName) {
+      } else if (categoryName && p.category?.toLowerCase() !== categoryName.toLowerCase()) {
         return false
       }
 

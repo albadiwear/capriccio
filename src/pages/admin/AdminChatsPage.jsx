@@ -168,7 +168,7 @@ export default function AdminChatsPage() {
       .from('products')
       .select('id, name, price, images')
       .ilike('name', `%${query}%`)
-      .eq('status', 'active')
+      .eq('is_active', true)
       .limit(10)
     setProductResults(data || [])
   }

@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
-import { Send, Bot, User, Search, MessageCircle, PanelRightClose, PanelRightOpen } from 'lucide-react'
+import { Send, Bot, User, Search, MessageCircle, PanelRightClose, PanelRightOpen, Paperclip, X } from 'lucide-react'
 
 export default function AdminChatsPage() {
   const [chats, setChats] = useState([])
@@ -14,6 +14,9 @@ export default function AdminChatsPage() {
   const bottomRef = useRef(null)
   const [showProfile, setShowProfile] = useState(true)
   const [unread, setUnread] = useState({})
+  const [imageFile, setImageFile] = useState(null)
+  const [imagePreview, setImagePreview] = useState(null)
+  const fileInputRef = useRef(null)
 
   useEffect(() => {
     loadChats()
@@ -104,16 +107,45 @@ export default function AdminChatsPage() {
   }
 
   async function sendMessage() {
-    if (!input.trim() || !selectedChat) return
+    if ((!input.trim() && !imageFile) || !selectedChat) return
     setSending(true)
+    
+    let image_url = null
+    if (imageFile) {
+      const ext = imageFile.name.split('.').pop()
+      const path = `${selectedChat.id}/${Date.now()}.${ext}`
+      const { data: uploadData } = await supabase.storage
+        .from('chat-images')
+        .upload(path, imageFile, { upsert: true })
+      if (uploadData) {
+        const { data: urlData } = supabase.storage.from('chat-images').getPublicUrl(path)
+        image_url = urlData.publicUrl
+      }
+      clearImage()
+    }
+  
     await supabase.from('stylist_messages').insert({
       chat_id: selectedChat.id,
       role: 'manager',
-      content: input.trim(),
+      content: input.trim() || '',
+      image_url,
     })
     await supabase.from('stylist_chats').update({ updated_at: new Date().toISOString() }).eq('id', selectedChat.id)
     setInput('')
     setSending(false)
+  }
+
+  function handleImageSelect(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
+  }
+
+  function clearImage() {
+    setImageFile(null)
+    setImagePreview(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   const filteredChats = chats.filter(c => {
@@ -272,6 +304,14 @@ export default function AdminChatsPage() {
                     <p className="text-xs text-white/70 mb-1 font-medium">Стилист</p>
                   )}
                   <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                  {msg.image_url && (
+                    <img
+                      src={msg.image_url}
+                      alt="фото"
+                      className="mt-2 rounded-xl max-w-[240px] cursor-pointer"
+                      onClick={() => window.open(msg.image_url, '_blank')}
+                    />
+                  )}
                   <p className={`text-xs mt-1 ${msg.role === 'user' ? 'text-white/50' : msg.role === 'manager' ? 'text-white/60' : 'text-gray-400'}`}>
                     {new Date(msg.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                   </p>
@@ -282,18 +322,41 @@ export default function AdminChatsPage() {
           </div>
 
           {selectedChat.mode === 'human' ? (
-            <div className="px-4 py-3 border-t border-gray-100 bg-white flex gap-2">
-              <input
-                type="text"
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && sendMessage()}
-                placeholder="Написать от имени Амины..."
-                className="flex-1 bg-gray-50 rounded-xl px-4 py-2.5 text-sm outline-none border border-gray-200 focus:border-gray-900"
-              />
-              <button onClick={sendMessage} disabled={sending || !input.trim()} className="w-10 h-10 rounded-xl bg-[#1a1a18] flex items-center justify-center disabled:opacity-40">
-                <Send size={16} className="text-white" />
-              </button>
+            <div className="px-4 py-3 border-t border-gray-100 bg-white">
+              {imagePreview && (
+                <div className="relative inline-block mb-2">
+                  <img src={imagePreview} className="h-20 rounded-xl border border-gray-200" />
+                  <button onClick={clearImage} className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-800 rounded-full flex items-center justify-center">
+                    <X size={10} className="text-white" />
+                  </button>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageSelect}
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 flex-shrink-0"
+                >
+                  <Paperclip size={16} />
+                </button>
+                <input
+                  type="text"
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && sendMessage()}
+                  placeholder="Написать от имени Амины..."
+                  className="flex-1 bg-gray-50 rounded-xl px-4 py-2.5 text-sm outline-none border border-gray-200 focus:border-gray-900"
+                />
+                <button onClick={sendMessage} disabled={sending || (!input.trim() && !imageFile)} className="w-10 h-10 rounded-xl bg-[#1a1a18] flex items-center justify-center disabled:opacity-40 flex-shrink-0">
+                  <Send size={16} className="text-white" />
+                </button>
+              </div>
             </div>
           ) : (
             <div className="px-4 py-3 border-t border-gray-100 bg-white text-center">

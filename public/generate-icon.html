@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<body>
+<canvas id="c" width="512" height="512"></canvas>
+<script>
+const canvas = document.getElementById('c')
+const ctx = canvas.getContext('2d')
+ctx.fillStyle = '#D4537E'
+ctx.beginPath()
+ctx.moveTo(115, 0)
+ctx.lineTo(397, 0)
+ctx.quadraticCurveTo(512, 0, 512, 115)
+ctx.lineTo(512, 397)
+ctx.quadraticCurveTo(512, 512, 397, 512)
+ctx.lineTo(115, 512)
+ctx.quadraticCurveTo(0, 512, 0, 397)
+ctx.lineTo(0, 115)
+ctx.quadraticCurveTo(0, 0, 115, 0)
+ctx.closePath()
+ctx.fill()
+ctx.fillStyle = 'white'
+ctx.font = 'bold 260px Georgia'
+ctx.textAlign = 'center'
+ctx.textBaseline = 'middle'
+ctx.fillText('CR', 256, 270)
+const link = document.createElement('a')
+link.download = 'apple-touch-icon.png'
+link.href = canvas.toDataURL('image/png')
+link.click()
+</script>
+</body>
+</html>

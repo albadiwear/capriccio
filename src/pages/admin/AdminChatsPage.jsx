@@ -28,10 +28,22 @@ export default function AdminChatsPage() {
   async function loadChats() {
     const { data } = await supabase
       .from('stylist_chats')
-      .select('*, users(full_name, email, phone)')
+      .select('*')
       .order('updated_at', { ascending: false })
       .limit(50)
-    setChats(data || [])
+
+    if (!data) return
+
+    const userIds = [...new Set(data.map(c => c.user_id).filter(Boolean))]
+    const { data: usersData } = await supabase
+      .from('users')
+      .select('id, full_name, email, phone')
+      .in('id', userIds)
+
+    const usersMap = {}
+    usersData?.forEach(u => { usersMap[u.id] = u })
+
+    setChats(data.map(c => ({ ...c, users: usersMap[c.user_id] || null })))
   }
 
   async function openChat(chat) {

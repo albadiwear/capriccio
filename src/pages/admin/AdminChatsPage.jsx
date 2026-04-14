@@ -174,20 +174,43 @@ export default function AdminChatsPage() {
   }
 
   async function sendProduct(product) {
-    if (!selectedChat) return
+    if (!selectedChat) {
+      console.log('NO SELECTED CHAT')
+      return
+    }
+    console.log('sendProduct called', product, selectedChat.id)
     const imageUrl = Array.isArray(product.images) ? product.images[0] : product.images
-    await supabase.from('stylist_messages').insert({
+    const payload = {
       chat_id: selectedChat.id,
       role: 'manager',
       content: '',
-      product_id: product.id,
       product_data: {
         id: product.id,
         name: product.name,
         price: product.price,
         image: imageUrl,
       }
-    })
+    }
+    console.log('inserting payload', payload)
+    const { data, error } = await supabase.from('stylist_messages').insert(payload)
+    console.log('result', data, error)
+    if (error) {
+      console.error('INSERT ERROR', error)
+      return
+    }
+
+    const { data: inserted } = await supabase
+      .from('stylist_messages')
+      .select('*')
+      .eq('chat_id', selectedChat.id)
+      .eq('role', 'manager')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    if (inserted) {
+      setMessages(prev => [...prev, inserted])
+    }
     await supabase.from('stylist_chats').update({ updated_at: new Date().toISOString() }).eq('id', selectedChat.id)
     setShowProductPicker(false)
     setProductSearch('')

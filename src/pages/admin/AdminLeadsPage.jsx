@@ -38,6 +38,8 @@ export default function AdminLeadsPage() {
   const [notes, setNotes] = useState([])
   const [newNote, setNewNote] = useState('')
   const [savingNote, setSavingNote] = useState(false)
+  const [remindAt, setRemindAt] = useState('')
+  const [reminderSaved, setReminderSaved] = useState(false)
 
   useEffect(() => {
     async function loadLeads() {
@@ -93,6 +95,13 @@ export default function AdminLeadsPage() {
     return { status, count: items.length, total }
   })
 
+  const todayReminders = leads.filter(l => {
+    if (!l.remind_at) return false
+    const remindDate = new Date(l.remind_at)
+    const today = new Date()
+    return remindDate.toDateString() === today.toDateString()
+  })
+
   async function handleStatusChange(userId, nextStatus) {
     setLeads((prev) => prev.map((l) => l.id === userId ? { ...l, lead_status: nextStatus } : l))
     await supabase.from('users').update({ lead_status: nextStatus }).eq('id', userId)
@@ -105,6 +114,8 @@ export default function AdminLeadsPage() {
     setLeadOrders([])
     setNotes([])
     setNewNote('')
+    setRemindAt(lead.remind_at ? new Date(lead.remind_at).toISOString().slice(0, 16) : '')
+    setReminderSaved(false)
 
     const [{ data: profileData }, { data: ordersData }, { data: notesData }] = await Promise.all([
       supabase.from('stylist_profiles').select('*').eq('user_id', lead.id).single(),
@@ -137,6 +148,18 @@ export default function AdminLeadsPage() {
     setLeadOrders(ordersData || [])
     setNotes(notesData || [])
     setLoadingProfile(false)
+  }
+
+  async function handleSetReminder(value) {
+    if (!selectedLead) return
+    const val = value !== undefined ? value : remindAt
+    await supabase.from('users').update({
+      remind_at: val || null
+    }).eq('id', selectedLead.id)
+    setLeads(prev => prev.map(l => l.id === selectedLead.id ? { ...l, remind_at: val || null } : l))
+    setSelectedLead(prev => ({ ...prev, remind_at: val || null }))
+    setReminderSaved(true)
+    setTimeout(() => setReminderSaved(false), 2000)
   }
 
   async function handleAddNote() {
@@ -233,6 +256,27 @@ export default function AdminLeadsPage() {
         ))}
       </div>
 
+      {todayReminders.length > 0 && (
+        <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+          <p className="text-xs font-semibold text-yellow-700 uppercase tracking-wider mb-3">
+            🔔 Напоминания на сегодня — {todayReminders.length}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {todayReminders.map((lead) => (
+              <button
+                key={lead.id}
+                onClick={() => openCard(lead)}
+                className="flex items-center gap-2 bg-white border border-yellow-200 rounded-lg px-3 py-2 text-sm hover:border-yellow-400 transition-colors"
+                type="button"
+              >
+                <span className="font-medium text-gray-900">{lead.full_name || lead.email}</span>
+                <span className="text-gray-400 text-xs">{lead.phone || ''}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="mb-6 grid gap-3 sm:grid-cols-3">
         <input
           type="text"
@@ -324,10 +368,15 @@ export default function AdminLeadsPage() {
                       )}
                     </td>
                     <td className="px-4 py-4 text-gray-500 text-xs">
-                      {lead.last_contact_at
-                        ? new Date(lead.last_contact_at).toLocaleDateString('ru-RU')
-                        : <span className="text-red-400">Не было</span>
-                      }
+                      <div className="flex items-center gap-1">
+                        {lead.remind_at && new Date(lead.remind_at).toDateString() === new Date().toDateString() && (
+                          <span title="Напоминание сегодня">🔔</span>
+                        )}
+                        {lead.last_contact_at
+                          ? new Date(lead.last_contact_at).toLocaleDateString('ru-RU')
+                          : <span className="text-red-400">Не было</span>
+                        }
+                      </div>
                     </td>
                     <td className="px-4 py-4">
                       <select
@@ -602,6 +651,38 @@ export default function AdminLeadsPage() {
                         ))}
                       </div>
                     )}
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Напоминание</p>
+                    <div className="flex gap-2">
+                      <input
+                        type="datetime-local"
+                        value={remindAt}
+                        onChange={(e) => setRemindAt(e.target.value)}
+                        className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleSetReminder(remindAt)}
+                        className={`px-4 rounded-lg text-sm font-medium transition-colors ${
+                          reminderSaved
+                            ? 'bg-green-500 text-white'
+                            : 'bg-[#1a1a18] text-white'
+                        }`}
+                      >
+                        {reminderSaved ? '✓ Сохранено' : 'Сохранить'}
+                      </button>
+                      {remindAt && (
+                        <button
+                          type="button"
+                          onClick={() => { setRemindAt(''); handleSetReminder('') }}
+                          className="px-3 rounded-lg border border-gray-200 text-sm text-gray-500 hover:border-gray-400"
+                        >
+                          Убрать
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {leadOrders.length > 0 && (

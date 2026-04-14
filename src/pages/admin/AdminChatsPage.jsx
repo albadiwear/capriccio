@@ -19,6 +19,8 @@ export default function AdminChatsPage() {
   const fileInputRef = useRef(null)
   const [showTemplates, setShowTemplates] = useState(false)
   const [showProductPicker, setShowProductPicker] = useState(false)
+  const [productSearch, setProductSearch] = useState('')
+  const [productResults, setProductResults] = useState([])
 
   const TEMPLATES = [
     'Добрый день! 👋 Меня зовут Амина, я ваш персональный стилист Capriccio',
@@ -157,6 +159,39 @@ export default function AdminChatsPage() {
     setImageFile(null)
     setImagePreview(null)
     if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  async function searchProducts(query) {
+    setProductSearch(query)
+    if (!query.trim()) { setProductResults([]); return }
+    const { data } = await supabase
+      .from('products')
+      .select('id, name, price, images')
+      .ilike('name', `%${query}%`)
+      .eq('status', 'active')
+      .limit(10)
+    setProductResults(data || [])
+  }
+
+  async function sendProduct(product) {
+    if (!selectedChat) return
+    const imageUrl = Array.isArray(product.images) ? product.images[0] : product.images
+    await supabase.from('stylist_messages').insert({
+      chat_id: selectedChat.id,
+      role: 'manager',
+      content: '',
+      product_id: product.id,
+      product_data: {
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image: imageUrl,
+      }
+    })
+    await supabase.from('stylist_chats').update({ updated_at: new Date().toISOString() }).eq('id', selectedChat.id)
+    setShowProductPicker(false)
+    setProductSearch('')
+    setProductResults([])
   }
 
   const filteredChats = chats.filter(c => {
@@ -472,6 +507,50 @@ export default function AdminChatsPage() {
             ) : (
               <p className="text-xs text-gray-400">Анкета не заполнена</p>
             )}
+          </div>
+        </div>
+      )}
+
+      {showProductPicker && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={() => setShowProductPicker(false)}>
+          <div className="bg-white rounded-2xl w-[480px] max-h-[560px] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="px-4 pt-4 pb-3 border-b border-gray-100">
+              <p className="font-semibold text-gray-900 mb-3">Выбрать товар</p>
+              <input
+                autoFocus
+                type="text"
+                value={productSearch}
+                onChange={e => searchProducts(e.target.value)}
+                placeholder="Поиск по названию..."
+                className="w-full bg-gray-50 rounded-xl px-4 py-2.5 text-sm outline-none border border-gray-200 focus:border-gray-900"
+              />
+            </div>
+            <div className="overflow-y-auto flex-1 p-3">
+              {productResults.length === 0 && productSearch && (
+                <p className="text-sm text-gray-400 text-center py-6">Ничего не найдено</p>
+              )}
+              {productResults.length === 0 && !productSearch && (
+                <p className="text-sm text-gray-400 text-center py-6">Начните вводить название товара</p>
+              )}
+              <div className="grid grid-cols-2 gap-2">
+                {productResults.map(product => {
+                  const img = Array.isArray(product.images) ? product.images[0] : product.images
+                  return (
+                    <div
+                      key={product.id}
+                      onClick={() => sendProduct(product)}
+                      className="cursor-pointer rounded-xl border border-gray-100 overflow-hidden hover:border-[#D4537E] transition-colors"
+                    >
+                      {img && <img src={img} className="w-full h-28 object-cover" />}
+                      <div className="p-2">
+                        <p className="text-xs font-medium text-gray-900 leading-tight line-clamp-2">{product.name}</p>
+                        <p className="text-xs text-[#D4537E] font-semibold mt-1">{Number(product.price).toLocaleString('ru-RU')} ₸</p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           </div>
         </div>
       )}

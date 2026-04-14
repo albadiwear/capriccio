@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
-import { Send, Bot, User, Search, MessageCircle, PanelRightClose, PanelRightOpen, Paperclip, X } from 'lucide-react'
+import { Send, Bot, User, Search, MessageCircle, PanelRightClose, PanelRightOpen, Paperclip, X, Zap } from 'lucide-react'
 
 export default function AdminChatsPage() {
   const [chats, setChats] = useState([])
@@ -17,6 +17,16 @@ export default function AdminChatsPage() {
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
   const fileInputRef = useRef(null)
+  const [showTemplates, setShowTemplates] = useState(false)
+
+  const TEMPLATES = [
+    'Добрый день! 👋 Меня зовут Амина, я ваш персональный стилист Capriccio',
+    'Сейчас уточню и вернусь к вам в течение нескольких минут 🌸',
+    'Отличный выбор! Эта вещь очень популярна у наших клиентов ✨',
+    'Для оформления заказа напишите мне в WhatsApp или нажмите кнопку выше',
+    'Есть вопросы по размеру? Я помогу подобрать идеальный вариант 👗',
+    'Доставка по всему Казахстану, обычно 2-3 дня 📦',
+  ]
 
   useEffect(() => {
     loadChats()
@@ -323,6 +333,19 @@ export default function AdminChatsPage() {
 
           {selectedChat.mode === 'human' ? (
             <div className="px-4 py-3 border-t border-gray-100 bg-white">
+              {showTemplates && (
+                <div className="mb-2 border border-gray-100 rounded-xl overflow-hidden shadow-sm">
+                  {TEMPLATES.map((t, i) => (
+                    <button
+                      key={i}
+                      onClick={() => { setInput(t); setShowTemplates(false) }}
+                      className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 border-b border-gray-50 last:border-0 transition-colors"
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              )}
               {imagePreview && (
                 <div className="relative inline-block mb-2">
                   <img src={imagePreview} className="h-20 rounded-xl border border-gray-200" />
@@ -344,6 +367,12 @@ export default function AdminChatsPage() {
                   className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 flex-shrink-0"
                 >
                   <Paperclip size={16} />
+                </button>
+                <button
+                  onClick={() => setShowTemplates(p => !p)}
+                  className={`w-10 h-10 rounded-xl border flex items-center justify-center flex-shrink-0 transition-colors ${showTemplates ? 'bg-[#1a1a18] border-[#1a1a18] text-white' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}
+                >
+                  <Zap size={16} />
                 </button>
                 <input
                   type="text"

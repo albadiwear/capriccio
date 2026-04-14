@@ -658,9 +658,12 @@ export default function StylistPage() {
         {ChatHeader}
         {MessageList}
         {chatMode === 'human' ? (
-          <div className="flex-shrink-0 px-4 py-3 bg-[#FBEAF0] border-t border-[#f0ede8] text-center">
-            <p className="text-sm text-[#D4537E] font-medium">💫 Живой стилист сейчас с вами</p>
-          </div>
+          <>
+            <div className="flex-shrink-0 px-4 py-2 bg-[#FBEAF0] border-t border-[#f0ede8] text-center">
+              <p className="text-sm text-[#D4537E] font-medium">💫 Живой стилист сейчас с вами</p>
+            </div>
+            {InputArea}
+          </>
         ) : InputArea}
       </div>
 

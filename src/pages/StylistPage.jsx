@@ -200,7 +200,6 @@ export default function StylistPage() {
   }
 
   const sendMessage = async (text) => {
-    if (chatMode === 'human') return
     const userMessage = (text || input).trim()
     if ((!userMessage && !selectedImage) || loading) return
 
@@ -240,7 +239,7 @@ export default function StylistPage() {
     setMessages((prev) => [...prev, optimisticUser])
 
     // Подготовить сообщение для API
-    const history = messages.map((m) => ({ role: m.role, content: m.content }))
+    const history = messages.map((m) => ({ role: m.role === 'manager' ? 'assistant' : m.role, content: m.content }))
 
     let userContent
     if (selectedImage && imagePreview) {
@@ -258,6 +257,18 @@ export default function StylistPage() {
     }
 
     clearImage()
+
+    const { data: chatData } = await supabase
+      .from('stylist_chats')
+      .select('mode')
+      .eq('id', chatId)
+      .single()
+
+    if (chatData?.mode === 'human') {
+      setChatMode('human')
+      setLoading(false)
+      return
+    }
 
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -466,7 +477,7 @@ export default function StylistPage() {
 
       {messages.map((msg, i) => (
         <div key={i} className={`flex gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-          {msg.role === 'assistant' && (
+          {(msg.role === 'assistant' || msg.role === 'manager') && (
             <div className="w-7 h-7 rounded-full bg-[#1a1a18] flex items-center justify-center flex-shrink-0 mt-1">
               <Sparkles size={12} className="text-white" />
             </div>

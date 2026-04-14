@@ -80,7 +80,7 @@ export default function AdminChatsPage() {
     setSending(true)
     await supabase.from('stylist_messages').insert({
       chat_id: selectedChat.id,
-      role: 'assistant',
+      role: 'manager',
       content: input.trim(),
     })
     await supabase.from('stylist_chats').update({ updated_at: new Date().toISOString() }).eq('id', selectedChat.id)

@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
-import { Send, Bot, User, Search, MessageCircle, PanelRightClose, PanelRightOpen, Paperclip, X, Zap } from 'lucide-react'
+import { Send, Bot, User, Search, MessageCircle, PanelRightClose, PanelRightOpen, Paperclip, X, Zap, ShoppingBag } from 'lucide-react'
 
 export default function AdminChatsPage() {
   const [chats, setChats] = useState([])
@@ -18,6 +18,7 @@ export default function AdminChatsPage() {
   const [imagePreview, setImagePreview] = useState(null)
   const fileInputRef = useRef(null)
   const [showTemplates, setShowTemplates] = useState(false)
+  const [showProductPicker, setShowProductPicker] = useState(false)
 
   const TEMPLATES = [
     'Добрый день! 👋 Меня зовут Амина, я ваш персональный стилист Capriccio',
@@ -373,6 +374,12 @@ export default function AdminChatsPage() {
                   className={`w-10 h-10 rounded-xl border flex items-center justify-center flex-shrink-0 transition-colors ${showTemplates ? 'bg-[#1a1a18] border-[#1a1a18] text-white' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}
                 >
                   <Zap size={16} />
+                </button>
+                <button
+                  onClick={() => setShowProductPicker(true)}
+                  className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 flex-shrink-0"
+                >
+                  <ShoppingBag size={16} />
                 </button>
                 <input
                   type="text"

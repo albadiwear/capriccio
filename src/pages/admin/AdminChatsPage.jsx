@@ -163,13 +163,13 @@ export default function AdminChatsPage() {
 
   async function searchProducts(query) {
     setProductSearch(query)
-    if (!query.trim()) { setProductResults([]); return }
     const { data } = await supabase
       .from('products')
       .select('id, name, price, images')
-      .ilike('name', `%${query}%`)
       .eq('is_active', true)
-      .limit(10)
+      .order('created_at', { ascending: false })
+      .limit(30)
+      .ilike('name', query.trim() ? `%${query}%` : '%')
     setProductResults(data || [])
   }
 
@@ -549,39 +549,74 @@ export default function AdminChatsPage() {
       )}
 
       {showProductPicker && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={() => setShowProductPicker(false)}>
-          <div className="bg-white rounded-2xl w-[480px] max-h-[560px] flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="px-4 pt-4 pb-3 border-b border-gray-100">
-              <p className="font-semibold text-gray-900 mb-3">Выбрать товар</p>
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setShowProductPicker(false)}>
+          <div className="bg-white rounded-2xl w-[680px] max-h-[70vh] flex flex-col" onClick={e => e.stopPropagation()}>
+
+            {/* Шапка */}
+            <div className="px-5 pt-5 pb-4 border-b border-gray-100">
+              <div className="flex items-center justify-between mb-4">
+                <p className="font-semibold text-gray-900 text-base">Выбрать товар</p>
+                <button onClick={() => setShowProductPicker(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100">
+                  <X size={16} className="text-gray-500" />
+                </button>
+              </div>
               <input
                 autoFocus
                 type="text"
                 value={productSearch}
                 onChange={e => searchProducts(e.target.value)}
-                placeholder="Поиск по названию..."
-                className="w-full bg-gray-50 rounded-xl px-4 py-2.5 text-sm outline-none border border-gray-200 focus:border-gray-900"
+                placeholder="Поиск по названию или артикулу..."
+                className="w-full bg-gray-50 rounded-xl px-4 py-2.5 text-sm outline-none border border-gray-200 focus:border-gray-900 mb-3"
               />
+              <div className="flex gap-2 flex-wrap">
+                {['Все', 'Пуховики', 'Костюмы', 'Платья', 'Трикотаж', 'Обувь', 'Шапки', 'Сумки', 'Аксессуары'].map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => {
+                      setProductSearch(cat === 'Все' ? '' : cat)
+                      searchProducts(cat === 'Все' ? '' : cat)
+                    }}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
+                      (cat === 'Все' && !productSearch) || productSearch === cat
+                        ? 'bg-[#1a1a18] text-white border-[#1a1a18]'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="overflow-y-auto flex-1 p-3">
+
+            {/* Список товаров */}
+            <div className="overflow-y-auto flex-1 p-4">
               {productResults.length === 0 && productSearch && (
-                <p className="text-sm text-gray-400 text-center py-6">Ничего не найдено</p>
+                <p className="text-sm text-gray-400 text-center py-8">Ничего не найдено</p>
               )}
               {productResults.length === 0 && !productSearch && (
-                <p className="text-sm text-gray-400 text-center py-6">Начните вводить название товара</p>
+                <p className="text-sm text-gray-400 text-center py-8">Введите название или выберите категорию</p>
               )}
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-3">
                 {productResults.map(product => {
                   const img = Array.isArray(product.images) ? product.images[0] : product.images
                   return (
                     <div
                       key={product.id}
                       onClick={() => sendProduct(product)}
-                      className="cursor-pointer rounded-xl border border-gray-100 overflow-hidden hover:border-[#D4537E] transition-colors"
+                      className="cursor-pointer rounded-xl border border-gray-100 overflow-hidden hover:border-[#D4537E] hover:shadow-sm transition-all group"
                     >
-                      {img && <img src={img} className="w-full h-28 object-cover" />}
-                      <div className="p-2">
-                        <p className="text-xs font-medium text-gray-900 leading-tight line-clamp-2">{product.name}</p>
-                        <p className="text-xs text-[#D4537E] font-semibold mt-1">{Number(product.price).toLocaleString('ru-RU')} ₸</p>
+                      <div className="relative">
+                        {img
+                          ? <img src={img} className="w-full h-36 object-cover" />
+                          : <div className="w-full h-36 bg-gray-100 flex items-center justify-center"><ShoppingBag size={24} className="text-gray-300" /></div>
+                        }
+                        <div className="absolute inset-0 bg-[#D4537E]/0 group-hover:bg-[#D4537E]/10 transition-colors flex items-center justify-center">
+                          <span className="opacity-0 group-hover:opacity-100 bg-[#D4537E] text-white text-xs px-3 py-1.5 rounded-full font-medium transition-opacity">Отправить</span>
+                        </div>
+                      </div>
+                      <div className="p-2.5">
+                        <p className="text-xs font-medium text-gray-900 leading-tight line-clamp-2 mb-1">{product.name}</p>
+                        <p className="text-xs text-[#D4537E] font-semibold">{Number(product.price).toLocaleString('ru-RU')} ₸</p>
                       </div>
                     </div>
                   )

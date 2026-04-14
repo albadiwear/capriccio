@@ -449,6 +449,15 @@ export default function AccountPage() {
             >
               {savingProfile ? 'Сохраняем...' : 'Сохранить'}
             </button>
+            <button
+              onClick={async () => {
+                await supabase.auth.signOut()
+                window.location.href = '/'
+              }}
+              className="w-full mt-3 py-3 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 active:bg-gray-100"
+            >
+              Выйти из аккаунта
+            </button>
           </div>
         </form>
       </div>

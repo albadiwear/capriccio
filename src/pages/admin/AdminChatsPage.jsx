@@ -13,6 +13,7 @@ export default function AdminChatsPage() {
   const [search, setSearch] = useState('')
   const bottomRef = useRef(null)
   const [showProfile, setShowProfile] = useState(true)
+  const [unread, setUnread] = useState({})
 
   useEffect(() => {
     loadChats()
@@ -60,6 +61,18 @@ export default function AdminChatsPage() {
     const usersMap = {}
     usersData?.forEach(u => { usersMap[u.id] = u })
     setChats(unique.map(c => ({ ...c, users: usersMap[c.user_id] || null })))
+
+    const counts = {}
+    for (const chat of unique) {
+      const { count } = await supabase
+        .from('stylist_messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('chat_id', chat.id)
+        .eq('role', 'user')
+        .gt('created_at', chat.last_read_at || '2000-01-01')
+      counts[chat.id] = count || 0
+    }
+    setUnread(counts)
   }
 
   async function openChat(chat) {
@@ -70,6 +83,11 @@ export default function AdminChatsPage() {
       supabase.from('stylist_profiles').select('*').eq('user_id', chat.user_id).single()
     ])
     setMessages(msgs || [])
+    setUnread(prev => ({ ...prev, [chat.id]: 0 }))
+    await supabase
+      .from('stylist_chats')
+      .update({ last_read_at: new Date().toISOString() })
+      .eq('id', chat.id)
     setProfile(profileData || null)
   }
 
@@ -175,6 +193,11 @@ export default function AdminChatsPage() {
                     <span className="text-xs text-gray-400 flex-shrink-0 ml-1">
                       {new Date(chat.updated_at || chat.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                     </span>
+                    {unread[chat.id] > 0 && (
+                      <span className="ml-1 min-w-[18px] h-[18px] rounded-full bg-[#D4537E] text-white text-[10px] font-bold flex items-center justify-center px-1">
+                        {unread[chat.id]}
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-gray-500 truncate mt-0.5">{chat.title}</p>
                 </div>

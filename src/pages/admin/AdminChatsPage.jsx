@@ -381,6 +381,20 @@ export default function AdminChatsPage() {
                       onClick={() => window.open(msg.image_url, '_blank')}
                     />
                   )}
+
+                  {msg.product_data && (
+                    <div className="mt-2 bg-white/20 rounded-xl overflow-hidden max-w-[200px]">
+                      {msg.product_data.image && (
+                        <img src={msg.product_data.image} className="w-full h-32 object-cover" />
+                      )}
+                      <div className="p-2">
+                        <p className="text-xs font-medium leading-tight">{msg.product_data.name}</p>
+                        <p className="text-xs font-semibold mt-1">
+                          {Number(msg.product_data.price).toLocaleString('ru-RU')} ₸
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   <p className={`text-xs mt-1 ${msg.role === 'user' ? 'text-white/50' : msg.role === 'manager' ? 'text-white/60' : 'text-gray-400'}`}>
                     {new Date(msg.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                   </p>

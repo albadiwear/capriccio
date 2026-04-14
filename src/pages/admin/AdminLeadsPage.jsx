@@ -2,7 +2,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { MessageCircle, Users } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 
-const STATUS_OPTIONS = ['Новый', 'Связались', 'Купил']
+const STATUS_OPTIONS = ['Новый', 'Написали', 'Думает', 'Отказ', 'Купил']
+
+const STATUS_COLORS = {
+  'Новый': 'bg-gray-100 text-gray-700',
+  'Написали': 'bg-blue-100 text-blue-700',
+  'Думает': 'bg-yellow-100 text-yellow-700',
+  'Отказ': 'bg-red-100 text-red-700',
+  'Купил': 'bg-green-100 text-green-700',
+}
 
 function getLeadSource(lead) {
   if (lead.user_metadata?.provider === 'google') return 'Google'
@@ -70,6 +78,17 @@ export default function AdminLeadsPage() {
       return matchesSearch && matchesSource && matchesStatus
     })
   }, [leads, search, sourceFilter, statusFilter])
+
+  const funnelStats = STATUS_OPTIONS.map(status => {
+    const items = leads.filter(l => {
+      const hasOrders = (l.orders || []).length > 0
+      return hasOrders ? status === 'Купил' : (l.lead_status || 'Новый') === status
+    })
+    const total = items.reduce((sum, l) => {
+      return sum + (l.orders || []).reduce((s, o) => s + Number(o.total_amount || 0), 0)
+    }, 0)
+    return { status, count: items.length, total }
+  })
 
   async function handleStatusChange(userId, nextStatus) {
     setLeads((prev) => prev.map((l) => l.id === userId ? { ...l, lead_status: nextStatus } : l))
@@ -156,41 +175,62 @@ export default function AdminLeadsPage() {
 
   return (
     <div>
-      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
+      <div className="mb-6">
+        <div className="flex flex-col gap-1">
           <h1 className="text-xl font-bold text-gray-900">Лиды</h1>
-          <p className="mt-1 text-sm text-gray-500">Всего лидов: {filteredLeads.length}</p>
+          <p className="text-sm text-gray-500">Всего лидов: {filteredLeads.length}</p>
         </div>
+      </div>
 
-        <div className="grid gap-3 sm:grid-cols-3">
-          <input
-            type="text"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Поиск по имени или email"
-            className="h-11 rounded-lg border border-gray-200 bg-white px-4 text-sm text-gray-900 outline-none transition-colors focus:border-gray-900"
-          />
-
-          <select
-            value={sourceFilter}
-            onChange={(event) => setSourceFilter(event.target.value)}
-            className="h-11 rounded-lg border border-gray-200 bg-white px-4 text-sm text-gray-900 outline-none transition-colors focus:border-gray-900"
+      <div className="grid grid-cols-5 gap-3 mb-6">
+        {funnelStats.map(({ status, count, total }) => (
+          <button
+            key={status}
+            onClick={() => setStatusFilter(statusFilter === status ? 'Все' : status)}
+            className={`rounded-xl border p-4 text-left transition-colors ${
+              statusFilter === status ? 'border-[#1a1a18] bg-[#1a1a18] text-white' : 'border-gray-100 bg-white hover:border-gray-300'
+            }`}
+            type="button"
           >
-            {['Все', 'Promo', 'Google', 'Сайт'].map((option) => (
-              <option key={option} value={option}>{option}</option>
-            ))}
-          </select>
+            <p className={`text-xs font-medium mb-1 ${statusFilter === status ? 'text-white/70' : 'text-gray-500'}`}>{status}</p>
+            <p className={`text-2xl font-bold ${statusFilter === status ? 'text-white' : 'text-gray-900'}`}>{count}</p>
+            {total > 0 && (
+              <p className={`text-xs mt-1 ${statusFilter === status ? 'text-white/60' : 'text-gray-400'}`}>
+                {total.toLocaleString('ru-RU')} ₸
+              </p>
+            )}
+          </button>
+        ))}
+      </div>
 
-          <select
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
-            className="h-11 rounded-lg border border-gray-200 bg-white px-4 text-sm text-gray-900 outline-none transition-colors focus:border-gray-900"
-          >
-            {['Все', ...STATUS_OPTIONS].map((option) => (
-              <option key={option} value={option}>{option}</option>
-            ))}
-          </select>
-        </div>
+      <div className="mb-6 grid gap-3 sm:grid-cols-3">
+        <input
+          type="text"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Поиск по имени или email"
+          className="h-11 rounded-lg border border-gray-200 bg-white px-4 text-sm text-gray-900 outline-none transition-colors focus:border-gray-900"
+        />
+
+        <select
+          value={sourceFilter}
+          onChange={(event) => setSourceFilter(event.target.value)}
+          className="h-11 rounded-lg border border-gray-200 bg-white px-4 text-sm text-gray-900 outline-none transition-colors focus:border-gray-900"
+        >
+          {['Все', 'Promo', 'Google', 'Сайт'].map((option) => (
+            <option key={option} value={option}>{option}</option>
+          ))}
+        </select>
+
+        <select
+          value={statusFilter}
+          onChange={(event) => setStatusFilter(event.target.value)}
+          className="h-11 rounded-lg border border-gray-200 bg-white px-4 text-sm text-gray-900 outline-none transition-colors focus:border-gray-900"
+        >
+          {['Все', ...STATUS_OPTIONS].map((option) => (
+            <option key={option} value={option}>{option}</option>
+          ))}
+        </select>
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white">
@@ -258,7 +298,7 @@ export default function AdminLeadsPage() {
                         onChange={(event) => handleStatusChange(lead.id, event.target.value)}
                         disabled={hasOrders}
                         onClick={e => e.stopPropagation()}
-                        className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition-colors focus:border-gray-900"
+                        className={`h-10 rounded-lg border border-gray-200 px-3 text-sm outline-none transition-colors focus:border-gray-900 ${STATUS_COLORS[status] || 'bg-white text-gray-900'}`}
                       >
                         {STATUS_OPTIONS.map((option) => (
                           <option key={option} value={option}>{option}</option>
@@ -306,7 +346,18 @@ export default function AdminLeadsPage() {
                   {selectedLead.full_name?.charAt(0) || selectedLead.email?.charAt(0) || '?'}
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900">{selectedLead.full_name || '—'}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-gray-900">{selectedLead.full_name || '—'}</p>
+                    <select
+                      value={((selectedLead.orders || []).length > 0) ? 'Купил' : (selectedLead.lead_status || 'Новый')}
+                      onChange={e => handleStatusChange(selectedLead.id, e.target.value)}
+                      disabled={(selectedLead.orders || []).length > 0}
+                      className={`text-xs rounded-full px-3 py-1 border-0 outline-none font-medium ${STATUS_COLORS[((selectedLead.orders || []).length > 0) ? 'Купил' : (selectedLead.lead_status || 'Новый')]}`}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
                   <p className="text-xs text-gray-500">{selectedLead.email}</p>
                 </div>
               </div>

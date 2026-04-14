@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
-import { Send, Bot, User, Search, MessageCircle } from 'lucide-react'
+import { Send, Bot, User, Search, MessageCircle, PanelRightClose, PanelRightOpen } from 'lucide-react'
 
 export default function AdminChatsPage() {
   const [chats, setChats] = useState([])
@@ -12,6 +12,7 @@ export default function AdminChatsPage() {
   const [tab, setTab] = useState('all')
   const [search, setSearch] = useState('')
   const bottomRef = useRef(null)
+  const [showProfile, setShowProfile] = useState(true)
 
   useEffect(() => {
     loadChats()
@@ -221,6 +222,13 @@ export default function AdminChatsPage() {
                   Отпустить ИИ
                 </button>
               )}
+              <button
+                onClick={() => setShowProfile(p => !p)}
+                className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50"
+                title={showProfile ? 'Скрыть профиль' : 'Показать профиль'}
+              >
+                {showProfile ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
+              </button>
             </div>
           </div>
 
@@ -284,7 +292,7 @@ export default function AdminChatsPage() {
       )}
 
       {/* Правая колонка — профиль */}
-      {selectedChat && (
+      {selectedChat && showProfile && (
         <div className="w-64 border-l border-gray-100 flex flex-col flex-shrink-0 bg-white overflow-y-auto">
           <div className="px-4 py-4">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Профиль клиента</p>

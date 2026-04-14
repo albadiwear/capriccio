@@ -398,27 +398,28 @@ export default function StylistPage() {
   }
 
   useEffect(() => {
-    if (!activeChatId) return
-    const chatChannel = supabase
-      .channel('chat-mode-' + activeChatId)
+    if (!user || !activeChatId) return
+
+    const channel = supabase
+      .channel('client-messages-' + activeChatId)
       .on('postgres_changes', {
-        event: 'UPDATE',
+        event: 'INSERT',
         schema: 'public',
-        table: 'stylist_chats',
-        filter: 'id=eq.' + activeChatId
+        table: 'stylist_messages',
+        filter: `chat_id=eq.${activeChatId}`
       }, (payload) => {
-        setChatMode(payload.new.mode)
-        if (payload.new.mode === 'human') {
-          setMessages(prev => [...prev, {
-            role: 'assistant',
-            content: 'Привет! Я живой стилист Capriccio. Чем могу помочь? 💫',
-            created_at: new Date().toISOString(),
-          }])
+        if (payload.new.role === 'manager' || payload.new.role === 'assistant') {
+          setMessages(prev => {
+            const exists = prev.some(m => m.id === payload.new.id)
+            if (exists) return prev
+            return [...prev, payload.new]
+          })
         }
       })
       .subscribe()
-    return () => supabase.removeChannel(chatChannel)
-  }, [activeChatId])
+
+    return () => supabase.removeChannel(channel)
+  }, [user, activeChatId])
 
   // --- UI ---
 

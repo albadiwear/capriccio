@@ -1,0 +1,17 @@
+{
+  "name": "Capriccio",
+  "short_name": "Capriccio",
+  "description": "Закрытый клуб премиум одежды",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#D4537E",
+  "theme_color": "#D4537E",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

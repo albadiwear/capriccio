@@ -24,6 +24,9 @@ export default function AdminLeadsPage() {
   const [profile, setProfile] = useState(null)
   const [leadOrders, setLeadOrders] = useState([])
   const [loadingProfile, setLoadingProfile] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [editForm, setEditForm] = useState({})
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     async function loadLeads() {
@@ -85,8 +88,70 @@ export default function AdminLeadsPage() {
     ])
 
     setProfile(profileData || null)
+    setEditForm({
+      full_name: lead.full_name || '',
+      phone: lead.phone || '',
+      age: profileData?.age || '',
+      city: profileData?.city || '',
+      height: profileData?.height || '',
+      weight: profileData?.weight || '',
+      chest: profileData?.chest || '',
+      waist: profileData?.waist || '',
+      hips: profileData?.hips || '',
+      clothing_size: profileData?.clothing_size || '',
+      shoe_size: profileData?.shoe_size || '',
+      body_type: profileData?.body_type || '',
+      color_type: profileData?.color_type || '',
+      lifestyle: profileData?.lifestyle || '',
+      budget_min: profileData?.budget_min || '',
+      budget_max: profileData?.budget_max || '',
+      notes: profileData?.notes || '',
+    })
+    setEditing(false)
+    setSaving(false)
     setLeadOrders(ordersData || [])
     setLoadingProfile(false)
+  }
+
+  async function handleSave() {
+    if (!selectedLead) return
+    setSaving(true)
+    try {
+      await supabase.from('users').update({
+        full_name: editForm.full_name,
+        phone: editForm.phone,
+      }).eq('id', selectedLead.id)
+
+      const profilePayload = {
+        user_id: selectedLead.id,
+        age: editForm.age ? parseInt(editForm.age) : null,
+        city: editForm.city || null,
+        height: editForm.height ? parseFloat(editForm.height) : null,
+        weight: editForm.weight ? parseFloat(editForm.weight) : null,
+        chest: editForm.chest ? parseFloat(editForm.chest) : null,
+        waist: editForm.waist ? parseFloat(editForm.waist) : null,
+        hips: editForm.hips ? parseFloat(editForm.hips) : null,
+        clothing_size: editForm.clothing_size || null,
+        shoe_size: editForm.shoe_size || null,
+        body_type: editForm.body_type || null,
+        color_type: editForm.color_type || null,
+        lifestyle: editForm.lifestyle || null,
+        budget_min: editForm.budget_min ? parseInt(editForm.budget_min) : null,
+        budget_max: editForm.budget_max ? parseInt(editForm.budget_max) : null,
+        notes: editForm.notes || null,
+        updated_at: new Date().toISOString(),
+      }
+      await supabase.from('stylist_profiles').upsert(profilePayload, { onConflict: 'user_id' })
+
+      setLeads(prev => prev.map(l => l.id === selectedLead.id ? { ...l, full_name: editForm.full_name, phone: editForm.phone } : l))
+      setSelectedLead(prev => ({ ...prev, full_name: editForm.full_name, phone: editForm.phone }))
+      setProfile(prev => ({ ...(prev || {}), ...profilePayload }))
+      setEditing(false)
+    } catch (e) {
+      console.error('Ошибка сохранения лида:', e)
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -226,7 +291,14 @@ export default function AdminLeadsPage() {
 
       {selectedLead && (
         <div className="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setSelectedLead(null)} />
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => {
+              setSelectedLead(null)
+              setEditing(false)
+              setSaving(false)
+            }}
+          />
           <div className="relative bg-white rounded-xl w-full max-w-2xl my-4 shadow-xl">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <div className="flex items-center gap-3">
@@ -238,7 +310,47 @@ export default function AdminLeadsPage() {
                   <p className="text-xs text-gray-500">{selectedLead.email}</p>
                 </div>
               </div>
-              <button onClick={() => setSelectedLead(null)} className="text-gray-400 hover:text-gray-900">✕</button>
+              <div className="flex items-center">
+                {!editing ? (
+                  <button
+                    type="button"
+                    onClick={() => setEditing(true)}
+                    className="text-sm text-gray-500 hover:text-gray-900 border border-gray-200 rounded-lg px-3 py-1.5 mr-2"
+                  >
+                    Редактировать
+                  </button>
+                ) : (
+                  <div className="flex gap-2 mr-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditing(false)}
+                      className="text-sm text-gray-500 hover:text-gray-900 border border-gray-200 rounded-lg px-3 py-1.5"
+                    >
+                      Отмена
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSave}
+                      disabled={saving}
+                      className="text-sm text-white bg-[#1a1a18] rounded-lg px-3 py-1.5 disabled:opacity-60"
+                    >
+                      {saving ? 'Сохраняем...' : 'Сохранить'}
+                    </button>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedLead(null)
+                    setEditing(false)
+                    setSaving(false)
+                  }}
+                  className="text-gray-400 hover:text-gray-900"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             <div className="px-6 py-5 space-y-5 max-h-[80vh] overflow-y-auto">
@@ -249,14 +361,37 @@ export default function AdminLeadsPage() {
                   <div>
                     <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Контакты</p>
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <p className="text-xs text-gray-400 mb-1">Телефон</p>
-                        <p className="text-sm font-medium text-gray-900">{selectedLead.phone || '—'}</p>
-                      </div>
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <p className="text-xs text-gray-400 mb-1">Город</p>
-                        <p className="text-sm font-medium text-gray-900">{profile?.city || selectedLead.city || '—'}</p>
-                      </div>
+                      {[
+                        { label: 'Имя', key: 'full_name' },
+                        { label: 'Телефон', key: 'phone' },
+                        { label: 'Город', key: 'city' },
+                        { label: 'Возраст', key: 'age', type: 'number' },
+                      ].map(({ label, key, type }) => (
+                        <div key={key} className="bg-gray-50 rounded-lg p-3">
+                          <p className="text-xs text-gray-400 mb-1">{label}</p>
+                          {editing ? (
+                            <input
+                              type={type || 'text'}
+                              value={editForm[key] ?? ''}
+                              onChange={(e) => setEditForm((prev) => ({ ...prev, [key]: e.target.value }))}
+                              className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1 text-sm text-gray-900 outline-none focus:border-gray-900"
+                            />
+                          ) : (
+                            <p className="text-sm font-medium text-gray-900">
+                              {key === 'full_name'
+                                ? (selectedLead.full_name || '—')
+                                : key === 'phone'
+                                  ? (selectedLead.phone || '—')
+                                  : key === 'city'
+                                    ? (profile?.city || selectedLead.city || '—')
+                                    : (profile?.age ? `${profile.age} лет` : '—')}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 mt-3">
                       <div className="bg-gray-50 rounded-lg p-3">
                         <p className="text-xs text-gray-400 mb-1">Дата регистрации</p>
                         <p className="text-sm font-medium text-gray-900">{new Date(selectedLead.created_at).toLocaleDateString('ru-RU')}</p>
@@ -268,24 +403,36 @@ export default function AdminLeadsPage() {
                     </div>
                   </div>
 
-                  {profile && (
+                  {(editing || profile) && (
                     <>
                       <div>
                         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Параметры</p>
                         <div className="grid grid-cols-4 gap-2">
                           {[
-                            { label: 'Возраст', value: profile.age ? profile.age + ' лет' : '—' },
-                            { label: 'Рост', value: profile.height ? profile.height + ' см' : '—' },
-                            { label: 'Вес', value: profile.weight ? profile.weight + ' кг' : '—' },
-                            { label: 'Размер', value: profile.clothing_size || '—' },
-                            { label: 'Грудь', value: profile.chest ? profile.chest + ' см' : '—' },
-                            { label: 'Талия', value: profile.waist ? profile.waist + ' см' : '—' },
-                            { label: 'Бёдра', value: profile.hips ? profile.hips + ' см' : '—' },
-                            { label: 'Обувь', value: profile.shoe_size || '—' },
-                          ].map(({ label, value }) => (
-                            <div key={label} className="bg-gray-50 rounded-lg p-2 text-center">
+                            { label: 'Рост', key: 'height', type: 'number', suffix: ' см' },
+                            { label: 'Вес', key: 'weight', type: 'number', suffix: ' кг' },
+                            { label: 'Размер', key: 'clothing_size', type: 'text' },
+                            { label: 'Грудь', key: 'chest', type: 'number', suffix: ' см' },
+                            { label: 'Талия', key: 'waist', type: 'number', suffix: ' см' },
+                            { label: 'Бёдра', key: 'hips', type: 'number', suffix: ' см' },
+                            { label: 'Обувь', key: 'shoe_size', type: 'number' },
+                          ].map(({ label, key, type, suffix }) => (
+                            <div key={key} className="bg-gray-50 rounded-lg p-2 text-center">
                               <p className="text-xs text-gray-400 mb-1">{label}</p>
-                              <p className="text-sm font-medium text-gray-900">{value}</p>
+                              {editing ? (
+                                <input
+                                  type={type || 'text'}
+                                  value={editForm[key] ?? ''}
+                                  onChange={(e) => setEditForm((prev) => ({ ...prev, [key]: e.target.value }))}
+                                  className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1 text-sm text-gray-900 outline-none focus:border-gray-900 text-center"
+                                />
+                              ) : (
+                                <p className="text-sm font-medium text-gray-900">
+                                  {profile?.[key] || profile?.[key] === 0
+                                    ? `${profile[key]}${suffix || ''}`
+                                    : '—'}
+                                </p>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -294,24 +441,31 @@ export default function AdminLeadsPage() {
                       <div>
                         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Стиль</p>
                         <div className="grid grid-cols-2 gap-3">
-                          <div className="bg-gray-50 rounded-lg p-3">
-                            <p className="text-xs text-gray-400 mb-1">Тип фигуры</p>
-                            <p className="text-sm font-medium text-gray-900">{profile.body_type || '—'}</p>
-                          </div>
-                          <div className="bg-gray-50 rounded-lg p-3">
-                            <p className="text-xs text-gray-400 mb-1">Цветотип</p>
-                            <p className="text-sm font-medium text-gray-900">{profile.color_type || '—'}</p>
-                          </div>
-                          <div className="bg-gray-50 rounded-lg p-3">
-                            <p className="text-xs text-gray-400 mb-1">Образ жизни</p>
-                            <p className="text-sm font-medium text-gray-900">{profile.lifestyle || '—'}</p>
-                          </div>
-                          <div className="bg-gray-50 rounded-lg p-3">
-                            <p className="text-xs text-gray-400 mb-1">Бюджет</p>
-                            <p className="text-sm font-medium text-gray-900">
-                              {profile.budget_min || profile.budget_max ? `${(profile.budget_min || 0).toLocaleString('ru-RU')} — ${(profile.budget_max || 0).toLocaleString('ru-RU')} ₸` : '—'}
-                            </p>
-                          </div>
+                          {[
+                            { label: 'Тип фигуры', key: 'body_type', type: 'text' },
+                            { label: 'Цветотип', key: 'color_type', type: 'text' },
+                            { label: 'Образ жизни', key: 'lifestyle', type: 'text' },
+                            { label: 'Бюджет от', key: 'budget_min', type: 'number', suffix: ' ₸' },
+                            { label: 'Бюджет до', key: 'budget_max', type: 'number', suffix: ' ₸' },
+                          ].map(({ label, key, type, suffix }) => (
+                            <div key={key} className="bg-gray-50 rounded-lg p-3">
+                              <p className="text-xs text-gray-400 mb-1">{label}</p>
+                              {editing ? (
+                                <input
+                                  type={type || 'text'}
+                                  value={editForm[key] ?? ''}
+                                  onChange={(e) => setEditForm((prev) => ({ ...prev, [key]: e.target.value }))}
+                                  className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1 text-sm text-gray-900 outline-none focus:border-gray-900"
+                                />
+                              ) : (
+                                <p className="text-sm font-medium text-gray-900">
+                                  {profile?.[key] || profile?.[key] === 0
+                                    ? `${profile[key]}${suffix || ''}`
+                                    : '—'}
+                                </p>
+                              )}
+                            </div>
+                          ))}
                         </div>
                         {profile.style_preferences?.length > 0 && (
                           <div className="flex flex-wrap gap-2 mt-2">
@@ -323,6 +477,23 @@ export default function AdminLeadsPage() {
                       </div>
                     </>
                   )}
+
+                  <div>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Заметки</p>
+                    {editing ? (
+                      <textarea
+                        value={editForm.notes ?? ''}
+                        onChange={(e) => setEditForm((prev) => ({ ...prev, notes: e.target.value }))}
+                        rows={3}
+                        placeholder="Заметки о клиенте..."
+                        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900 resize-none"
+                      />
+                    ) : (
+                      <p className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3 min-h-[60px]">
+                        {profile?.notes || <span className="text-gray-400">Нет заметок</span>}
+                      </p>
+                    )}
+                  </div>
 
                   {leadOrders.length > 0 && (
                     <div>

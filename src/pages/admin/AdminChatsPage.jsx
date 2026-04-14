@@ -40,16 +40,25 @@ export default function AdminChatsPage() {
       .from('stylist_chats')
       .select('*')
       .order('updated_at', { ascending: false })
-      .limit(50)
+      .limit(200)
     if (!data) return
-    const userIds = [...new Set(data.map(c => c.user_id).filter(Boolean))]
+
+    const seen = new Set()
+    const unique = data.filter(c => {
+      const key = c.user_id || c.id
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+
+    const userIds = [...new Set(unique.map(c => c.user_id).filter(Boolean))]
     const { data: usersData } = await supabase
       .from('users')
       .select('id, full_name, email, phone')
       .in('id', userIds)
     const usersMap = {}
     usersData?.forEach(u => { usersMap[u.id] = u })
-    setChats(data.map(c => ({ ...c, users: usersMap[c.user_id] || null })))
+    setChats(unique.map(c => ({ ...c, users: usersMap[c.user_id] || null })))
   }
 
   async function openChat(chat) {

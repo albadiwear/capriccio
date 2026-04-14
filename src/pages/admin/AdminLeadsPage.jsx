@@ -35,6 +35,9 @@ export default function AdminLeadsPage() {
   const [editing, setEditing] = useState(false)
   const [editForm, setEditForm] = useState({})
   const [saving, setSaving] = useState(false)
+  const [notes, setNotes] = useState([])
+  const [newNote, setNewNote] = useState('')
+  const [savingNote, setSavingNote] = useState(false)
 
   useEffect(() => {
     async function loadLeads() {
@@ -100,10 +103,14 @@ export default function AdminLeadsPage() {
     setLoadingProfile(true)
     setProfile(null)
     setLeadOrders([])
+    setNotes([])
+    setNewNote('')
 
-    const [{ data: profileData }, { data: ordersData }] = await Promise.all([
+    const [{ data: profileData }, { data: ordersData }, { data: notesData }] = await Promise.all([
       supabase.from('stylist_profiles').select('*').eq('user_id', lead.id).single(),
       supabase.from('orders').select('id, created_at, total_amount, status').eq('user_id', lead.id).order('created_at', { ascending: false }).limit(5)
+      ,
+      supabase.from('lead_notes').select('*').eq('user_id', lead.id).order('created_at', { ascending: false })
     ])
 
     setProfile(profileData || null)
@@ -124,12 +131,36 @@ export default function AdminLeadsPage() {
       lifestyle: profileData?.lifestyle || '',
       budget_min: profileData?.budget_min || '',
       budget_max: profileData?.budget_max || '',
-      notes: profileData?.notes || '',
     })
     setEditing(false)
     setSaving(false)
     setLeadOrders(ordersData || [])
+    setNotes(notesData || [])
     setLoadingProfile(false)
+  }
+
+  async function handleAddNote() {
+    if (!selectedLead) return
+    if (!newNote.trim()) return
+    setSavingNote(true)
+    try {
+      const { data } = await supabase.from('lead_notes').insert({
+        user_id: selectedLead.id,
+        text: newNote.trim(),
+      }).select().single()
+
+      const nowIso = new Date().toISOString()
+      await supabase.from('users').update({ last_contact_at: nowIso }).eq('id', selectedLead.id)
+
+      if (data) setNotes((prev) => [data, ...prev])
+      setLeads((prev) => prev.map((l) => l.id === selectedLead.id ? { ...l, last_contact_at: nowIso } : l))
+      setSelectedLead((prev) => ({ ...prev, last_contact_at: nowIso }))
+      setNewNote('')
+    } catch (e) {
+      console.error('Ошибка добавления заметки:', e)
+    } finally {
+      setSavingNote(false)
+    }
   }
 
   async function handleSave() {
@@ -157,7 +188,6 @@ export default function AdminLeadsPage() {
         lifestyle: editForm.lifestyle || null,
         budget_min: editForm.budget_min ? parseInt(editForm.budget_min) : null,
         budget_max: editForm.budget_max ? parseInt(editForm.budget_max) : null,
-        notes: editForm.notes || null,
         updated_at: new Date().toISOString(),
       }
       await supabase.from('stylist_profiles').upsert(profilePayload, { onConflict: 'user_id' })
@@ -256,6 +286,7 @@ export default function AdminLeadsPage() {
                 <th className="px-4 py-4 text-left font-medium">Источник</th>
                 <th className="px-4 py-4 text-left font-medium">Дата регистрации</th>
                 <th className="px-4 py-4 text-left font-medium">Заказы</th>
+                <th className="px-4 py-4 text-left font-medium">Контакт</th>
                 <th className="px-4 py-4 text-left font-medium">Статус</th>
                 <th className="px-4 py-4 text-center font-medium">Действие</th>
               </tr>
@@ -291,6 +322,12 @@ export default function AdminLeadsPage() {
                       ) : (
                         <span className="text-gray-400">—</span>
                       )}
+                    </td>
+                    <td className="px-4 py-4 text-gray-500 text-xs">
+                      {lead.last_contact_at
+                        ? new Date(lead.last_contact_at).toLocaleDateString('ru-RU')
+                        : <span className="text-red-400">Не было</span>
+                      }
                     </td>
                     <td className="px-4 py-4">
                       <select
@@ -530,19 +567,40 @@ export default function AdminLeadsPage() {
                   )}
 
                   <div>
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Заметки</p>
-                    {editing ? (
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Заметки</p>
+
+                    <div className="flex gap-2 mb-4">
                       <textarea
-                        value={editForm.notes ?? ''}
-                        onChange={(e) => setEditForm((prev) => ({ ...prev, notes: e.target.value }))}
-                        rows={3}
-                        placeholder="Заметки о клиенте..."
-                        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900 resize-none"
+                        value={newNote}
+                        onChange={(e) => setNewNote(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' && e.metaKey) handleAddNote() }}
+                        rows={2}
+                        placeholder="Написать заметку... (Cmd+Enter для сохранения)"
+                        className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900 resize-none"
                       />
+                      <button
+                        type="button"
+                        onClick={handleAddNote}
+                        disabled={savingNote || !newNote.trim()}
+                        className="px-4 rounded-lg bg-[#1a1a18] text-white text-sm font-medium disabled:opacity-40 self-stretch"
+                      >
+                        {savingNote ? '...' : 'Добавить'}
+                      </button>
+                    </div>
+
+                    {notes.length === 0 ? (
+                      <p className="text-sm text-gray-400 text-center py-3">Заметок пока нет</p>
                     ) : (
-                      <p className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3 min-h-[60px]">
-                        {profile?.notes || <span className="text-gray-400">Нет заметок</span>}
-                      </p>
+                      <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {notes.map((note) => (
+                          <div key={note.id} className="bg-gray-50 rounded-lg px-3 py-2">
+                            <p className="text-sm text-gray-800">{note.text}</p>
+                            <p className="text-xs text-gray-400 mt-1">
+                              {new Date(note.created_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
 

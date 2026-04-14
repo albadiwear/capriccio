@@ -25,6 +25,12 @@ function formatPhoneForWhatsApp(phone) {
 export default function AdminLeadsPage() {
   const [leads, setLeads] = useState([])
   const [loading, setLoading] = useState(true)
+  const [totalCount, setTotalCount] = useState(0)
+  const [page, setPage] = useState(0)
+  const [hasMore, setHasMore] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [selected, setSelected] = useState(new Set())
+  const [deletingBulk, setDeletingBulk] = useState(false)
   const [search, setSearch] = useState('')
   const [sourceFilter, setSourceFilter] = useState('Все')
   const [statusFilter, setStatusFilter] = useState('Все')
@@ -40,26 +46,41 @@ export default function AdminLeadsPage() {
   const [savingNote, setSavingNote] = useState(false)
   const [remindAt, setRemindAt] = useState('')
   const [reminderSaved, setReminderSaved] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
-  useEffect(() => {
-    async function loadLeads() {
-      setLoading(true)
+  const PAGE_SIZE = 20
 
-      const { data } = await supabase
-        .from('users')
-        .select('*, orders(id, total_amount, status)')
-        .order('created_at', { ascending: false })
+  async function loadLeads(pageNum = 0) {
+    if (pageNum === 0) setLoading(true)
+    else setLoadingMore(true)
 
+    const { data, count } = await supabase
+      .from('users')
+      .select('*, orders(id, total_amount, status)', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1)
+
+    if (pageNum === 0) {
       setLeads(data || [])
-      setLoading(false)
+    } else {
+      setLeads((prev) => [...prev, ...(data || [])])
     }
 
-    loadLeads()
+    if (typeof count === 'number') setTotalCount(count)
+    setHasMore((data || []).length === PAGE_SIZE)
+    setLoading(false)
+    setLoadingMore(false)
+  }
+
+  useEffect(() => {
+    setPage(0)
+    loadLeads(0)
 
     const channel = supabase
       .channel('leads-realtime')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'users' }, (payload) => {
         setLeads((prev) => [payload.new, ...prev])
+        setTotalCount((c) => c + 1)
       })
       .subscribe()
 
@@ -116,6 +137,7 @@ export default function AdminLeadsPage() {
     setNewNote('')
     setRemindAt(lead.remind_at ? new Date(lead.remind_at).toISOString().slice(0, 16) : '')
     setReminderSaved(false)
+    setDeleting(false)
 
     const [{ data: profileData }, { data: ordersData }, { data: notesData }] = await Promise.all([
       supabase.from('stylist_profiles').select('*').eq('user_id', lead.id).single(),
@@ -186,6 +208,29 @@ export default function AdminLeadsPage() {
     }
   }
 
+  async function handleDeleteLead() {
+    if (!selectedLead) return
+    if (!confirm(`Удалить лида ${selectedLead.full_name || selectedLead.email}? Это действие необратимо.`)) return
+    setDeleting(true)
+    await supabase.from('users').delete().eq('id', selectedLead.id)
+    setLeads((prev) => prev.filter((l) => l.id !== selectedLead.id))
+    setTotalCount((c) => Math.max(0, c - 1))
+    setSelectedLead(null)
+    setDeleting(false)
+  }
+
+  async function handleBulkDelete() {
+    if (selected.size === 0) return
+    if (!confirm(`Удалить ${selected.size} лидов? Это действие необратимо.`)) return
+    setDeletingBulk(true)
+    const ids = Array.from(selected)
+    await supabase.from('users').delete().in('id', ids)
+    setLeads((prev) => prev.filter((l) => !selected.has(l.id)))
+    setTotalCount((c) => Math.max(0, c - ids.length))
+    setSelected(new Set())
+    setDeletingBulk(false)
+  }
+
   async function handleSave() {
     if (!selectedLead) return
     setSaving(true)
@@ -229,9 +274,22 @@ export default function AdminLeadsPage() {
   return (
     <div>
       <div className="mb-6">
-        <div className="flex flex-col gap-1">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-1">
           <h1 className="text-xl font-bold text-gray-900">Лиды</h1>
-          <p className="text-sm text-gray-500">Всего лидов: {filteredLeads.length}</p>
+          <p className="text-sm text-gray-500">Всего лидов: {totalCount || filteredLeads.length}</p>
+          </div>
+
+          {selected.size > 0 && (
+            <button
+              type="button"
+              onClick={handleBulkDelete}
+              disabled={deletingBulk}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500 text-white text-sm font-medium hover:bg-red-600 disabled:opacity-50"
+            >
+              {deletingBulk ? 'Удаление...' : `Удалить выбранных (${selected.size})`}
+            </button>
+          )}
         </div>
       </div>
 
@@ -323,6 +381,17 @@ export default function AdminLeadsPage() {
           <table className="w-full min-w-[980px] text-sm">
             <thead>
               <tr className="border-b border-gray-100 text-xs text-gray-500">
+                <th className="px-4 py-4 text-left font-medium">
+                  <input
+                    type="checkbox"
+                    checked={selected.size === filteredLeads.length && filteredLeads.length > 0}
+                    onChange={(e) => {
+                      if (e.target.checked) setSelected(new Set(filteredLeads.map((l) => l.id)))
+                      else setSelected(new Set())
+                    }}
+                    className="w-4 h-4 rounded border-gray-300"
+                  />
+                </th>
                 <th className="px-4 py-4 text-left font-medium">№</th>
                 <th className="px-4 py-4 text-left font-medium">Имя</th>
                 <th className="px-4 py-4 text-left font-medium">Телефон</th>
@@ -346,6 +415,19 @@ export default function AdminLeadsPage() {
 
                 return (
                   <tr key={lead.id} className="border-b border-gray-50 transition-colors hover:bg-gray-50 cursor-pointer" onClick={() => openCard(lead)}>
+                    <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selected.has(lead.id)}
+                        onChange={(e) => {
+                          const next = new Set(selected)
+                          if (e.target.checked) next.add(lead.id)
+                          else next.delete(lead.id)
+                          setSelected(next)
+                        }}
+                        className="w-4 h-4 rounded border-gray-300"
+                      />
+                    </td>
                     <td className="px-4 py-4 text-gray-500">{index + 1}</td>
                     <td className="px-4 py-4 font-medium text-gray-900">{lead.full_name || '—'}</td>
                     <td className="px-4 py-4 text-gray-600">{lead.phone || '—'}</td>
@@ -413,6 +495,23 @@ export default function AdminLeadsPage() {
             </tbody>
           </table>
         )}
+
+        {hasMore && !loading && (
+          <div className="p-4 text-center">
+            <button
+              type="button"
+              onClick={() => {
+                const next = page + 1
+                setPage(next)
+                loadLeads(next)
+              }}
+              disabled={loadingMore}
+              className="px-6 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:border-gray-400 disabled:opacity-50"
+            >
+              {loadingMore ? 'Загрузка...' : 'Загрузить ещё'}
+            </button>
+          </div>
+        )}
       </div>
 
       {selectedLead && (
@@ -423,6 +522,7 @@ export default function AdminLeadsPage() {
               setSelectedLead(null)
               setEditing(false)
               setSaving(false)
+              setDeleting(false)
             }}
           />
           <div className="relative bg-white rounded-xl w-full max-w-2xl my-4 shadow-xl">
@@ -478,10 +578,20 @@ export default function AdminLeadsPage() {
 
                 <button
                   type="button"
+                  onClick={handleDeleteLead}
+                  disabled={deleting}
+                  className="text-sm text-red-500 hover:text-red-700 border border-red-200 rounded-lg px-3 py-1.5 mr-2 disabled:opacity-50"
+                >
+                  {deleting ? 'Удаление...' : 'Удалить'}
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => {
                     setSelectedLead(null)
                     setEditing(false)
                     setSaving(false)
+                    setDeleting(false)
                   }}
                   className="text-gray-400 hover:text-gray-900"
                 >

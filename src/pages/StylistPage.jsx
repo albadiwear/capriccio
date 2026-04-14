@@ -491,6 +491,34 @@ export default function StylistPage() {
                 className="rounded-xl max-w-[200px] max-h-[200px] object-cover"
               />
             )}
+
+            {msg.image_url && (
+              <img
+                src={msg.image_url}
+                alt="Фото"
+                className="rounded-xl max-w-[200px] max-h-[200px] object-cover cursor-pointer"
+                onClick={() => window.open(msg.image_url, '_blank')}
+              />
+            )}
+
+            {msg.product_data && (
+              <Link
+                to={`/product/${msg.product_data.id}`}
+                className="flex-shrink-0 w-36 border border-[#f0ede8] rounded-xl overflow-hidden"
+              >
+                {msg.product_data.image && (
+                  <div className="aspect-[3/4] overflow-hidden bg-[#f0ede8]">
+                    <img src={msg.product_data.image} alt={msg.product_data.name} className="w-full h-full object-cover" />
+                  </div>
+                )}
+                <div className="p-2">
+                  <p className="text-xs text-[#1a1a18] leading-tight line-clamp-2 mb-1">{msg.product_data.name}</p>
+                  <p className="text-xs font-medium text-[#D4537E]">
+                    {Number(msg.product_data.price).toLocaleString('ru-RU')} ₸
+                  </p>
+                </div>
+              </Link>
+            )}
             {msg.content && msg.content !== '📷 Фото' && (
               <div
                 className={`rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${

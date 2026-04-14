@@ -92,6 +92,8 @@ export default function StylistPage() {
   const [profile, setProfile] = useState(null)
   const [selectedImage, setSelectedImage] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
+  const [chatMode, setChatMode] = useState('ai')
+  const [handoffRequested, setHandoffRequested] = useState(false)
 
   const bottomRef = useRef(null)
   const textareaRef = useRef(null)
@@ -153,6 +155,13 @@ export default function StylistPage() {
       .eq('chat_id', chatId)
       .order('created_at', { ascending: true })
     setMessages(data || [])
+    const { data: chatData } = await supabase
+      .from('stylist_chats')
+      .select('mode, handoff_requested')
+      .eq('id', chatId)
+      .single()
+    setChatMode(chatData?.mode || 'ai')
+    setHandoffRequested(chatData?.handoff_requested || false)
   }
 
   const createChat = async () => {
@@ -164,6 +173,8 @@ export default function StylistPage() {
     setActiveChatId(data.id)
     setMessages([])
     setShowHistory(false)
+    setChatMode('ai')
+    setHandoffRequested(false)
     await loadChats()
   }
 
@@ -189,6 +200,7 @@ export default function StylistPage() {
   }
 
   const sendMessage = async (text) => {
+    if (chatMode === 'human') return
     const userMessage = (text || input).trim()
     if ((!userMessage && !selectedImage) || loading) return
 
@@ -355,6 +367,48 @@ export default function StylistPage() {
     setLoading(false)
   }
 
+  async function handleRequestHandoff() {
+    if (!activeChatId || handoffRequested) return
+    await supabase.from('stylist_chats').update({
+      handoff_requested: true,
+      handoff_reason: 'Клиент запросил живого стилиста'
+    }).eq('id', activeChatId)
+    setHandoffRequested(true)
+    await supabase.from('stylist_messages').insert({
+      chat_id: activeChatId,
+      role: 'assistant',
+      content: 'Я позвала живого стилиста — он скоро подключится! 🌸',
+    })
+    setMessages(prev => [...prev, {
+      role: 'assistant',
+      content: 'Я позвала живого стилиста — он скоро подключится! 🌸',
+      created_at: new Date().toISOString(),
+    }])
+  }
+
+  useEffect(() => {
+    if (!activeChatId) return
+    const chatChannel = supabase
+      .channel('chat-mode-' + activeChatId)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'stylist_chats',
+        filter: 'id=eq.' + activeChatId
+      }, (payload) => {
+        setChatMode(payload.new.mode)
+        if (payload.new.mode === 'human') {
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: 'Привет! Я живой стилист Capriccio. Чем могу помочь? 💫',
+            created_at: new Date().toISOString(),
+          }])
+        }
+      })
+      .subscribe()
+    return () => supabase.removeChannel(chatChannel)
+  }, [activeChatId])
+
   // --- UI ---
 
   const ChatHeader = (
@@ -481,6 +535,20 @@ export default function StylistPage() {
 
   const InputArea = (
     <div className="flex-shrink-0 px-4 py-3 bg-white border-t border-[#f0ede8]">
+      {activeChatId && chatMode === 'ai' && (
+        <button
+          type="button"
+          onClick={handleRequestHandoff}
+          disabled={handoffRequested}
+          className={`w-full mb-2 py-2 rounded-xl text-sm font-medium transition-colors ${
+            handoffRequested
+              ? 'bg-gray-100 text-gray-400'
+              : 'bg-[#FBEAF0] text-[#D4537E] hover:bg-[#f5d5e4]'
+          }`}
+        >
+          {handoffRequested ? '⏳ Ожидаем стилиста...' : '👩‍💼 Позвать живого стилиста'}
+        </button>
+      )}
       {imagePreview && (
         <div className="relative inline-block mb-2">
           <img src={imagePreview} alt="Preview" className="h-16 w-16 rounded-xl object-cover border border-[#f0ede8]" />
@@ -578,7 +646,11 @@ export default function StylistPage() {
       <div className="flex-1 flex flex-col min-w-0 min-h-0">
         {ChatHeader}
         {MessageList}
-        {InputArea}
+        {chatMode === 'human' ? (
+          <div className="flex-shrink-0 px-4 py-3 bg-[#FBEAF0] border-t border-[#f0ede8] text-center">
+            <p className="text-sm text-[#D4537E] font-medium">💫 Живой стилист сейчас с вами</p>
+          </div>
+        ) : InputArea}
       </div>
 
       {showHistory && (

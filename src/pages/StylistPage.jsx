@@ -10,12 +10,20 @@ const buildSystemPrompt = (profile) => {
 - Имя: ${profile.name || 'не указано'}
 - Возраст: ${profile.age || 'не указан'}
 - Рост: ${profile.height ? profile.height + ' см' : 'не указан'}
+- Вес: ${profile.weight ? profile.weight + ' кг' : 'не указан'}
 - Размер одежды: ${profile.clothing_size || 'не указан'}
 - Тип фигуры: ${profile.body_type || 'не определён'}
 - Цветотип: ${profile.color_type || 'не определён'}
+- Город: ${profile.city || 'не указан'}
+- Образ жизни: ${profile.lifestyle || 'не указан'}
 - Параметры: грудь ${profile.chest || '?'} / талия ${profile.waist || '?'} / бёдра ${profile.hips || '?'}
 - Бюджет: ${profile.budget_min && profile.budget_max ? profile.budget_min + '–' + profile.budget_max + ' ₸' : 'не указан'}
 - Предпочтения: ${profile.style_preferences?.join(', ') || 'не указаны'}
+
+${profile.managerNotes?.length > 0 ? `
+Заметки менеджера о клиенте (важно учитывать):
+${profile.managerNotes.map(n => `- ${n.text}`).join('\n')}
+` : ''}
 - Заметки: ${profile.notes || ''}
 ` : 'Профиль клиента ещё не заполнен — нужно познакомиться.'
 
@@ -101,12 +109,11 @@ export default function StylistPage() {
   }, [messages, loading])
 
   const loadProfile = async () => {
-    const { data } = await supabase
-      .from('stylist_profiles')
-      .select('*')
-      .eq('user_id', user.id)
-      .single()
-    setProfile(data || null)
+    const [{ data: profileData }, { data: notesData }] = await Promise.all([
+      supabase.from('stylist_profiles').select('*').eq('user_id', user.id).single(),
+      supabase.from('lead_notes').select('text, created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5)
+    ])
+    setProfile(profileData ? { ...profileData, managerNotes: notesData || [] } : null)
   }
 
   const updateProfile = async (field, value) => {
@@ -611,4 +618,3 @@ export default function StylistPage() {
     </div>
   )
 }
-

@@ -7,6 +7,7 @@ import {
   Users,
   Handshake,
   GraduationCap,
+  MessageCircle,
   ChevronDown,
   ChevronRight,
   LogOut,
@@ -23,6 +24,7 @@ const NAV_ITEMS = [
   { label: 'Заказы', icon: ShoppingBag, to: '/admin/orders' },
   { label: 'Партнёры', icon: Handshake, to: '/admin/partners' },
   { label: 'Академия', icon: GraduationCap, to: '/admin/academy', badgeKey: 'academy' },
+  { label: 'Чаты', icon: MessageCircle, to: '/admin/chats' },
 ]
 
 const CONTENT_ITEMS = [

@@ -38,6 +38,7 @@ import AdminBlogPage from './pages/AdminBlogPage'
 import AdminPromoPage from './pages/AdminPromoPage'
 import AdminBannersPage from './pages/admin/AdminBannersPage'
 import AdminLeadsPage from './pages/admin/AdminLeadsPage'
+import AdminChatsPage from './pages/admin/AdminChatsPage'
 import AdminReviewsPage from './pages/admin/AdminReviewsPage'
 import AdminAcademyPage from './pages/admin/AdminAcademyPage'
 
@@ -108,6 +109,7 @@ function App() {
           <Route index element={<AdminPage />} />
           <Route path="products" element={<AdminProductsPage />} />
           <Route path="leads" element={<AdminLeadsPage />} />
+          <Route path="chats" element={<AdminChatsPage />} />
           <Route path="orders" element={<AdminOrdersPage />} />
           <Route path="customers" element={<AdminCustomersPage />} />
           <Route path="partners" element={<AdminPartnersPage />} />

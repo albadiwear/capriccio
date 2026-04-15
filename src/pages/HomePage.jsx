@@ -82,6 +82,31 @@ export default function HomePage() {
     setMessage('')
   }, [user])
 
+  useEffect(() => {
+    if (!user?.id) return
+    let cancelled = false
+
+    ;(async () => {
+      const { data: profile } = await supabase
+        .from('stylist_profiles')
+        .select('onboarding_completed')
+        .eq('user_id', user.id)
+        .single()
+
+      if (cancelled) return
+
+      if (!profile || !profile.onboarding_completed) {
+        navigate('/onboarding')
+      } else {
+        navigate('/catalog')
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [user?.id, navigate])
+
   async function handleSubmit(e) {
     e.preventDefault()
     if (loading) return
@@ -309,26 +334,14 @@ export default function HomePage() {
               <div className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center text-lg">👑</div>
               <span className="text-white/70 text-xs">Сообщество</span>
             </div>
-          </div>
+	          </div>
 
-          <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6">
-            {user ? (
-              <div className="text-center">
-                <p className="text-white/70 text-sm">Вы уже вошли. Каталог открыт для вас.</p>
-                <button
-                  type="button"
-                  onClick={() => navigate('/catalog')}
-                  className="mt-5 w-full bg-[#D4537E] hover:bg-[#c44370] text-white py-3.5 rounded-xl text-sm font-medium transition-colors"
-                >
-                  Перейти в каталог →
-                </button>
-              </div>
-            ) : (
-              <>
-                <div className="flex border border-white/20 rounded-xl mb-5 overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => {
+	          <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6">
+	            <>
+	                <div className="flex border border-white/20 rounded-xl mb-5 overflow-hidden">
+	                  <button
+	                    type="button"
+	                    onClick={() => {
                       setMode('login')
                       setError('')
                       setMessage('')
@@ -438,15 +451,14 @@ export default function HomePage() {
                     Войти через Google
                   </button>
 
-                  <p className="text-white/30 text-xs text-center mt-3">
-                    Без спама · Только важное · Отписка в любой момент
-                  </p>
-                </form>
-              </>
-            )}
-          </div>
-        </div>
-      </section>
+	                  <p className="text-white/30 text-xs text-center mt-3">
+	                    Без спама · Только важное · Отписка в любой момент
+	                  </p>
+	                </form>
+	            </>
+	          </div>
+	        </div>
+	      </section>
 
       <footer className="border-t border-gray-100 bg-white">
         <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">

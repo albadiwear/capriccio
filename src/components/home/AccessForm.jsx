@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { getPostSignupRedirect } from '../../lib/onboarding'
 
 export default function AccessForm({ user }) {
   const navigate = useNavigate()
@@ -75,11 +76,12 @@ export default function AccessForm({ user }) {
 
     if (data?.user) {
       // Ждём пока сессия установится, потом переходим
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
         if (event === 'SIGNED_IN' && session) {
           subscription.unsubscribe()
           setLoading(false)
-          navigate('/catalog')
+          const target = await getPostSignupRedirect(session.user.id)
+          navigate(target)
         }
       })
 

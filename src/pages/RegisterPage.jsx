@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { getPostSignupRedirect } from '../lib/onboarding'
 import { useSEO } from '../hooks/useSEO'
 
 function GoogleIcon() {
@@ -141,11 +142,12 @@ export default function RegisterPage() {
     }
 
     // Ждём пока сессия установится, потом переходим
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
         subscription.unsubscribe()
+        const target = await getPostSignupRedirect(session.user.id)
         setLoading(false)
-        navigate('/catalog')
+        navigate(target)
       }
     })
   }

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Mail, Phone, User } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { getPostSignupRedirect } from '../lib/onboarding'
 import { useAuthStore } from '../store/authStore'
 
 const catalogTags = [
@@ -100,7 +101,8 @@ export default function PromoLanding() {
       }
 
       await initialize()
-      navigate('/catalog')
+      const target = await getPostSignupRedirect(authUser?.id)
+      navigate(target)
     } catch (submitError) {
       setError(submitError.message || 'Не удалось создать аккаунт')
     } finally {

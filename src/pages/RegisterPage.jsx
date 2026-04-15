@@ -145,7 +145,7 @@ export default function RegisterPage() {
       if (event === 'SIGNED_IN' && session) {
         subscription.unsubscribe()
         setLoading(false)
-        navigate('/onboarding')
+        navigate('/catalog')
       }
     })
   }

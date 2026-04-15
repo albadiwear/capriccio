@@ -79,7 +79,7 @@ export default function AccessForm({ user }) {
         if (event === 'SIGNED_IN' && session) {
           subscription.unsubscribe()
           setLoading(false)
-          navigate('/onboarding')
+          navigate('/catalog')
         }
       })
 

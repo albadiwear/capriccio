@@ -98,6 +98,11 @@ export default function StylistPage() {
   const bottomRef = useRef(null)
   const textareaRef = useRef(null)
   const fileInputRef = useRef(null)
+  const activeChatIdRef = useRef(null)
+
+  useEffect(() => {
+    activeChatIdRef.current = activeChatId
+  }, [activeChatId])
 
   useEffect(() => {
     if (user) {
@@ -159,7 +164,30 @@ export default function StylistPage() {
       .select('*')
       .eq('chat_id', chatId)
       .order('created_at', { ascending: true })
-    setMessages(data || [])
+    let msgs = data || []
+
+    // Enrich messages with product cards if product_ids are present.
+    const ids = new Set()
+    for (const m of msgs) {
+      if (Array.isArray(m.product_ids)) {
+        m.product_ids.forEach((id) => ids.add(id))
+      }
+    }
+    if (ids.size > 0) {
+      const { data: productsData } = await supabase
+        .from('products')
+        .select('id, name, price, sale_price, images, category')
+        .in('id', [...ids])
+      const map = {}
+      ;(productsData || []).forEach((p) => { map[p.id] = p })
+      msgs = msgs.map((m) => {
+        if (!Array.isArray(m.product_ids) || m.product_ids.length === 0) return m
+        const products = m.product_ids.map((id) => map[id]).filter(Boolean)
+        return products.length > 0 ? { ...m, products } : m
+      })
+    }
+
+    setMessages(msgs)
     const { data: chatData } = await supabase
       .from('stylist_chats')
       .select('mode, handoff_requested')
@@ -185,6 +213,7 @@ export default function StylistPage() {
 
   const selectChat = async (chatId) => {
     setActiveChatId(chatId)
+    activeChatIdRef.current = chatId
     await loadMessages(chatId)
     setShowHistory(false)
   }
@@ -225,23 +254,36 @@ export default function StylistPage() {
         .single()
       chatId = data.id
       setActiveChatId(chatId)
+      activeChatIdRef.current = chatId
+      setMessages([])
       await loadChats()
     }
 
-    // Сохранить сообщение пользователя
+    let uploadedImageUrl = null
+    if (selectedImage) {
+      try {
+        const ext = selectedImage.name?.split('.').pop() || 'jpg'
+        const path = `client/${user.id}/${chatId}/${Date.now()}.${ext}`
+        const { data: uploadData } = await supabase.storage
+          .from('chat-images')
+          .upload(path, selectedImage, { upsert: true })
+        if (uploadData) {
+          const { data: urlData } = supabase.storage.from('chat-images').getPublicUrl(path)
+          uploadedImageUrl = urlData.publicUrl
+        }
+      } catch {
+        // If upload fails, we still send the message text + the image to the AI (base64),
+        // but the image won't be shown in the chat history.
+      }
+    }
+
+    // Сохранить сообщение пользователя в БД. UI обновится через Realtime.
     await supabase.from('stylist_messages').insert({
       chat_id: chatId,
       role: 'user',
       content: userMessage || '📷 Фото',
+      image_url: uploadedImageUrl,
     })
-
-    const optimisticUser = {
-      role: 'user',
-      content: userMessage || '📷 Фото',
-      imagePreview: imagePreview,
-      created_at: new Date().toISOString(),
-    }
-    setMessages((prev) => [...prev, optimisticUser])
 
     // Подготовить сообщение для API
     const history = messages.map((m) => ({ role: m.role === 'manager' ? 'assistant' : m.role, content: m.content }))
@@ -365,16 +407,6 @@ export default function StylistPage() {
         product_ids: productIds.length > 0 ? productIds : null,
       })
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: cleanText,
-          products: products.length > 0 ? products : undefined,
-          created_at: new Date().toISOString(),
-        },
-      ])
-
       if (messages.length === 0) {
         await supabase
           .from('stylist_chats')
@@ -383,14 +415,14 @@ export default function StylistPage() {
         await loadChats()
       }
     } catch (e) {
-      setMessages((prev) => [
-        ...prev,
-        {
+      // Persist error as a message so UI still updates via Realtime (single source of truth).
+      if (chatId) {
+        await supabase.from('stylist_messages').insert({
+          chat_id: chatId,
           role: 'assistant',
           content: 'Что-то пошло не так, попробуй ещё раз 🙈',
-          created_at: new Date().toISOString(),
-        },
-      ])
+        })
+      }
     }
 
     setLoading(false)
@@ -408,37 +440,51 @@ export default function StylistPage() {
       role: 'assistant',
       content: 'Я позвала живого стилиста — он скоро подключится! 🌸',
     })
-    setMessages(prev => [...prev, {
-      role: 'assistant',
-      content: 'Я позвала живого стилиста — он скоро подключится! 🌸',
-      created_at: new Date().toISOString(),
-    }])
   }
 
   useEffect(() => {
-    if (!activeChatId) return
-
-    console.log('subscribing to chat:', activeChatId)
-
+    if (!user?.id) return
     const channel = supabase
-      .channel(`messages-${activeChatId}`)
+      .channel(`messages-${user.id}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'stylist_messages',
-        filter: `chat_id=eq.${activeChatId}`
       }, (payload) => {
-        console.log('realtime message received:', payload)
-        setMessages(prev => [...prev, payload.new])
+        const incoming = payload.new
+        if (!incoming?.chat_id || incoming.chat_id !== activeChatIdRef.current) return
+
+        if (Array.isArray(incoming.product_ids) && incoming.product_ids.length > 0) {
+          supabase
+            .from('products')
+            .select('id, name, price, sale_price, images, category')
+            .in('id', incoming.product_ids)
+            .then(({ data: productsData }) => {
+              const msgWithProducts = {
+                ...incoming,
+                products: productsData || [],
+              }
+              setMessages((prev) => {
+                const exists = prev.some((m) => m.id && msgWithProducts.id && m.id === msgWithProducts.id)
+                if (exists) return prev
+                return [...prev, msgWithProducts]
+              })
+            })
+          return
+        }
+
+        setMessages((prev) => {
+          const exists = prev.some((m) => m.id && incoming.id && m.id === incoming.id)
+          if (exists) return prev
+          return [...prev, incoming]
+        })
       })
-      .subscribe((status) => {
-        console.log('channel status:', status)
-      })
+      .subscribe()
 
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [activeChatId])
+  }, [user?.id])
 
   // --- UI ---
 

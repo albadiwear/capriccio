@@ -146,6 +146,11 @@ export default function StylistPage() {
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
     setChats(data || [])
+    if (data && data.length > 0) {
+      const last = data.reduce((a, b) => new Date(a.updated_at) > new Date(b.updated_at) ? a : b)
+      setActiveChatId(last.id)
+      await loadMessages(last.id)
+    }
   }
 
   const loadMessages = async (chatId) => {

@@ -41,6 +41,7 @@ const CLOTHING_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL']
 export default function OnboardingPage() {
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
+  const [showIntro, setShowIntro] = useState(true)
   const [step, setStep] = useState(0)
   const [saving, setSaving] = useState(false)
 
@@ -145,6 +146,59 @@ export default function OnboardingPage() {
     }
     setSaving(false)
     navigate('/catalog')
+  }
+
+  if (showIntro) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col px-4">
+        <div className="pt-10 text-center">
+          <span className="text-lg font-bold tracking-[0.2em] text-[#1a1a18]">CAPRICCIO</span>
+        </div>
+
+        <div className="flex-1 flex flex-col items-center justify-center text-center max-w-md mx-auto pb-12">
+          <div className="text-6xl leading-none select-none">👗✨</div>
+
+          <h1 className="mt-6 text-3xl font-semibold text-[#1a1a18]">Познакомимся поближе</h1>
+          <p className="mt-3 text-xl font-semibold text-[#D4537E]">Твой личный ИИ-стилист уже ждёт</p>
+
+          <p className="mt-4 text-sm text-[#1a1a18]/70 leading-6">
+            Заполни короткую анкету — и Амина будет знать твои параметры, размеры и стиль. Никаких лишних
+            вопросов — только точные подборки для тебя
+          </p>
+
+          <div className="mt-7 w-full text-left space-y-3">
+            <div className="flex items-start gap-3">
+              <span className="text-xl leading-none select-none">👗</span>
+              <p className="text-sm text-[#1a1a18]">Подборки по твоим размерам</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="text-xl leading-none select-none">✨</span>
+              <p className="text-sm text-[#1a1a18]">Образы под твой стиль жизни</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="text-xl leading-none select-none">⚡</span>
+              <p className="text-sm text-[#1a1a18]">Быстрые рекомендации без лишних вопросов</p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowIntro(false)}
+            className="mt-8 w-full h-12 rounded-xl bg-[#D4537E] text-white text-sm font-semibold hover:opacity-95 active:opacity-90"
+          >
+            Заполнить анкету →
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate('/catalog')}
+            className="mt-4 text-xs text-gray-500 underline underline-offset-4 hover:text-gray-700"
+          >
+            Пропустить
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (

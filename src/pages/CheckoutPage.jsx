@@ -6,12 +6,22 @@ import { useCartStore } from '../store/cartStore'
 import { useAuthStore } from '../store/authStore'
 
 const DELIVERY_OPTIONS = [
-  { value: 'courier', label: 'Курьер по Алматы', cost: 1500 },
+  { value: 'courier', label: 'Курьер', cost: 1500 },
+  { value: 'pickup', label: 'Самовывоз / ПВЗ', cost: 0 },
   { value: 'kazpost', label: 'Казпочта', cost: 2000 },
   { value: 'cdek', label: 'СДЭК', cost: 2500 },
   { value: 'yandex', label: 'Яндекс Доставка', cost: 1800 },
   { value: 'indriver', label: 'InDriver', cost: 1200 },
 ]
+
+const PICKUP_CITIES = ['Алматы', 'Астана', 'Караганда', 'Шымкент']
+
+const PICKUP_POINTS_BY_CITY = {
+  Алматы: ['ул. Абая 10, ТЦ Мега', 'пр. Аль-Фараби 77'],
+  Астана: ['пр. Республики 15', 'ул. Сейфуллина 8'],
+  Караганда: ['бул. Мира 32', 'ул. Ерубаева 5'],
+  Шымкент: ['пр. Тауке хана 22'],
+}
 
 const PAYMENT_OPTIONS = [
   { value: 'card', label: 'Карта Visa / Mastercard' },
@@ -51,6 +61,8 @@ export default function CheckoutPage() {
   const [apartment, setApartment] = useState('')
   const [postalCode, setPostalCode] = useState('')
   const [comment, setComment] = useState('')
+  const [pickupCity, setPickupCity] = useState('Алматы')
+  const [pickupPoint, setPickupPoint] = useState(PICKUP_POINTS_BY_CITY['Алматы'][0])
 
   const [selectedPayment, setSelectedPayment] = useState('card')
 
@@ -124,6 +136,11 @@ export default function CheckoutPage() {
     loadDefaultAddress()
   }, [user])
 
+  useEffect(() => {
+    const points = PICKUP_POINTS_BY_CITY[pickupCity] || []
+    setPickupPoint(points[0] || '')
+  }, [pickupCity])
+
   const deliveryCost = DELIVERY_OPTIONS.find((o) => o.value === selectedDelivery)?.cost || 0
   const total = subtotal + deliveryCost - discount
 
@@ -145,9 +162,16 @@ export default function CheckoutPage() {
     }
 
     if (step === 3) {
-      if (!city.trim() || !street.trim() || !house.trim()) {
-        setStepError('Заполните город, улицу и дом')
-        return
+      if (selectedDelivery === 'pickup') {
+        if (!pickupCity.trim() || !pickupPoint.trim()) {
+          setStepError('Выберите город и пункт выдачи')
+          return
+        }
+      } else {
+        if (!city.trim() || !street.trim() || !house.trim()) {
+          setStepError('Заполните город, улицу и дом')
+          return
+        }
       }
     }
 
@@ -200,6 +224,27 @@ export default function CheckoutPage() {
         : null
 
     try {
+      const isPickup = selectedDelivery === 'pickup'
+      const deliveryAddress = isPickup
+        ? {
+            full_name: name,
+            phone,
+            city: pickupCity,
+            street: `ПВЗ: ${pickupPoint}`,
+            house: '',
+            apartment: '',
+            postal_code: '',
+          }
+        : {
+            full_name: name,
+            phone,
+            city,
+            street,
+            house,
+            apartment,
+            postal_code: postalCode,
+          }
+
       const orderPayload = {
         user_id: user?.id || null,
         order_number: `CAP-${Date.now()}`,
@@ -209,15 +254,7 @@ export default function CheckoutPage() {
         promo_code: promoCode || null,
         discount_amount: discount,
         delivery_method: selectedDelivery,
-        delivery_address: {
-          full_name: name,
-          phone,
-          city,
-          street,
-          house,
-          apartment,
-          postal_code: postalCode,
-        },
+        delivery_address: deliveryAddress,
         payment_method: selectedPayment,
         referral_code: refCode || null,
       }
@@ -242,15 +279,7 @@ export default function CheckoutPage() {
             promo_code: promoCode || null,
             discount_amount: discount,
             delivery_method: selectedDelivery,
-            delivery_address: {
-              full_name: name,
-              phone,
-              city,
-              street,
-              house,
-              apartment,
-              postal_code: postalCode,
-            },
+            delivery_address: deliveryAddress,
             payment_method: selectedPayment,
           })
           .select()
@@ -438,7 +467,9 @@ export default function CheckoutPage() {
                           </div>
                           <span className="text-sm font-medium text-[#1a1a18]">{opt.label}</span>
                         </div>
-                        <span className="text-sm text-[#888780]">от {opt.cost.toLocaleString('ru-RU')} ₸</span>
+                        <span className="text-sm text-[#888780]">
+                          {opt.cost === 0 ? '0 ₸' : `от ${opt.cost.toLocaleString('ru-RU')} ₸`}
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -466,61 +497,95 @@ export default function CheckoutPage() {
 
             {step === 3 && (
               <div>
-                <h2 className="text-xl font-semibold text-[#1a1a18]">Куда доставить?</h2>
-                <p className="text-sm text-[#888780] mt-1 mb-6">Укажите адрес доставки</p>
+                <h2 className="text-xl font-semibold text-[#1a1a18]">
+                  {selectedDelivery === 'pickup' ? 'Где забрать?' : 'Куда доставить?'}
+                </h2>
+                <p className="text-sm text-[#888780] mt-1 mb-6">
+                  {selectedDelivery === 'pickup' ? 'Выберите город и пункт выдачи' : 'Укажите адрес доставки'}
+                </p>
 
-                <div className="grid grid-cols-1 gap-4">
-                  <InputField
-                    label="Город"
-                    type="text"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    placeholder="Алматы"
-                    required
-                  />
-                  <InputField
-                    label="Улица"
-                    type="text"
-                    value={street}
-                    onChange={(e) => setStreet(e.target.value)}
-                    placeholder="ул. Абая"
-                    required
-                  />
-                  <div className="grid grid-cols-2 gap-4">
+                {selectedDelivery === 'pickup' ? (
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs text-[#888780] font-medium">Город</label>
+                      <select
+                        value={pickupCity}
+                        onChange={(e) => setPickupCity(e.target.value)}
+                        className="h-12 rounded-xl border border-[#e0ddd8] px-4 text-sm text-[#1a1a18] transition-colors focus:border-[#1a1a18] focus:outline-none bg-white"
+                      >
+                        {PICKUP_CITIES.map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs text-[#888780] font-medium">Пункт выдачи</label>
+                      <select
+                        value={pickupPoint}
+                        onChange={(e) => setPickupPoint(e.target.value)}
+                        className="h-12 rounded-xl border border-[#e0ddd8] px-4 text-sm text-[#1a1a18] transition-colors focus:border-[#1a1a18] focus:outline-none bg-white"
+                      >
+                        {(PICKUP_POINTS_BY_CITY[pickupCity] || []).map((p) => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-4">
                     <InputField
-                      label="Дом"
+                      label="Город"
                       type="text"
-                      value={house}
-                      onChange={(e) => setHouse(e.target.value)}
-                      placeholder="12"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      placeholder="Алматы"
                       required
                     />
                     <InputField
-                      label="Квартира"
+                      label="Улица"
                       type="text"
-                      value={apartment}
-                      onChange={(e) => setApartment(e.target.value)}
-                      placeholder="34"
+                      value={street}
+                      onChange={(e) => setStreet(e.target.value)}
+                      placeholder="ул. Абая"
+                      required
                     />
-                  </div>
-                  <InputField
-                    label="Индекс"
-                    type="text"
-                    value={postalCode}
-                    onChange={(e) => setPostalCode(e.target.value)}
-                    placeholder="050000"
-                  />
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs text-[#888780] font-medium">Комментарий для курьера</label>
-                    <textarea
-                      value={comment}
-                      onChange={(e) => setComment(e.target.value)}
-                      placeholder="Подъезд, этаж, домофон..."
-                      rows={3}
-                      className="rounded-xl border border-[#e0ddd8] px-4 py-3 text-sm text-[#1a1a18] transition-colors focus:border-[#1a1a18] focus:outline-none placeholder:text-[#aaa] bg-white resize-none"
+                    <div className="grid grid-cols-2 gap-4">
+                      <InputField
+                        label="Дом"
+                        type="text"
+                        value={house}
+                        onChange={(e) => setHouse(e.target.value)}
+                        placeholder="12"
+                        required
+                      />
+                      <InputField
+                        label="Квартира"
+                        type="text"
+                        value={apartment}
+                        onChange={(e) => setApartment(e.target.value)}
+                        placeholder="34"
+                      />
+                    </div>
+                    <InputField
+                      label="Индекс"
+                      type="text"
+                      value={postalCode}
+                      onChange={(e) => setPostalCode(e.target.value)}
+                      placeholder="050000"
                     />
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs text-[#888780] font-medium">Комментарий для курьера</label>
+                      <textarea
+                        value={comment}
+                        onChange={(e) => setComment(e.target.value)}
+                        placeholder="Подъезд, этаж, домофон..."
+                        rows={3}
+                        className="rounded-xl border border-[#e0ddd8] px-4 py-3 text-sm text-[#1a1a18] transition-colors focus:border-[#1a1a18] focus:outline-none placeholder:text-[#aaa] bg-white resize-none"
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {stepError && <p className="mt-4 text-sm text-red-600">{stepError}</p>}
 

@@ -7,7 +7,6 @@ import DirectionsSection from '../components/home/DirectionsSection'
 import CatalogPreview from '../components/home/CatalogPreview'
 import ReviewsSection from '../components/home/ReviewsSection'
 import { supabase } from '../lib/supabase'
-import { getPostSignupRedirect } from '../lib/onboarding'
 
 export default function HomePage() {
   const user = useAuthStore((state) => state.user)
@@ -130,7 +129,7 @@ export default function HomePage() {
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
         if (event === 'SIGNED_IN' && session) {
           subscription.unsubscribe()
-          getPostSignupRedirect(session.user.id).then((target) => navigate(target))
+          navigate('/onboarding')
         }
       })
       return

@@ -33,13 +33,8 @@ export default function AccessForm({ user }) {
     })
 
     if (!signInError) {
-      const { data: profileData } = await supabase
-        .from('stylist_profiles')
-        .select('user_id')
-        .eq('user_id', data.user.id)
-        .single()
       setLoading(false)
-      navigate(profileData ? '/catalog' : '/onboarding')
+      navigate('/catalog')
       return
     }
 
@@ -74,8 +69,13 @@ export default function AccessForm({ user }) {
     }
 
     if (data?.user) {
-      setLoading(false)
-      navigate('/onboarding')
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          subscription.unsubscribe()
+          setLoading(false)
+          navigate('/onboarding')
+        }
+      })
       return
     }
 
@@ -114,7 +114,7 @@ export default function AccessForm({ user }) {
 
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/onboarding` },
+      options: { redirectTo: `${window.location.origin}/catalog` },
     })
 
     if (oauthError) {

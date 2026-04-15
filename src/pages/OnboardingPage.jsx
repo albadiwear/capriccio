@@ -57,10 +57,10 @@ export default function OnboardingPage() {
         clearInterval(interval)
         const { data } = await supabase
           .from('stylist_profiles')
-          .select('onboarding_completed')
+          .select('user_id')
           .eq('user_id', currentUser.id)
           .maybeSingle()
-        if (data?.onboarding_completed === true) {
+        if (data) {
           navigate('/catalog')
         }
         return
@@ -118,7 +118,6 @@ export default function OnboardingPage() {
     if (currentUser) {
       const payload = {
         user_id: currentUser.id,
-        onboarding_completed: true,
         age: form.age ? parseInt(form.age) : null,
         city: form.city || null,
         lifestyle: form.lifestyle || null,
@@ -143,6 +142,11 @@ export default function OnboardingPage() {
       } else {
         console.log('Профиль сохранён успешно')
       }
+
+      const userId = user?.id || currentUser.id
+      await supabase
+        .from('stylist_profiles')
+        .upsert({ user_id: userId, onboarding_completed: true }, { onConflict: 'user_id' })
     }
     setSaving(false)
     navigate('/catalog')

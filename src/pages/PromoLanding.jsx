@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Mail, Phone, User } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { getPostSignupRedirect } from '../lib/onboarding'
 import { useAuthStore } from '../store/authStore'
 
 const catalogTags = [
@@ -69,6 +68,7 @@ export default function PromoLanding() {
         },
       })
 
+      let createdNewUser = Boolean(data?.user) && !signUpError
       let authUser = data?.user || data?.session?.user || null
 
       if (signUpError) {
@@ -78,6 +78,7 @@ export default function PromoLanding() {
           throw signUpError
         }
 
+        createdNewUser = false
         const { error: otpError } = await supabase.auth.signInWithOtp({ email })
 
         if (otpError) {
@@ -101,8 +102,13 @@ export default function PromoLanding() {
       }
 
       await initialize()
-      const target = await getPostSignupRedirect(authUser?.id)
-      navigate(target)
+      const { data: { session } } = await supabase.auth.getSession()
+
+      if (createdNewUser && session) {
+        navigate('/onboarding')
+      } else {
+        navigate('/catalog')
+      }
     } catch (submitError) {
       setError(submitError.message || 'Не удалось создать аккаунт')
     } finally {

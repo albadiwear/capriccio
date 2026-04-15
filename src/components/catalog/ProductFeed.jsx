@@ -112,6 +112,7 @@ export default function ProductFeed({ products, wishlistIds, onToggleWishlist })
 
             <div className="relative w-full aspect-square">
               <img
+                loading="lazy"
                 src={product.images?.[0]}
                 alt={product.name}
                 className="h-full w-full object-cover"
@@ -212,4 +213,3 @@ export default function ProductFeed({ products, wishlistIds, onToggleWishlist })
     </div>
   )
 }
-

@@ -51,6 +51,7 @@ const ALL_CATEGORIES = [
 const SEASONS = ['Весна', 'Лето', 'Осень', 'Зима']
 
 const MAX_PRICE = 200000
+const PAGE_SIZE = 12
 
 function SkeletonCard() {
   return (
@@ -262,6 +263,8 @@ export default function CatalogPage() {
   const [user, setUser] = useState(null)
   const [wishlistIds, setWishlistIds] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
   const [filters, setFilters] = useState(DEFAULT_FILTERS)
   const [view, setView] = useState(() => localStorage.getItem('capriccio_catalog_view') || 'grid')
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -284,6 +287,7 @@ export default function CatalogPage() {
   useEffect(() => {
     const loadProducts = async () => {
       setLoading(true)
+      setHasMore(false)
       let query = supabase
         .from('products')
         .select('*, product_variants(*)')
@@ -307,16 +311,58 @@ export default function CatalogPage() {
 
       // Sorting: always newest first on mobile flow
       query = query.order('created_at', { ascending: false })
+      query = query.range(0, PAGE_SIZE - 1)
 
       const { data, error } = await query
       if (error) console.error(error)
       setProducts(data || [])
+      setHasMore((data || []).length === PAGE_SIZE)
       setLoading(false)
     }
 
     const timer = window.setTimeout(loadProducts, 300)
     return () => window.clearTimeout(timer)
   }, [activeCategory, filters])
+
+  async function loadMore() {
+    if (loadingMore || loading || !hasMore) return
+    setLoadingMore(true)
+
+    let query = supabase
+      .from('products')
+      .select('*, product_variants(*)')
+      .eq('is_active', true)
+
+    if (activeCategory !== 'Все') {
+      if (activeCategory === 'Скидки') {
+        query = query.not('sale_price', 'is', null)
+      } else if (activeCategory === 'Новинки') {
+        query = query.eq('is_new', true)
+      } else {
+        query = query.ilike('category', activeCategory)
+      }
+    }
+
+    if (filters.onSale) query = query.not('sale_price', 'is', null)
+    if (filters.priceMin) query = query.gte('price', filters.priceMin)
+    if (filters.priceMax) query = query.lte('price', filters.priceMax)
+    if (filters.seasons?.length > 0) query = query.in('season', filters.seasons)
+    if (filters.sizes?.length > 0) query = query.eq('product_variants.size', filters.sizes[0])
+
+    query = query.order('created_at', { ascending: false })
+
+    const start = products.length
+    const end = start + PAGE_SIZE - 1
+    query = query.range(start, end)
+
+    const { data, error } = await query
+    if (error) console.error(error)
+
+    const next = data || []
+    setProducts((prev) => [...prev, ...next])
+    setHasMore(next.length === PAGE_SIZE)
+    setLoadingMore(false)
+  }
 
   useEffect(() => {
     async function loadWishlist() {
@@ -782,10 +828,11 @@ export default function CatalogPage() {
             />
           ) : (
             <div className="grid grid-cols-2 gap-[2px] px-0">
-              {filtered.map((p) => (
+              {filtered.map((p, idx) => (
                 <ProductCard
                   key={p.id}
                   product={p}
+                  imageLoading={idx < 4 ? 'eager' : 'lazy'}
                   wished={wishlistIds.includes(p.id)}
                   onToggleWishlist={handleToggleWishlist}
                   onAddedToCart={() => {
@@ -794,6 +841,19 @@ export default function CatalogPage() {
                   }}
                 />
               ))}
+            </div>
+          )}
+
+          {!loading && hasMore && (
+            <div className="mt-6 px-2">
+              <button
+                type="button"
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="h-12 w-full rounded-xl border border-[#e0ddd8] text-sm text-[#1a1a18] hover:border-[#1a1a18] disabled:opacity-60"
+              >
+                {loadingMore ? 'Загрузка...' : 'Показать ещё'}
+              </button>
             </div>
           )}
         </div>

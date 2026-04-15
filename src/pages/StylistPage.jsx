@@ -403,46 +403,29 @@ export default function StylistPage() {
   }
 
   useEffect(() => {
-    if (!user || !activeChatId) return
+    if (!activeChatId) return
 
-    let unreadCount = 0
+    console.log('subscribing to chat:', activeChatId)
 
     const channel = supabase
-      .channel('client-messages-' + activeChatId)
+      .channel(`messages-${activeChatId}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'stylist_messages',
         filter: `chat_id=eq.${activeChatId}`
       }, (payload) => {
-        if (payload.new.role === 'manager' || payload.new.role === 'assistant') {
-          setMessages(prev => {
-            const exists = prev.some(m => m.id === payload.new.id)
-            if (exists) return prev
-            return [...prev, payload.new]
-          })
-          if (document.hidden) {
-            unreadCount++
-            document.title = `(${unreadCount}) Capriccio`
-          }
-        }
+        console.log('realtime message received:', payload)
+        setMessages(prev => [...prev, payload.new])
       })
-      .subscribe()
-
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        unreadCount = 0
-        document.title = 'Capriccio'
-      }
-    }
-    document.addEventListener('visibilitychange', handleVisibilityChange)
+      .subscribe((status) => {
+        console.log('channel status:', status)
+      })
 
     return () => {
       supabase.removeChannel(channel)
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      document.title = 'Capriccio'
     }
-  }, [user, activeChatId])
+  }, [activeChatId])
 
   // --- UI ---
 

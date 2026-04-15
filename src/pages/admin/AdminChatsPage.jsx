@@ -55,22 +55,27 @@ export default function AdminChatsPage() {
 
   useEffect(() => {
     if (!selectedChat?.id) return
+
+    console.log('subscribing to chat:', selectedChat.id)
+
     const channel = supabase
-      .channel('admin-messages-' + selectedChat.id)
+      .channel(`messages-${selectedChat.id}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'stylist_messages',
         filter: `chat_id=eq.${selectedChat.id}`,
       }, (payload) => {
-        setMessages(prev => {
-          const exists = prev.some(m => m.id === payload.new.id)
-          if (exists) return prev
-          return [...prev, payload.new]
-        })
+        console.log('realtime message received:', payload)
+        setMessages(prev => [...prev, payload.new])
       })
-      .subscribe()
-    return () => supabase.removeChannel(channel)
+      .subscribe((status) => {
+        console.log('channel status:', status)
+      })
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [selectedChat?.id])
 
   async function loadChats() {

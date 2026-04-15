@@ -278,17 +278,29 @@ export default function StylistPage() {
     try {
       const { data: { session } } = await supabase.auth.getSession()
 
-      const { data, error } = await supabase.functions.invoke('stylist', {
-        body: {
-          system: buildSystemPrompt(profile),
-          messages: [...history, { role: 'user', content: userContent }],
-        },
-        headers: {
-          Authorization: `Bearer ${session?.access_token}`,
-        },
-      })
+      if (!session?.access_token) throw new Error('No session token')
 
-      if (error) throw error
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stylist`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            userId: user?.id,
+            messages: [...history, { role: 'user', content: userContent }],
+          }),
+        }
+      )
+
+      if (!res.ok) {
+        const errText = await res.text()
+        throw new Error(`Edge Function error ${res.status}: ${errText}`)
+      }
+
+      const data = await res.json()
 
       const rawText = data?.content?.[0]?.text
       if (!rawText) throw new Error('Empty response')

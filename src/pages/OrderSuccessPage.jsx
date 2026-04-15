@@ -23,7 +23,7 @@ export default function OrderSuccessPage() {
           .from('orders')
           .select('id, total_amount, total, delivery_method, delivery_address, order_items(quantity, size, color, products(name))')
           .eq('id', id)
-          .maybeSingle()
+          .single()
         if (!cancelled) setOrder(data || null)
       } finally {
         if (!cancelled) setOrderLoading(false)
@@ -90,9 +90,11 @@ export default function OrderSuccessPage() {
   }, [order?.total_amount, order?.total])
 
   const waHref = useMemo(() => {
-    if (!id) return ''
+    const phone = '77754083740'
+    if (!id) return `https://wa.me/${phone}?text=${encodeURIComponent('Здравствуйте! Жду подтверждения заказа 🙏')}`
 
-    const text = `Здравствуйте! Я оформила заказ #${shortId}
+    const text = order
+      ? `Здравствуйте! Я оформила заказ #${shortId}
 
 📦 Товары: ${itemsText}
 💰 Сумма: ${totalText} ₸
@@ -100,9 +102,10 @@ export default function OrderSuccessPage() {
 📍 Адрес: ${deliveryAddressText}
 
 Жду подтверждения 🙏`
+      : `Здравствуйте! Я оформила заказ #${shortId}. Жду подтверждения 🙏`
 
-    return `https://wa.me/77012142221?text=${encodeURIComponent(text)}`
-  }, [id, shortId, itemsText, totalText, deliveryMethodLabel, deliveryAddressText])
+    return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`
+  }, [id, shortId, order, itemsText, totalText, deliveryMethodLabel, deliveryAddressText])
 
   return (
     <div className="min-h-screen bg-white flex items-center justify-center px-6">
@@ -135,15 +138,10 @@ export default function OrderSuccessPage() {
         </p>
         <div className="flex flex-col gap-3 justify-center">
           <a
-            href={waHref || undefined}
+            href={waHref}
             target="_blank"
             rel="noopener noreferrer"
-            aria-disabled={!waHref || orderLoading}
-            className={`w-full px-6 py-3 rounded-lg text-sm font-medium transition-colors ${
-              !waHref || orderLoading
-                ? 'bg-green-200 text-white cursor-not-allowed'
-                : 'bg-green-600 hover:bg-green-700 text-white'
-            }`}
+            className="w-full px-6 py-3 rounded-lg text-sm font-medium transition-colors bg-green-600 hover:bg-green-700 text-white"
           >
             💬 Написать в WhatsApp
           </a>

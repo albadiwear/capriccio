@@ -405,6 +405,8 @@ export default function StylistPage() {
   useEffect(() => {
     if (!user || !activeChatId) return
 
+    let unreadCount = 0
+
     const channel = supabase
       .channel('client-messages-' + activeChatId)
       .on('postgres_changes', {
@@ -419,11 +421,27 @@ export default function StylistPage() {
             if (exists) return prev
             return [...prev, payload.new]
           })
+          if (document.hidden) {
+            unreadCount++
+            document.title = `(${unreadCount}) Capriccio`
+          }
         }
       })
       .subscribe()
 
-    return () => supabase.removeChannel(channel)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        unreadCount = 0
+        document.title = 'Capriccio'
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      supabase.removeChannel(channel)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      document.title = 'Capriccio'
+    }
   }, [user, activeChatId])
 
   // --- UI ---

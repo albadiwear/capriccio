@@ -53,6 +53,26 @@ export default function AdminChatsPage() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  useEffect(() => {
+    if (!selectedChat?.id) return
+    const channel = supabase
+      .channel('admin-messages-' + selectedChat.id)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'stylist_messages',
+        filter: `chat_id=eq.${selectedChat.id}`,
+      }, (payload) => {
+        setMessages(prev => {
+          const exists = prev.some(m => m.id === payload.new.id)
+          if (exists) return prev
+          return [...prev, payload.new]
+        })
+      })
+      .subscribe()
+    return () => supabase.removeChannel(channel)
+  }, [selectedChat?.id])
+
   async function loadChats() {
     const { data } = await supabase
       .from('stylist_chats')

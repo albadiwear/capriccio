@@ -24,7 +24,7 @@ const NAV_ITEMS = [
   { label: 'Заказы', icon: ShoppingBag, to: '/admin/orders' },
   { label: 'Партнёры', icon: Handshake, to: '/admin/partners' },
   { label: 'Академия', icon: GraduationCap, to: '/admin/academy', badgeKey: 'academy' },
-  { label: 'Чаты', icon: MessageCircle, to: '/admin/chats' },
+  { label: 'Чаты', icon: MessageCircle, to: '/admin/chats', badgeKey: 'chats' },
 ]
 
 const CONTENT_ITEMS = [
@@ -41,6 +41,7 @@ function SidebarContent({ onClose }) {
   const isContentRoute = CONTENT_ITEMS.some((item) => location.pathname === item.to)
   const [contentOpen, setContentOpen] = useState(isContentRoute)
   const [pendingCount, setPendingCount] = useState(0)
+  const [unreadChatsCount, setUnreadChatsCount] = useState(0)
 
   useEffect(() => {
     if (isContentRoute) {
@@ -57,6 +58,43 @@ function SidebarContent({ onClose }) {
       setPendingCount(count || 0)
     }
     loadPending()
+  }, [])
+
+  useEffect(() => {
+    async function loadUnreadChats() {
+      const { data: chatRows } = await supabase
+        .from('stylist_chats')
+        .select('id, last_read_at')
+        .order('updated_at', { ascending: false })
+        .limit(200)
+
+      if (!chatRows || chatRows.length === 0) {
+        setUnreadChatsCount(0)
+        return
+      }
+
+      let total = 0
+      for (const chat of chatRows) {
+        const { count } = await supabase
+          .from('stylist_messages')
+          .select('id', { count: 'exact', head: true })
+          .eq('chat_id', chat.id)
+          .neq('role', 'manager')
+          .gt('created_at', chat.last_read_at || '2000-01-01')
+        total += count || 0
+      }
+      setUnreadChatsCount(total)
+    }
+
+    loadUnreadChats()
+
+    const channel = supabase
+      .channel('admin-sidebar-realtime')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'stylist_messages' }, () => loadUnreadChats())
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'stylist_chats' }, () => loadUnreadChats())
+      .subscribe()
+
+    return () => supabase.removeChannel(channel)
   }, [])
 
   async function handleLogout() {
@@ -77,7 +115,11 @@ function SidebarContent({ onClose }) {
 
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {NAV_ITEMS.map(({ label, icon: Icon, to, badgeKey }) => {
-          const badge = badgeKey === 'academy' && pendingCount > 0 ? pendingCount : 0
+          const badge = badgeKey === 'academy' && pendingCount > 0
+            ? pendingCount
+            : badgeKey === 'chats' && unreadChatsCount > 0
+              ? unreadChatsCount
+              : 0
           return (
             <NavLink
               key={to}
@@ -95,7 +137,7 @@ function SidebarContent({ onClose }) {
               <Icon className="w-4 h-4 flex-shrink-0" />
               {label}
               {badge > 0 && (
-                <span className="ml-auto bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full leading-none">
+                <span className="ml-auto bg-[#D4537E] text-white text-xs px-1.5 py-0.5 rounded-full leading-none">
                   {badge}
                 </span>
               )}

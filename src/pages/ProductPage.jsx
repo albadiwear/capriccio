@@ -742,7 +742,7 @@ export default function ProductPage() {
       )}
 
       <Toast
-        message="Товар добавлен в корзину ✓"
+        message="✓ Добавлено в корзину"
         isVisible={added}
         type="success"
       />

@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import { GraduationCap, LayoutGrid, ShoppingBag, Sparkles, User } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
+import { useCartStore } from '../../store/cartStore'
 
 function isActive(pathname, to) {
   if (to === '/') return pathname === '/'
@@ -10,6 +11,7 @@ function isActive(pathname, to) {
 export default function BottomNav() {
   const { pathname } = useLocation()
   const user = useAuthStore((state) => state.user)
+  const cartQty = useCartStore((state) => state.items.reduce((sum, i) => sum + (i.quantity || 0), 0))
 
   if (!user) return null
   if (pathname === '/') return null
@@ -47,7 +49,14 @@ export default function BottomNav() {
 
             return (
               <Link key={to} to={to} className="flex flex-col items-center justify-end py-1">
-                <Icon size={20} className={baseColor} />
+                <div className="relative">
+                  <Icon size={20} className={baseColor} />
+                  {to === '/cart' && cartQty > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#D4537E] px-1 text-[9px] leading-none text-white">
+                      {cartQty}
+                    </span>
+                  )}
+                </div>
                 <div className="mt-1 text-[8px] text-[#888780]">{label}</div>
               </Link>
             )

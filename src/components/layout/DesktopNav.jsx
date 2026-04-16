@@ -85,7 +85,7 @@ export default function DesktopNav() {
           >
             <ShoppingBag size={20} />
             {cartQty > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#1a1a18] px-1 text-[10px] leading-none text-white">
+              <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#D4537E] px-1 text-[10px] leading-none text-white">
                 {cartQty}
               </span>
             )}

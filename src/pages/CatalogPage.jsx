@@ -899,7 +899,7 @@ export default function CatalogPage() {
       )}
 
       <Toast
-        message="Добавлено в корзину"
+        message="✓ Добавлено в корзину"
         isVisible={added}
         type="success"
       />

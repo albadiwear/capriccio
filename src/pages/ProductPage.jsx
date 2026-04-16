@@ -741,7 +741,7 @@ export default function ProductPage() {
         </div>
         )}
 
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#f0ede8] px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] z-40">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#f0ede8] px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] z-50">
         <button
           onClick={handleAddToCart}
           className="w-full h-[52px] rounded-lg bg-[#1a1a18] text-white text-sm font-medium"

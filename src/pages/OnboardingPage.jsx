@@ -45,42 +45,6 @@ export default function OnboardingPage() {
   const [showIntro, setShowIntro] = useState(true)
   const [step, setStep] = useState(0)
   const [saving, setSaving] = useState(false)
-
-  useEffect(() => {
-    let attempts = 0
-    const maxAttempts = 10
-
-    const interval = setInterval(async () => {
-      attempts++
-      const { data: { user: currentUser } } = await supabase.auth.getUser()
-
-      if (currentUser) {
-        clearInterval(interval)
-        const { data } = await supabase
-          .from('stylist_profiles')
-          .select('onboarding_completed')
-          .eq('user_id', currentUser.id)
-          .maybeSingle()
-        if (data?.onboarding_completed === true) {
-          navigate('/catalog', { replace: true })
-          return
-        }
-        setChecking(false)
-        return
-      }
-
-      if (attempts >= maxAttempts) {
-        clearInterval(interval)
-        setChecking(false)
-        navigate('/', { replace: true })
-      }
-    }, 300)
-
-    return () => clearInterval(interval)
-  }, [])
-
-  if (checking) return null
-
   const [form, setForm] = useState({
     age: '',
     city: '',
@@ -98,6 +62,42 @@ export default function OnboardingPage() {
     budget_max: '',
     style_preferences: [],
   })
+
+  useEffect(() => {
+    let attempts = 0
+    const maxAttempts = 10
+
+    const interval = setInterval(async () => {
+      attempts++
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+
+      if (currentUser) {
+        clearInterval(interval)
+        const { data, error } = await supabase
+          .from('stylist_profiles')
+          .select('onboarding_completed')
+          .eq('user_id', currentUser.id)
+          .maybeSingle()
+        // If profile doesn't exist yet (or request failed) we should show onboarding.
+        if (!error && data?.onboarding_completed === true) {
+          navigate('/catalog', { replace: true })
+          return
+        }
+        setChecking(false)
+        return
+      }
+
+      if (attempts >= maxAttempts) {
+        clearInterval(interval)
+        setChecking(false)
+        navigate('/', { replace: true })
+      }
+    }, 300)
+
+    return () => clearInterval(interval)
+  }, [navigate])
+
+  if (checking) return null
 
   const set = (key, value) => setForm((prev) => ({ ...prev, [key]: value }))
 

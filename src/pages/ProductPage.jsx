@@ -331,7 +331,7 @@ export default function ProductPage() {
   const embedUrl = getYoutubeEmbedUrl(product.youtube_url)
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white pb-24">
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6">
         <nav className="flex items-center gap-2 text-sm text-gray-500 mb-8 flex-wrap">
           <Link to="/" className="hover:text-gray-900 transition-colors">Главная</Link>
@@ -531,7 +531,7 @@ export default function ProductPage() {
               <div className="flex flex-col gap-3 flex-1">
                 <button
                   onClick={handleAddToCart}
-                  className={`h-12 w-full text-sm font-medium tracking-wide rounded transition-colors ${
+                  className={`hidden md:block h-12 w-full text-sm font-medium tracking-wide rounded transition-colors ${
                     added
                       ? 'bg-green-600 text-white'
                       : 'bg-gray-900 text-white hover:bg-gray-700'
@@ -714,11 +714,11 @@ export default function ProductPage() {
         )}
       </div>
 
-      {videoOpen && embedUrl && (
-        <div
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
-          onClick={() => setVideoOpen(false)}
-        >
+        {videoOpen && embedUrl && (
+          <div
+            className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+            onClick={() => setVideoOpen(false)}
+          >
           <div
             className="relative w-full max-w-3xl aspect-video"
             onClick={(e) => e.stopPropagation()}
@@ -739,7 +739,16 @@ export default function ProductPage() {
             />
           </div>
         </div>
-      )}
+        )}
+
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#f0ede8] px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] z-40">
+        <button
+          onClick={handleAddToCart}
+          className="w-full h-[52px] rounded-lg bg-[#1a1a18] text-white text-sm font-medium"
+        >
+          {added ? '✓ Добавлено в корзину' : 'Добавить в корзину'}
+        </button>
+      </div>
 
       <Toast
         message="✓ Добавлено в корзину"

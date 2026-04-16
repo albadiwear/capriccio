@@ -41,6 +41,7 @@ const CLOTHING_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL']
 export default function OnboardingPage() {
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
+  const [checking, setChecking] = useState(true)
   const [showIntro, setShowIntro] = useState(true)
   const [step, setStep] = useState(0)
   const [saving, setSaving] = useState(false)
@@ -57,23 +58,28 @@ export default function OnboardingPage() {
         clearInterval(interval)
         const { data } = await supabase
           .from('stylist_profiles')
-          .select('user_id')
+          .select('onboarding_completed')
           .eq('user_id', currentUser.id)
           .maybeSingle()
-        if (data) {
-          navigate('/catalog')
+        if (data?.onboarding_completed === true) {
+          navigate('/catalog', { replace: true })
+          return
         }
+        setChecking(false)
         return
       }
 
       if (attempts >= maxAttempts) {
         clearInterval(interval)
-        navigate('/')
+        setChecking(false)
+        navigate('/', { replace: true })
       }
     }, 300)
 
     return () => clearInterval(interval)
   }, [])
+
+  if (checking) return null
 
   const [form, setForm] = useState({
     age: '',

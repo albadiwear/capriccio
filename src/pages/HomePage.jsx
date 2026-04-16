@@ -11,6 +11,7 @@ import { supabase } from '../lib/supabase'
 export default function HomePage() {
   const user = useAuthStore((state) => state.user)
   const navigate = useNavigate()
+  const [checking, setChecking] = useState(true)
 
   useSEO({
     title: 'Capriccio — закрытый клуб',
@@ -83,29 +84,35 @@ export default function HomePage() {
   }, [user])
 
   useEffect(() => {
-    if (!user?.id) return
+    if (!user?.id) {
+      setChecking(false)
+      return
+    }
+
+    setChecking(true)
     let cancelled = false
 
-    ;(async () => {
-      const { data: profile } = await supabase
-        .from('stylist_profiles')
-        .select('onboarding_completed')
-        .eq('user_id', user.id)
-        .maybeSingle()
-
-      if (cancelled) return
-
-      if (!profile || !profile.onboarding_completed) {
-        navigate('/onboarding')
-      } else {
-        navigate('/catalog')
-      }
-    })()
+    supabase
+      .from('stylist_profiles')
+      .select('onboarding_completed')
+      .eq('user_id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return
+        if (data?.onboarding_completed) {
+          navigate('/catalog', { replace: true })
+        } else {
+          navigate('/onboarding', { replace: true })
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setChecking(false)
+      })
 
     return () => {
       cancelled = true
     }
-  }, [user?.id, navigate])
+  }, [user, navigate])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -219,6 +226,8 @@ export default function HomePage() {
       setLoading(false)
     }
   }
+
+  if (checking && user) return null
 
   return (
     <div className="bg-white text-gray-900">

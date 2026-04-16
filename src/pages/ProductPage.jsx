@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   Heart,
@@ -172,6 +172,9 @@ export default function ProductPage() {
   const [reviewSuccess, setReviewSuccess] = useState(false)
   const [reviewPhotos, setReviewPhotos] = useState([])
   const [uploadingPhotos, setUploadingPhotos] = useState(false)
+  const [sizeSheetOpen, setSizeSheetOpen] = useState(false)
+  const [sizeTableOpen, setSizeTableOpen] = useState(false)
+  const touchStartY = useRef(null)
 
   useEffect(() => {
     if (!id) return
@@ -244,6 +247,12 @@ export default function ProductPage() {
     })
     setAdded(true)
     setTimeout(() => setAdded(false), 2000)
+  }
+
+  function handleSheetAddToCart() {
+    if (!selectedSize && sizesForColor.length > 0) return
+    handleAddToCart()
+    setSizeSheetOpen(false)
   }
 
   function handleWhatsApp() {
@@ -741,14 +750,156 @@ export default function ProductPage() {
         </div>
         )}
 
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#f0ede8] px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] z-50">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#f0ede8] px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] z-40">
         <button
-          onClick={handleAddToCart}
+          onClick={() => sizesForColor.length > 0 ? setSizeSheetOpen(true) : handleAddToCart()}
           className="w-full h-[52px] rounded-lg bg-[#1a1a18] text-white text-sm font-medium"
         >
           {added ? '✓ Добавлено в корзину' : 'Добавить в корзину'}
         </button>
       </div>
+
+      {/* Size Bottom Sheet — mobile only */}
+      {sizeSheetOpen && (
+        <div className="md:hidden fixed inset-0 z-50 flex flex-col justify-end">
+          {/* Overlay */}
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setSizeSheetOpen(false)}
+          />
+          {/* Panel */}
+          <div
+            className="relative bg-white rounded-t-2xl px-4 pt-4 pb-[calc(24px+env(safe-area-inset-bottom))]"
+            onTouchStart={(e) => { touchStartY.current = e.touches[0].clientY }}
+            onTouchEnd={(e) => {
+              if (touchStartY.current !== null && e.changedTouches[0].clientY - touchStartY.current > 60) {
+                setSizeSheetOpen(false)
+              }
+              touchStartY.current = null
+            }}
+          >
+            {/* Drag handle */}
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-gray-200" />
+
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-base font-semibold text-[#1a1a18]">Выберите размер</span>
+              <button onClick={() => setSizeSheetOpen(false)} className="text-gray-400 hover:text-gray-700">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Mini product card */}
+            <div className="flex items-center gap-3 mb-5">
+              {images[0] && (
+                <img
+                  src={images[0]}
+                  alt={product.name}
+                  className="w-[60px] h-[60px] rounded-xl object-cover flex-shrink-0"
+                />
+              )}
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-[#1a1a18] line-clamp-2 leading-snug">{product.name}</p>
+                <p className="text-sm font-semibold text-[#1a1a18] mt-1">
+                  {(product.sale_price || product.price)?.toLocaleString('ru-RU')} ₸
+                </p>
+              </div>
+            </div>
+
+            {/* Sizes */}
+            <div className="flex gap-2 flex-wrap mb-3">
+              {sizesForColor.map((v) => {
+                const outOfStock = (v.stock ?? 0) === 0
+                const isSelected = selectedSize === v.size
+                return (
+                  <button
+                    key={v.size}
+                    onClick={() => !outOfStock && setSelectedSize(v.size)}
+                    disabled={outOfStock}
+                    className={`h-11 min-w-[52px] px-3 text-sm rounded-lg border-2 transition-all ${
+                      outOfStock
+                        ? 'opacity-40 cursor-not-allowed border-gray-200 text-gray-400'
+                        : isSelected
+                        ? 'border-[#1a1a18] text-[#1a1a18] font-medium'
+                        : 'border-gray-200 text-gray-700 hover:border-gray-400'
+                    }`}
+                  >
+                    {v.size}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Size table link */}
+            <button
+              type="button"
+              onClick={() => setSizeTableOpen(true)}
+              className="text-xs text-gray-500 underline mb-5 hover:text-gray-800"
+            >
+              Таблица размеров →
+            </button>
+
+            {/* Add to cart */}
+            <button
+              onClick={handleSheetAddToCart}
+              disabled={sizesForColor.length > 0 && !selectedSize}
+              className="w-full h-[52px] rounded-xl bg-[#1a1a18] text-white text-sm font-medium disabled:opacity-40 transition-opacity"
+            >
+              В корзину
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Size Table Modal */}
+      {sizeTableOpen && (
+        <div
+          className="fixed inset-0 z-[60] flex items-end md:items-center justify-center bg-black/50 px-0 md:px-4"
+          onClick={() => setSizeTableOpen(false)}
+        >
+          <div
+            className="bg-white w-full md:max-w-lg rounded-t-2xl md:rounded-2xl px-4 pt-4 pb-8 overflow-auto max-h-[80vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-base font-semibold text-[#1a1a18]">Таблица размеров</span>
+              <button onClick={() => setSizeTableOpen(false)} className="text-gray-400 hover:text-gray-700">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left border-collapse">
+                <thead>
+                  <tr className="bg-[#f5f2ed]">
+                    {['RU', 'INT', 'Грудь', 'Талия', 'Бёдра'].map((h) => (
+                      <th key={h} className="px-3 py-2 font-medium text-[#1a1a18] whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    ['44', 'XS',   '88–91',   '78–81',   '94–97'],
+                    ['46', 'S',    '92–95',   '82–84',   '98–101'],
+                    ['48', 'M',    '96–99',   '85–87',   '102–105'],
+                    ['50', 'L',    '100–103', '88–90',   '106–108'],
+                    ['52', 'L/XL', '104–107', '91–94',   '109–112'],
+                    ['54', 'XL',   '108–111', '95–99',   '112–116'],
+                    ['56', 'XXL',  '112–115', '100–107', '116–120'],
+                  ].map(([ru, intl, chest, waist, hips]) => (
+                    <tr key={ru} className="border-t border-gray-100">
+                      <td className="px-3 py-2 font-medium">{ru}</td>
+                      <td className="px-3 py-2 text-gray-600">{intl}</td>
+                      <td className="px-3 py-2 text-gray-600">{chest}</td>
+                      <td className="px-3 py-2 text-gray-600">{waist}</td>
+                      <td className="px-3 py-2 text-gray-600">{hips}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Toast
         message="✓ Добавлено в корзину"

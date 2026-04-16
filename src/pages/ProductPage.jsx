@@ -750,7 +750,7 @@ export default function ProductPage() {
         </div>
         )}
 
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#f0ede8] px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] z-40">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#f0ede8] px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] z-50">
         <button
           onClick={() => sizesForColor.length > 0 ? setSizeSheetOpen(true) : handleAddToCart()}
           className="w-full h-[52px] rounded-lg bg-[#1a1a18] text-white text-sm font-medium"
@@ -761,7 +761,7 @@ export default function ProductPage() {
 
       {/* Size Bottom Sheet — mobile only */}
       {sizeSheetOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex flex-col justify-end">
+        <div className="md:hidden fixed inset-0 z-[60] flex flex-col justify-end">
           {/* Overlay */}
           <div
             className="absolute inset-0 bg-black/50"
@@ -854,7 +854,7 @@ export default function ProductPage() {
       {/* Size Table Modal */}
       {sizeTableOpen && (
         <div
-          className="fixed inset-0 z-[60] flex items-end md:items-center justify-center bg-black/50 px-0 md:px-4"
+          className="fixed inset-0 z-[70] flex items-end md:items-center justify-center bg-black/50 px-0 md:px-4"
           onClick={() => setSizeTableOpen(false)}
         >
           <div

@@ -174,7 +174,21 @@ export default function ProductPage() {
   const [uploadingPhotos, setUploadingPhotos] = useState(false)
   const [sizeSheetOpen, setSizeSheetOpen] = useState(false)
   const [sizeTableOpen, setSizeTableOpen] = useState(false)
+  const [zoomed, setZoomed] = useState(false)
+  const [panX, setPanX] = useState(0)
+  const [panY, setPanY] = useState(0)
+  const [zoomOriginX, setZoomOriginX] = useState(50)
+  const [zoomOriginY, setZoomOriginY] = useState(50)
+  const [isPanning, setIsPanning] = useState(false)
+
   const touchStartY = useRef(null)
+  const imgContainerRef = useRef(null)
+  const imgTouchStartX = useRef(0)
+  const imgTouchStartY = useRef(0)
+  const imgLastTapTime = useRef(0)
+  const imgPanAnchorX = useRef(0)
+  const imgPanAnchorY = useRef(0)
+  const imgMovedRef = useRef(false)
 
   useEffect(() => {
     if (!id) return
@@ -247,6 +261,87 @@ export default function ProductPage() {
     })
     setAdded(true)
     setTimeout(() => setAdded(false), 2000)
+  }
+
+  useEffect(() => {
+    setZoomed(false)
+    setPanX(0)
+    setPanY(0)
+  }, [activeImage])
+
+  function handleImgTouchStart(e) {
+    const t = e.touches[0]
+    imgTouchStartX.current = t.clientX
+    imgTouchStartY.current = t.clientY
+    imgPanAnchorX.current = panX
+    imgPanAnchorY.current = panY
+    imgMovedRef.current = false
+    if (zoomed) setIsPanning(false)
+  }
+
+  useEffect(() => {
+    const el = imgContainerRef.current
+    if (!el) return
+    const handler = (e) => { if (zoomed) e.preventDefault() }
+    el.addEventListener('touchmove', handler, { passive: false })
+    return () => el.removeEventListener('touchmove', handler)
+  }, [zoomed])
+
+  function handleImgTouchMove(e) {
+    if (!zoomed || e.touches.length !== 1) return
+    const t = e.touches[0]
+    const dx = t.clientX - imgTouchStartX.current
+    const dy = t.clientY - imgTouchStartY.current
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+      imgMovedRef.current = true
+      setIsPanning(true)
+    }
+    setPanX(imgPanAnchorX.current + dx)
+    setPanY(imgPanAnchorY.current + dy)
+  }
+
+  function handleImgTouchEnd(e) {
+    const t = e.changedTouches[0]
+    const dx = t.clientX - imgTouchStartX.current
+    const dy = t.clientY - imgTouchStartY.current
+    const now = Date.now()
+    const isTap = Math.abs(dx) < 15 && Math.abs(dy) < 15
+
+    setIsPanning(false)
+
+    // If was panning while zoomed, skip tap/swipe logic
+    if (zoomed && imgMovedRef.current) return
+
+    if (isTap) {
+      if (now - imgLastTapTime.current < 300) {
+        // Double tap
+        imgLastTapTime.current = 0
+        if (zoomed) {
+          setZoomed(false)
+          setPanX(0)
+          setPanY(0)
+        } else {
+          if (imgContainerRef.current) {
+            const rect = imgContainerRef.current.getBoundingClientRect()
+            setZoomOriginX(((t.clientX - rect.left) / rect.width) * 100)
+            setZoomOriginY(((t.clientY - rect.top) / rect.height) * 100)
+          }
+          setZoomed(true)
+          setPanX(0)
+          setPanY(0)
+        }
+      } else {
+        imgLastTapTime.current = now
+      }
+      return
+    }
+
+    // Swipe — only when not zoomed, horizontal, and > 50px
+    if (!zoomed && Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+      imgLastTapTime.current = 0
+      if (dx < 0) setActiveImage((i) => Math.min(i + 1, images.length - 1))
+      else setActiveImage((i) => Math.max(i - 1, 0))
+    }
   }
 
   function handleSheetAddToCart() {
@@ -360,37 +455,89 @@ export default function ProductPage() {
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-12">
           <div>
-            <div className="relative">
-              <img
-                src={images[activeImage]}
-                alt={product.name}
-                className="w-full aspect-[3/4] object-cover rounded-2xl"
-              />
-              {embedUrl && (
-                <button
-                  onClick={() => setVideoOpen(true)}
-                  className="absolute bottom-4 left-4 flex items-center gap-2 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-medium text-gray-900 shadow hover:bg-white transition-colors"
-                >
-                  <Play className="w-4 h-4 fill-gray-900" />
-                  Смотреть видео
-                </button>
+            {/* Mobile gallery: swipe + double-tap zoom */}
+            <div className="md:hidden">
+              <div
+                ref={imgContainerRef}
+                className="relative overflow-hidden rounded-2xl aspect-[3/4] select-none"
+                style={{ touchAction: zoomed ? 'none' : 'pan-y' }}
+                onTouchStart={handleImgTouchStart}
+                onTouchMove={handleImgTouchMove}
+                onTouchEnd={handleImgTouchEnd}
+              >
+                <img
+                  src={images[activeImage]}
+                  alt={product.name}
+                  className="w-full h-full object-cover"
+                  style={{
+                    transform: `translate(${panX}px, ${panY}px) scale(${zoomed ? 2 : 1})`,
+                    transformOrigin: `${zoomOriginX}% ${zoomOriginY}%`,
+                    transition: isPanning ? 'none' : 'transform 0.25s ease',
+                    userSelect: 'none',
+                    WebkitUserSelect: 'none',
+                    pointerEvents: 'none',
+                  }}
+                  draggable={false}
+                />
+                {/* Dot indicators */}
+                {images.length > 1 && (
+                  <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 pointer-events-none">
+                    {images.map((_, i) => (
+                      <div
+                        key={i}
+                        className={`rounded-full bg-white transition-all duration-200 ${
+                          i === activeImage ? 'w-4 h-1.5' : 'w-1.5 h-1.5 opacity-50'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                )}
+                {embedUrl && !zoomed && (
+                  <button
+                    onClick={() => setVideoOpen(true)}
+                    className="absolute bottom-10 left-4 flex items-center gap-2 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-medium text-gray-900 shadow"
+                  >
+                    <Play className="w-4 h-4 fill-gray-900" />
+                    Смотреть видео
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Desktop gallery: thumbnails */}
+            <div className="hidden md:block">
+              <div className="relative">
+                <img
+                  src={images[activeImage]}
+                  alt={product.name}
+                  className="w-full aspect-[3/4] object-cover rounded-2xl"
+                />
+                {embedUrl && (
+                  <button
+                    onClick={() => setVideoOpen(true)}
+                    className="absolute bottom-4 left-4 flex items-center gap-2 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-medium text-gray-900 shadow hover:bg-white transition-colors"
+                  >
+                    <Play className="w-4 h-4 fill-gray-900" />
+                    Смотреть видео
+                  </button>
+                )}
+              </div>
+              {images.length > 1 && (
+                <div className="flex gap-2 mt-3 overflow-x-auto pb-1 scrollbar-hide">
+                  {images.map((img, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setActiveImage(i)}
+                      className={`flex-shrink-0 w-[72px] h-[90px] rounded-xl overflow-hidden border-2 transition-colors ${
+                        activeImage === i ? 'border-gray-900' : 'border-transparent'
+                      }`}
+                    >
+                      <img src={img} alt={`Фото ${i + 1}`} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
-            {images.length > 1 && (
-              <div className="flex gap-2 mt-3 overflow-x-auto pb-1 scrollbar-hide">
-                {images.map((img, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setActiveImage(i)}
-                    className={`flex-shrink-0 w-[72px] h-[90px] rounded-xl overflow-hidden border-2 transition-colors ${
-                      activeImage === i ? 'border-gray-900' : 'border-transparent'
-                    }`}
-                  >
-                    <img src={img} alt={`Фото ${i + 1}`} className="w-full h-full object-cover" />
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
 
           <div className="flex flex-col gap-5">

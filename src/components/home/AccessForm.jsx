@@ -33,8 +33,13 @@ export default function AccessForm({ user }) {
     })
 
     if (!signInError) {
+      const { data: profile } = await supabase
+        .from('stylist_profiles')
+        .select('onboarding_completed')
+        .eq('user_id', data.user.id)
+        .maybeSingle()
       setLoading(false)
-      navigate('/catalog')
+      navigate(profile?.onboarding_completed ? '/catalog' : '/onboarding')
       return
     }
 
@@ -114,7 +119,8 @@ export default function AccessForm({ user }) {
 
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/catalog` },
+      // Redirect back to homepage so we can route based on onboarding_completed.
+      options: { redirectTo: `${window.location.origin}/` },
     })
 
     if (oauthError) {

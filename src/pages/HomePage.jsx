@@ -91,7 +91,7 @@ export default function HomePage() {
         .from('stylist_profiles')
         .select('onboarding_completed')
         .eq('user_id', user.id)
-        .single()
+        .maybeSingle()
 
       if (cancelled) return
 
@@ -121,8 +121,19 @@ export default function HomePage() {
       })
 
       if (!signInError) {
+        const { data: { user: currentUser } } = await supabase.auth.getUser()
+        const { data: profile } = await supabase
+          .from('stylist_profiles')
+          .select('onboarding_completed')
+          .eq('user_id', currentUser?.id || '')
+          .maybeSingle()
+
         setLoading(false)
-        navigate('/catalog')
+        if (!profile || !profile.onboarding_completed) {
+          navigate('/onboarding')
+        } else {
+          navigate('/catalog')
+        }
         return
       }
 
@@ -199,7 +210,8 @@ export default function HomePage() {
 
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/onboarding` },
+      // Redirect back to homepage so we can route based on onboarding_completed.
+      options: { redirectTo: `${window.location.origin}/` },
     })
 
     if (oauthError) {

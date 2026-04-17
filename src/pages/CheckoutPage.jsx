@@ -326,7 +326,25 @@ export default function CheckoutPage() {
       clearCart()
       navigate(`/order-success/${order.id}`)
     } catch (err) {
-      setSubmitError('Не удалось оформить заказ. Попробуйте ещё раз.')
+      const raw = (err && typeof err === 'object' && 'message' in err)
+        ? String(err.message || '')
+        : String(err || '')
+      const msg = raw.toLowerCase()
+
+      if (
+        msg.includes('err_connection_closed') ||
+        msg.includes('failed to fetch') ||
+        msg.includes('networkerror') ||
+        msg.includes('load failed') ||
+        msg.includes('connection') ||
+        msg.includes('timeout')
+      ) {
+        setSubmitError('Не удалось связаться с сервером. Проверьте интернет и попробуйте ещё раз через минуту.')
+      } else if (raw) {
+        setSubmitError(`Не удалось оформить заказ: ${raw}`)
+      } else {
+        setSubmitError('Не удалось оформить заказ. Попробуйте ещё раз.')
+      }
       console.error(err)
     } finally {
       setSubmitting(false)

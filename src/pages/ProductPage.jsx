@@ -99,7 +99,8 @@ function DescriptionBlock({ text }) {
           onClick={() => setExpanded(v => !v)}
           className="mt-1 text-xs text-gray-500 underline hover:text-gray-900 transition-colors"
         >
-          {expanded ? 'Свернуть' : 'Читать полностью'}
+          <span className="md:hidden">{expanded ? 'Свернуть' : 'Читать полностью'}</span>
+          <span className="hidden md:inline">{expanded ? 'Свернуть' : 'Читать полностью →'}</span>
         </button>
       )}
     </div>
@@ -110,6 +111,7 @@ export default function ProductPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const addItem = useCartStore((state) => state.addItem)
+  const cartItems = useCartStore((state) => state.items)
 
   const [product, setProduct] = useState(null)
   const [reviews, setReviews] = useState([])
@@ -215,6 +217,7 @@ export default function ProductPage() {
 
   function handleAddToCart() {
     if (!product) return
+    if (sizesForColor.length > 0 && !selectedSize) return
     addItem({
       id: product.id,
       name: product.name,
@@ -440,6 +443,14 @@ export default function ProductPage() {
   const productStock = product.stock ?? variants.reduce((sum, v) => sum + (v.stock ?? 0), 0)
 
   const embedUrl = getYoutubeEmbedUrl(product.youtube_url)
+  const inCart = cartItems.some((i) => {
+    const productId = i.product_id ?? i.id
+    return (
+      productId === product.id &&
+      (i.color ?? null) === (selectedColor ?? null) &&
+      (i.size ?? null) === (selectedSize ?? null)
+    )
+  })
   const selectedVariant = selectedSize
     ? variants.find((v) => v.color === selectedColor && v.size === selectedSize)
     : null
@@ -752,20 +763,24 @@ export default function ProductPage() {
 
             {/* Desktop add to cart */}
             <div className="hidden md:flex gap-2">
-              {!added ? (
+              {!inCart ? (
                 <button
                   onClick={handleAddToCart}
+                  disabled={sizesForColor.length > 0 && !selectedSize}
                   className="flex-1 h-12 text-sm font-medium rounded bg-[#D4537E] hover:bg-[#c44870] text-white transition-colors"
                 >
                   Добавить в корзину
                 </button>
               ) : (
                 <>
-                  <button className="flex-1 h-12 text-sm font-medium rounded border-2 border-green-500 text-green-600 bg-white">
+                  <button
+                    type="button"
+                    className="flex-1 h-12 text-sm font-medium rounded border-2 border-green-500 text-green-600 bg-white cursor-default"
+                  >
                     ✓ В корзине
                   </button>
                   <button
-                    onClick={() => navigate('/cart')}
+                    onClick={() => navigate('/checkout')}
                     className="flex-1 h-12 text-sm font-medium rounded bg-[#D4537E] hover:bg-[#c44870] text-white transition-colors"
                   >
                     Оформить заказ →

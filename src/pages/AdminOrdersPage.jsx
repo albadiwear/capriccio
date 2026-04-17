@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { MessageCircle, ShoppingBag, TrendingUp, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
@@ -179,6 +179,8 @@ function OrderDetailsModal({ order, onClose, onStatusChange }) {
 }
 
 export default function AdminOrdersPage() {
+  const [searchParams] = useSearchParams()
+  const userParam = searchParams.get('user')
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -189,7 +191,7 @@ export default function AdminOrdersPage() {
     async function loadOrders() {
       setLoading(true)
 
-      const { data } = await supabase
+      let query = supabase
         .from('orders')
         .select(`
           *,
@@ -205,6 +207,12 @@ export default function AdminOrdersPage() {
           )
         `)
         .order('created_at', { ascending: false })
+
+      if (userParam) {
+        query = query.eq('user_id', userParam)
+      }
+
+      const { data } = await query
 
       console.log('Первый заказ:', JSON.stringify(data[0], null, 2))
 

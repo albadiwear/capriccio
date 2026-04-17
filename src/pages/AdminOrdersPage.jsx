@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { MessageCircle, ShoppingBag, TrendingUp, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
@@ -504,13 +505,12 @@ export default function AdminOrdersPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedOrder(order)}
+                        <Link
+                          to={`/admin/orders/${order.id}`}
                           className="inline-flex h-9 items-center rounded-lg border border-gray-200 px-3 text-xs font-medium text-gray-700 transition-colors hover:border-gray-900 hover:text-gray-900"
                         >
                           Детали
-                        </button>
+                        </Link>
 
                         {whatsappPhone ? (
                           <a

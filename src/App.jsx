@@ -41,7 +41,6 @@ import AdminLeadsPage from './pages/admin/AdminLeadsPage'
 import AdminChatsPage from './pages/admin/AdminChatsPage'
 import AdminReviewsPage from './pages/admin/AdminReviewsPage'
 import AdminAcademyPage from './pages/admin/AdminAcademyPage'
-import AdminOrderDetailPage from './pages/AdminOrderDetailPage'
 
 // Other
 import OnboardingPage from './pages/OnboardingPage'
@@ -112,7 +111,6 @@ function App() {
           <Route path="leads" element={<AdminLeadsPage />} />
           <Route path="chats" element={<AdminChatsPage />} />
           <Route path="orders" element={<AdminOrdersPage />} />
-          <Route path="orders/:id" element={<AdminOrderDetailPage />} />
           <Route path="customers" element={<AdminCustomersPage />} />
           <Route path="partners" element={<AdminPartnersPage />} />
           <Route path="blog" element={<AdminBlogPage />} />

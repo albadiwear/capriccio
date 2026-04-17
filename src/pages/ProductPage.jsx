@@ -34,39 +34,6 @@ const COLOR_MAP = {
 }
 
 
-function ReviewCard({ review }) {
-  return (
-    <div className="border-b border-gray-100 pb-6">
-      <div className="flex items-center gap-1 mb-1">
-        {[1, 2, 3, 4, 5].map((n) => (
-          <Star
-            key={n}
-            className={`w-3.5 h-3.5 ${n <= review.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-200'}`}
-          />
-        ))}
-      </div>
-      {review.text && <p className="text-sm text-gray-700 mt-2 leading-relaxed">{review.text}</p>}
-      {review.photos?.length > 0 && (
-        <div className="flex gap-2 mt-3">
-          {review.photos.map((photo, i) => (
-            <img
-              key={i}
-              src={photo}
-              alt={`Фото отзыва ${i + 1}`}
-              className="w-16 h-16 object-cover rounded"
-            />
-          ))}
-        </div>
-      )}
-      <div className="flex items-center gap-2 mt-3 text-xs text-gray-400">
-        <span className="font-medium text-gray-600">{review.author_name || 'Покупатель'}</span>
-        <span>·</span>
-        <span>{review.created_at ? new Date(review.created_at).toLocaleDateString('ru-RU') : ''}</span>
-      </div>
-    </div>
-  )
-}
-
 function ProductCard({ product }) {
   const image = product.images?.[0] || `https://picsum.photos/seed/${product.id}/400/533`
   const price = product.sale_price || product.price
@@ -163,8 +130,10 @@ export default function ProductPage() {
   const [sizeTableOpen, setSizeTableOpen] = useState(false)
   const [quantity, setQuantity] = useState(1)
   const [reviewModalOpen, setReviewModalOpen] = useState(false)
+  const [reviewModalTab, setReviewModalTab] = useState('list')
   const [reviewsExpanded, setReviewsExpanded] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
+  const [shareModalOpen, setShareModalOpen] = useState(false)
   const [zoomed, setZoomed] = useState(false)
   const [panX, setPanX] = useState(0)
   const [panY, setPanY] = useState(0)
@@ -255,8 +224,13 @@ export default function ProductPage() {
   }
 
   function handleShare() {
+    setShareModalOpen(true)
+  }
+
+  function handleCopyLink() {
     navigator.clipboard.writeText(window.location.href).then(() => {
       setLinkCopied(true)
+      setShareModalOpen(false)
       setTimeout(() => setLinkCopied(false), 2000)
     }).catch(() => {})
   }
@@ -510,6 +484,22 @@ export default function ProductPage() {
                   </button>
                 )}
               </div>
+              {/* Mobile thumbnails */}
+              {images.length > 1 && (
+                <div className="flex gap-2 mt-2 overflow-x-auto pb-1 scrollbar-hide">
+                  {images.map((img, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setActiveImage(i)}
+                      className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-colors ${
+                        activeImage === i ? 'border-[#1a1a18]' : 'border-transparent'
+                      }`}
+                    >
+                      <img src={img} alt={`Фото ${i + 1}`} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Desktop gallery: thumbnails */}
@@ -557,7 +547,7 @@ export default function ProductPage() {
               <div className="mt-2 flex items-center gap-3 flex-wrap">
                 <button
                   type="button"
-                  onClick={() => setReviewsExpanded(true)}
+                  onClick={() => setReviewModalOpen(true)}
                   className="flex items-center gap-1.5 group"
                 >
                   <div className="flex gap-0.5">
@@ -635,7 +625,11 @@ export default function ProductPage() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-sm font-medium text-gray-900">Выберите размер:</p>
-                  <button className="text-xs text-gray-500 underline hover:text-gray-900 transition-colors">
+                  <button
+                    type="button"
+                    onClick={() => setSizeTableOpen(true)}
+                    className="text-xs text-gray-500 underline hover:text-gray-900 transition-colors"
+                  >
                     Таблица размеров
                   </button>
                 </div>
@@ -809,7 +803,7 @@ export default function ProductPage() {
               )}
             </div>
             <button
-              onClick={() => setReviewModalOpen(true)}
+              onClick={() => { setReviewModalTab('form'); setReviewModalOpen(true) }}
               className="text-xs font-medium text-[#D4537E] hover:underline"
             >
               Оставить отзыв
@@ -1062,13 +1056,59 @@ export default function ProductPage() {
             className="bg-white w-full md:max-w-lg rounded-t-2xl md:rounded-2xl px-5 pt-5 pb-8 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-5">
-              <span className="text-base font-semibold text-[#1a1a18]">Оставить отзыв</span>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setReviewModalTab('list')}
+                  className={`text-base font-semibold transition-colors ${reviewModalTab === 'list' ? 'text-[#1a1a18]' : 'text-gray-400 hover:text-gray-700'}`}
+                >
+                  Отзывы {reviewCount > 0 && `(${reviewCount})`}
+                </button>
+                <button
+                  onClick={() => setReviewModalTab('form')}
+                  className={`text-sm font-medium transition-colors ${reviewModalTab === 'form' ? 'text-[#D4537E]' : 'text-gray-400 hover:text-gray-700'}`}
+                >
+                  + Оставить отзыв
+                </button>
+              </div>
               <button onClick={() => setReviewModalOpen(false)} className="text-gray-400 hover:text-gray-700">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            {reviewSuccess ? (
+
+            {reviewModalTab === 'list' && (
+              <div className="space-y-4">
+                {reviews.length === 0 ? (
+                  <p className="text-sm text-gray-400 py-4">Нет отзывов. Будьте первым!</p>
+                ) : reviews.map((r) => (
+                  <div key={r.id} className="flex gap-3 pb-4 border-b border-[#f0ede8] last:border-0">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#f5f2ed] flex items-center justify-center text-xs font-medium text-[#1a1a18]">
+                      {(r.author_name || 'П')[0]}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-medium text-[#1a1a18]">{r.author_name || 'Покупатель'}</span>
+                        <div className="flex gap-0.5">
+                          {[1,2,3,4,5].map((n) => (
+                            <Star key={n} className={`w-3 h-3 ${n <= r.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-200'}`} />
+                          ))}
+                        </div>
+                        <span className="text-xs text-gray-400 ml-auto">{r.created_at ? new Date(r.created_at).toLocaleDateString('ru-RU') : ''}</span>
+                      </div>
+                      {r.text && <p className="text-sm text-gray-600 leading-relaxed">{r.text}</p>}
+                      {r.photos?.length > 0 && (
+                        <div className="flex gap-2 mt-2">
+                          {r.photos.map((photo, i) => (
+                            <img key={i} src={photo} alt="" className="w-14 h-14 object-cover rounded-lg" />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {reviewModalTab === 'form' && (reviewSuccess ? (
               <div className="rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">
                 Спасибо! Отзыв отправлен на модерацию.
               </div>
@@ -1139,7 +1179,64 @@ export default function ProductPage() {
                   {submittingReview ? 'Отправляем...' : 'Отправить отзыв'}
                 </button>
               </form>
-            )}
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Share modal */}
+      {shareModalOpen && (
+        <div
+          className="fixed inset-0 z-[60] flex items-end md:items-center justify-center bg-black/50"
+          onClick={() => setShareModalOpen(false)}
+        >
+          <div
+            className="bg-white w-full md:max-w-sm rounded-t-2xl md:rounded-2xl px-5 pt-5 pb-8"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-5">
+              <span className="text-base font-semibold text-[#1a1a18]">Поделиться</span>
+              <button onClick={() => setShareModalOpen(false)} className="text-gray-400 hover:text-gray-700">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex flex-col gap-3">
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(`Посмотри этот товар: ${window.location.href}`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setShareModalOpen(false)}
+                className="flex items-center gap-3 h-12 px-4 rounded-xl bg-[#25D366] text-white text-sm font-medium"
+              >
+                <svg viewBox="0 0 24 24" className="w-5 h-5 fill-white flex-shrink-0">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                  <path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.112 1.523 5.84L0 24l6.336-1.501A11.95 11.95 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.006-1.368l-.36-.214-3.732.883.936-3.618-.235-.372A9.818 9.818 0 1112 21.818z"/>
+                </svg>
+                WhatsApp
+              </a>
+              <a
+                href={`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent('Посмотри этот товар')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setShareModalOpen(false)}
+                className="flex items-center gap-3 h-12 px-4 rounded-xl bg-[#2AABEE] text-white text-sm font-medium"
+              >
+                <svg viewBox="0 0 24 24" className="w-5 h-5 fill-white flex-shrink-0">
+                  <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.26 14.42l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.888.139z"/>
+                </svg>
+                Telegram
+              </a>
+              <button
+                onClick={handleCopyLink}
+                className="flex items-center gap-3 h-12 px-4 rounded-xl bg-gray-100 text-gray-800 text-sm font-medium hover:bg-gray-200 transition-colors"
+              >
+                <svg viewBox="0 0 24 24" className="w-5 h-5 fill-none stroke-gray-600 flex-shrink-0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                  <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                </svg>
+                Скопировать ссылку
+              </button>
+            </div>
           </div>
         </div>
       )}

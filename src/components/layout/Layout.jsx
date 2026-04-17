@@ -14,6 +14,7 @@ export default function Layout() {
 
   const isHome = pathname === '/'
   const isAdmin = pathname.startsWith('/admin')
+  const isBlog = pathname.startsWith('/blog')
 
   // Пока сессия загружается — показываем пустую шапку без меню
   if (loading && !isHome && !isAdmin) {
@@ -31,8 +32,18 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Старый хедер — только незалогиненным и не на главной/админке */}
-      {!user && !isHome && !isAdmin && <Header />}
+      {/* Старый хедер — только незалогиненным и не на главной/админке/блоге */}
+      {!user && !isHome && !isAdmin && !isBlog && <Header />}
+
+      {isBlog && (
+        <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/95 backdrop-blur">
+          <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
+            <a href="/" className="text-sm font-semibold tracking-[0.35em]">CAPRICCIO</a>
+            <a href="/blog" className="text-sm text-gray-600 hover:text-gray-900">Блог</a>
+            <a href="/#access" className="inline-flex h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 text-xs font-semibold uppercase tracking-widest text-gray-900 transition-colors hover:border-gray-900">Войти</a>
+          </div>
+        </header>
+      )}
 
       {/* Новый хедер — только залогиненным и не на главной/админке */}
       {user && !isHome && !isAdmin && (

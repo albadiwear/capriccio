@@ -2,4 +2,6 @@ User-agent: *
 Allow: /
 Disallow: /admin/
 Disallow: /account/
+Disallow: /checkout
+Disallow: /cart
 Sitemap: https://capriccio.vercel.app/sitemap.xml

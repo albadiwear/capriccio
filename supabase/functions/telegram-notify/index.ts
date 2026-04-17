@@ -16,11 +16,42 @@ Deno.serve(async (req) => {
 
   if (table === 'orders') {
     const o = record
+    const orderNumber = o.order_number ?? `CAP-${String(o.id).slice(0, 5).toUpperCase()}`
+    const phone = o.delivery_address?.phone ?? '—'
+    const city = o.delivery_address?.city ?? '—'
+
+    const paymentLabel =
+      o.payment_method === 'card'
+        ? 'Карта'
+        : o.payment_method === 'cod'
+        ? 'Наложенный платёж'
+        : o.payment_method === 'crypto'
+        ? 'Криптовалюта'
+        : (o.payment_method ?? '—')
+
+    const deliveryLabel =
+      o.delivery_method === 'courier'
+        ? 'Курьер'
+        : o.delivery_method === 'pickup'
+        ? 'Самовывоз'
+        : o.delivery_method === 'kazpost'
+        ? 'Казпочта'
+        : o.delivery_method === 'cdek'
+        ? 'СДЭК'
+        : o.delivery_method === 'yandex'
+        ? 'Яндекс'
+        : o.delivery_method === 'indriver'
+        ? 'InDriver'
+        : (o.delivery_method ?? '—')
+
+    const adminLink = `https://capriccio.vercel.app/admin/orders/${o.id}`
     await sendMessage(
-      `🛍 <b>Новый заказ #${o.id.slice(0, 8)}</b>\n` +
-      `💰 Сумма: ${Number(o.total_amount).toLocaleString()} ₸\n` +
-      `📦 Доставка: ${o.delivery_method ?? '—'}\n` +
-      `📞 Телефон: ${o.phone ?? '—'}`
+      `🛍 Новый заказ #${orderNumber}\n` +
+      `💰 Сумма: ${Number(o.total_amount).toLocaleString('ru-RU')} ₸\n` +
+      `📞 Телефон: ${phone}\n` +
+      `📦 Доставка: ${deliveryLabel} • ${city}\n` +
+      `💳 Оплата: ${paymentLabel}\n` +
+      `🔗 ${adminLink}`
     )
   }
 

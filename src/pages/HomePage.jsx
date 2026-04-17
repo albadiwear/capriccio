@@ -49,6 +49,10 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const requireRegister = () => {
+    setMode('register')
+    scrollToAccess()
+  }
 
   useEffect(() => {
     setActiveFilter('Все')
@@ -277,7 +281,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <CatalogPreview user={user} onRequireAccess={scrollToAccess} />
+      <CatalogPreview user={user} onRequireAccess={requireRegister} />
 
       <ReviewsSection />
 

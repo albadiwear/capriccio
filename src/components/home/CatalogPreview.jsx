@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 
 const FILTERS = [
@@ -67,6 +67,14 @@ export default function CatalogPreview({ user, onRequireAccess }) {
     navigate('/catalog')
   }
 
+  const handleTileClick = () => {
+    if (!user) {
+      onRequireAccess?.()
+      return
+    }
+    navigate('/catalog')
+  }
+
   return (
     <section className="bg-white" id="looks">
       <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:py-20">
@@ -110,13 +118,13 @@ export default function CatalogPreview({ user, onRequireAccess }) {
               {p.__skeleton ? (
                 <div className="aspect-[3/4] w-full animate-pulse bg-gray-200" />
               ) : (
-                <Link to={`/product/${p.id}`}>
+                <button type="button" onClick={handleTileClick} className="block w-full text-left">
                   <img
                     src={p.images?.[0] || `https://picsum.photos/seed/${p.id}/700/900`}
                     alt={p.name}
                     className="aspect-[3/4] w-full object-cover transition-transform duration-500 group-hover:scale-105"
                   />
-                </Link>
+                </button>
               )}
 
               {!p.__skeleton && (
@@ -156,4 +164,3 @@ export default function CatalogPreview({ user, onRequireAccess }) {
     </section>
   )
 }
-

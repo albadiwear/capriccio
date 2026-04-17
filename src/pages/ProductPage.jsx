@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import {
   Heart,
   Truck,
@@ -152,6 +152,7 @@ function DescriptionBlock({ text }) {
 
 export default function ProductPage() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const addItem = useCartStore((state) => state.addItem)
 
   const [product, setProduct] = useState(null)
@@ -1052,6 +1053,8 @@ export default function ProductPage() {
         message="✓ Добавлено в корзину"
         isVisible={added}
         type="success"
+        onClick={() => navigate('/cart')}
+        actionText="Перейти →"
       />
     </div>
   )

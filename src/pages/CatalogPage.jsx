@@ -902,6 +902,8 @@ export default function CatalogPage() {
         message="✓ Добавлено в корзину"
         isVisible={added}
         type="success"
+        onClick={() => navigate('/cart')}
+        actionText="Перейти →"
       />
     </div>
   )

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { MessageCircle, Users } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 
@@ -23,6 +24,7 @@ function formatPhoneForWhatsApp(phone) {
 }
 
 export default function AdminLeadsPage() {
+  const navigate = useNavigate()
   const [leads, setLeads] = useState([])
   const [loading, setLoading] = useState(true)
   const [totalCount, setTotalCount] = useState(0)
@@ -442,9 +444,20 @@ export default function AdminLeadsPage() {
                     </td>
                     <td className="px-4 py-4">
                       {hasOrders ? (
-                        <span className="rounded-full bg-green-100 px-2.5 py-1 text-xs text-green-700">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (orders.length === 1) {
+                              navigate(`/admin/orders/${orders[0].id}`)
+                            } else {
+                              navigate(`/admin/orders?user=${lead.id}`)
+                            }
+                          }}
+                          className="rounded-full bg-green-100 px-2.5 py-1 text-xs text-green-700 cursor-pointer hover:bg-green-200 transition-colors"
+                        >
                           {orders.length} {orders.length === 1 ? 'заказ' : orders.length < 5 ? 'заказа' : 'заказов'} · {ordersTotal.toLocaleString('ru-RU')} ₸
-                        </span>
+                        </button>
                       ) : (
                         <span className="text-gray-400">—</span>
                       )}

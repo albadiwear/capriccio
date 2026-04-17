@@ -79,8 +79,8 @@ function App() {
           <Route path="catalog" element={<ProtectedRoute><CatalogPage /></ProtectedRoute>} />
           <Route path="catalog/:category" element={<CatalogPage />} />
           <Route path="product/:id" element={<ProtectedRoute><ProductPage /></ProtectedRoute>} />
-          <Route path="blog" element={<ProtectedRoute><BlogPage /></ProtectedRoute>} />
-          <Route path="blog/:slug" element={<ProtectedRoute><BlogPostPage /></ProtectedRoute>} />
+          <Route path="blog" element={<BlogPage />} />
+          <Route path="blog/:slug" element={<BlogPostPage />} />
           <Route path="about" element={<ProtectedRoute><AboutPage /></ProtectedRoute>} />
           <Route path="delivery" element={<ProtectedRoute><DeliveryPage /></ProtectedRoute>} />
           <Route path="contacts" element={<ProtectedRoute><ContactsPage /></ProtectedRoute>} />

@@ -49,6 +49,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [blogPosts, setBlogPosts] = useState([])
   const requireRegister = () => {
     setMode('register')
     scrollToAccess()
@@ -117,6 +118,16 @@ export default function HomePage() {
       cancelled = true
     }
   }, [user, navigate])
+
+  useEffect(() => {
+    supabase
+      .from('blog_posts')
+      .select('id, title, slug, category, preview_image, published_at, content')
+      .eq('is_published', true)
+      .order('published_at', { ascending: false })
+      .limit(3)
+      .then(({ data }) => setBlogPosts(data || []))
+  }, [])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -484,6 +495,35 @@ export default function HomePage() {
 	          </div>
 	        </div>
 	      </section>
+
+      {blogPosts.length > 0 && (
+        <section className="bg-white py-14">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6">
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-xl font-semibold text-gray-900">Из блога</h2>
+              <a href="/blog" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">Все статьи →</a>
+            </div>
+            <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+              {blogPosts.map((post) => (
+                <a key={post.id} href={`/blog/${post.slug}`} className="group block">
+                  <div className="overflow-hidden rounded-lg">
+                    <img
+                      src={post.preview_image || 'https://picsum.photos/seed/blog/800/450'}
+                      alt={post.title}
+                      className="aspect-video w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  </div>
+                  <div className="mt-4">
+                    <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">{post.category}</span>
+                    <h3 className="mt-3 text-base font-semibold text-gray-900 group-hover:text-gray-700 transition-colors">{post.title}</h3>
+                    <p className="mt-2 text-sm text-gray-500 leading-6">{(post.content || '').slice(0, 80)}...</p>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <footer className="border-t border-gray-100 bg-white">
         <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">

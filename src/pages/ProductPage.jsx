@@ -4,12 +4,14 @@ import {
   Heart,
   Truck,
   RotateCcw,
-  MessageCircle,
   ChevronDown,
   ChevronUp,
   Star,
   X,
   Play,
+  Share2,
+  Minus,
+  Plus,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useCartStore } from '../store/cartStore'
@@ -31,21 +33,6 @@ const COLOR_MAP = {
   bordeaux: { label: 'Бордовый', hex: '#6D1F2B' },
 }
 
-function StarRating({ rating, count }) {
-  return (
-    <div className="flex items-center gap-2">
-      <div className="flex gap-0.5">
-        {[1, 2, 3, 4, 5].map((n) => (
-          <Star
-            key={n}
-            className={`w-4 h-4 ${n <= Math.round(rating) ? 'fill-amber-400 text-amber-400' : 'text-gray-200'}`}
-          />
-        ))}
-      </div>
-      <span className="text-sm text-gray-500">{rating} ({count} отзывов)</span>
-    </div>
-  )
-}
 
 function ReviewCard({ review }) {
   return (
@@ -81,7 +68,6 @@ function ReviewCard({ review }) {
 }
 
 function ProductCard({ product }) {
-  const addItem = useCartStore((state) => state.addItem)
   const image = product.images?.[0] || `https://picsum.photos/seed/${product.id}/400/533`
   const price = product.sale_price || product.price
 
@@ -175,6 +161,10 @@ export default function ProductPage() {
   const [uploadingPhotos, setUploadingPhotos] = useState(false)
   const [sizeSheetOpen, setSizeSheetOpen] = useState(false)
   const [sizeTableOpen, setSizeTableOpen] = useState(false)
+  const [quantity, setQuantity] = useState(1)
+  const [reviewModalOpen, setReviewModalOpen] = useState(false)
+  const [reviewsExpanded, setReviewsExpanded] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
   const [zoomed, setZoomed] = useState(false)
   const [panX, setPanX] = useState(0)
   const [panY, setPanY] = useState(0)
@@ -258,10 +248,17 @@ export default function ProductPage() {
       image: product.images?.[0],
       color: selectedColor,
       size: selectedSize,
-      quantity: 1,
+      quantity,
     })
     setAdded(true)
-    setTimeout(() => setAdded(false), 2000)
+    setTimeout(() => setAdded(false), 3000)
+  }
+
+  function handleShare() {
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 2000)
+    }).catch(() => {})
   }
 
   useEffect(() => {
@@ -269,6 +266,8 @@ export default function ProductPage() {
     setPanX(0)
     setPanY(0)
   }, [activeImage])
+
+  useEffect(() => { setQuantity(1) }, [selectedSize])
 
   function handleImgTouchStart(e) {
     const t = e.touches[0]
@@ -434,6 +433,14 @@ export default function ProductPage() {
   const productStock = product.stock ?? variants.reduce((sum, v) => sum + (v.stock ?? 0), 0)
 
   const embedUrl = getYoutubeEmbedUrl(product.youtube_url)
+  const selectedVariant = selectedSize
+    ? variants.find((v) => v.color === selectedColor && v.size === selectedSize)
+    : null
+  const maxStock = selectedVariant ? (selectedVariant.stock ?? 1) : (productStock || 99)
+  const allRelated = [
+    ...outfitItems.map((i) => ({ ...i, _src: 'outfit' })),
+    ...related.map((i) => ({ ...i, _src: 'related' })),
+  ].filter((item, idx, arr) => arr.findIndex((x) => x.id === item.id) === idx)
 
   return (
     <div className="min-h-screen bg-white pb-24">
@@ -547,28 +554,28 @@ export default function ProductPage() {
                 <p className="text-sm text-gray-500 uppercase tracking-widest mb-1">{product.brand}</p>
               )}
               <h1 className="text-2xl font-bold leading-tight text-gray-900 md:text-3xl">{product.name}</h1>
-              <div className="mt-2">
-                <StarRating rating={4.8} count={24} />
+              <div className="mt-2 flex items-center gap-3 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setReviewsExpanded(true)}
+                  className="flex items-center gap-1.5 group"
+                >
+                  <div className="flex gap-0.5">
+                    {[1,2,3,4,5].map((n) => (
+                      <Star key={n} className={`w-3.5 h-3.5 ${n <= 5 ? 'fill-amber-400 text-amber-400' : 'text-gray-200'}`} />
+                    ))}
+                  </div>
+                  <span className="text-sm text-gray-500 group-hover:underline">
+                    {reviewCount > 0 ? `${reviewCount} отзыв${reviewCount === 1 ? '' : reviewCount < 5 ? 'а' : 'ов'}` : 'Нет отзывов'}
+                  </span>
+                </button>
+                {productStock > 0 && productStock <= 5 && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-red-50 border border-red-100 px-2.5 py-0.5 text-xs font-medium text-red-600">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
+                    Осталось {productStock} шт.
+                  </span>
+                )}
               </div>
-
-              <div className="flex items-center gap-3 bg-[#f5f2ed] rounded-xl px-4 py-3 mb-4 mt-4">
-                <div className="flex">
-                  {['#FBEAF0', '#E1F5EE', '#EEEDFE'].map((bg, i) => (
-                    <div
-                      key={i}
-                      className="w-7 h-7 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-medium -ml-2 first:ml-0"
-                      style={{ background: bg }}
-                    >
-                      {['А', 'Н', 'Д'][i]}
-                    </div>
-                  ))}
-                </div>
-                <span className="text-sm text-[#1a1a18]">
-                  {reviewCount} женщин уже носят этот образ
-                </span>
-              </div>
-
-              <p className="text-sm text-gray-500 mt-1">128 человек купили в этом месяце</p>
             </div>
 
             <div className="flex items-baseline gap-3">
@@ -657,60 +664,83 @@ export default function ProductPage() {
               </div>
             )}
 
-            {(() => {
-              // Если размер не выбран — не показываем ничего
-              if (!selectedSize) return null
-
-              // Находим вариант по выбранному цвету и размеру
-              const variant = variants.find(
-                (v) => v.color === selectedColor && v.size === selectedSize
-              )
-              const stock = variant?.stock ?? 0
-
-              if (stock === 0) return (
-                <p className="text-sm font-medium text-red-500">Нет в наличии</p>
-              )
-              if (stock < 5) return (
-                <p className="text-sm font-medium text-yellow-600">Осталось мало: {stock} шт.</p>
-              )
-              return (
-                <p className="text-sm text-green-600">В наличии: {stock} шт.</p>
-              )
-            })()}
-
-            {productStock <= 3 && productStock > 0 && (
-              <p className="text-xs text-[#e8453c] text-center mb-2 font-medium">
-                Осталось {productStock} шт. — успей купить
-              </p>
-            )}
-
-            <div className="flex items-start gap-3">
-              <div className="flex flex-col gap-3 flex-1">
+            {/* Quantity counter */}
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-gray-700">Количество:</span>
+              <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
                 <button
-                  onClick={handleAddToCart}
-                  className={`hidden md:block h-12 w-full text-sm font-medium tracking-wide rounded transition-colors ${
-                    added
-                      ? 'bg-green-600 text-white'
-                      : 'bg-gray-900 text-white hover:bg-gray-700'
-                  }`}
+                  type="button"
+                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                  className="w-9 h-9 flex items-center justify-center text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition-colors"
                 >
-                  {added ? '✓ Добавлено в корзину' : 'Добавить в корзину'}
+                  <Minus className="w-3.5 h-3.5" />
                 </button>
+                <span className="w-9 text-center text-sm font-medium text-gray-900">{quantity}</span>
+                <button
+                  type="button"
+                  onClick={() => setQuantity((q) => Math.min(maxStock, q + 1))}
+                  className="w-9 h-9 flex items-center justify-center text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Desktop buttons */}
+            <div className="flex items-start gap-2">
+              <div className="flex flex-col gap-2 flex-1">
+                {/* Add to cart / In cart */}
+                <div className="hidden md:flex gap-2">
+                  {!added ? (
+                    <button
+                      onClick={handleAddToCart}
+                      className="flex-1 h-12 text-sm font-medium rounded bg-[#D4537E] hover:bg-[#c44870] text-white transition-colors"
+                    >
+                      Добавить в корзину
+                    </button>
+                  ) : (
+                    <>
+                      <button className="flex-1 h-12 text-sm font-medium rounded border-2 border-green-500 text-green-600 bg-white">
+                        ✓ В корзине
+                      </button>
+                      <button
+                        onClick={() => navigate('/cart')}
+                        className="flex-1 h-12 text-sm font-medium rounded bg-[#D4537E] hover:bg-[#c44870] text-white transition-colors"
+                      >
+                        Оформить заказ →
+                      </button>
+                    </>
+                  )}
+                </div>
+                {/* WhatsApp */}
                 <button
                   onClick={handleWhatsApp}
-                  className="flex h-12 w-full items-center justify-center gap-2 rounded border border-gray-200 text-sm font-medium tracking-wide text-gray-700 transition-colors hover:border-gray-900 hover:text-gray-900"
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded text-sm font-medium bg-[#25D366] hover:bg-[#20bd5a] text-white transition-colors"
                 >
-                  <MessageCircle className="w-4 h-4" />
+                  <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white flex-shrink-0">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                    <path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.112 1.523 5.84L0 24l6.336-1.501A11.95 11.95 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.006-1.368l-.36-.214-3.732.883.936-3.618-.235-.372A9.818 9.818 0 1112 21.818z"/>
+                  </svg>
                   Заказать в WhatsApp
                 </button>
               </div>
-              <button
-                onClick={() => setWished((w) => !w)}
-                aria-label="В избранное"
-                className="mt-0.5 flex h-12 w-12 flex-shrink-0 items-center justify-center rounded border border-gray-200 transition-colors hover:border-gray-900"
-              >
-                <Heart className={`w-5 h-5 ${wished ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
-              </button>
+              {/* Heart + Share */}
+              <div className="flex flex-col gap-2 mt-0">
+                <button
+                  onClick={() => setWished((w) => !w)}
+                  aria-label="В избранное"
+                  className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded border border-gray-200 transition-colors hover:border-gray-900"
+                >
+                  <Heart className={`w-5 h-5 ${wished ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
+                </button>
+                <button
+                  onClick={handleShare}
+                  aria-label="Поделиться"
+                  className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded border border-gray-200 transition-colors hover:border-gray-900"
+                >
+                  <Share2 className="w-5 h-5 text-gray-400" />
+                </button>
+              </div>
             </div>
 
             <div className="border border-gray-100 rounded-lg p-4 space-y-3 bg-gray-50">
@@ -748,127 +778,86 @@ export default function ProductPage() {
           </div>
         </div>
 
-        {outfitItems.length > 0 && (
-          <div className="mt-8">
-            <h3 className="text-base font-medium mb-4">С этим носят</h3>
-            <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
-              {outfitItems.map((item) => (
-                <Link key={item.id} to={`/product/${item.id}`} className="flex-shrink-0 w-[100px]">
-                  <div className="w-[100px] h-[130px] rounded-xl overflow-hidden bg-[#f0ede8] mb-2">
+        {allRelated.length > 0 && (
+          <div className="mt-8 pt-6 border-t border-[#f0ede8]">
+            <h3 className="text-base font-semibold text-[#1a1a18] mb-4">Вам может понравиться</h3>
+            <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 -mx-4 px-4">
+              {allRelated.map((item) => (
+                <Link key={item.id} to={`/product/${item.id}`} className="flex-shrink-0 w-[150px]">
+                  <div className="w-[150px] h-[200px] rounded-xl overflow-hidden bg-[#f0ede8] mb-2">
                     <img src={item.images?.[0]} alt={item.name} className="w-full h-full object-cover" />
                   </div>
-                  <p className="text-[11px] text-[#1a1a18] leading-tight mb-1">{item.name}</p>
-                  <p className="text-[11px] text-[#888780]">{Number(item.price).toLocaleString('ru-RU')} ₸</p>
+                  <p className="text-xs text-[#1a1a18] leading-tight mb-1 line-clamp-2">{item.name}</p>
+                  <p className="text-xs font-medium text-[#1a1a18]">{Number(item.price).toLocaleString('ru-RU')} ₸</p>
                 </Link>
               ))}
             </div>
           </div>
         )}
 
-        <section className="mt-16 border-t border-gray-100 pt-10">
-          <h2 className="text-xl font-bold text-gray-900 mb-6">Отзывы покупателей</h2>
+        <section className="mt-8 pt-6 border-t border-[#f0ede8]">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <h2 className="text-base font-semibold text-[#1a1a18]">Отзывы</h2>
+              {reviewCount > 0 && (
+                <div className="flex items-center gap-1">
+                  {[1,2,3,4,5].map((n) => (
+                    <Star key={n} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                  ))}
+                  <span className="text-sm text-gray-500 ml-1">{reviewCount}</span>
+                </div>
+              )}
+            </div>
+            <button
+              onClick={() => setReviewModalOpen(true)}
+              className="text-xs font-medium text-[#D4537E] hover:underline"
+            >
+              Оставить отзыв
+            </button>
+          </div>
+
           {reviews.length === 0 ? (
             <p className="text-sm text-gray-400">Будьте первым, кто оставит отзыв</p>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
-              {reviews.map((r) => <ReviewCard key={r.id} review={r} />)}
-            </div>
-          )}
-          <div className="mt-8 max-w-xl">
-            <h3 className="text-base font-semibold text-gray-900 mb-4">Оставить отзыв</h3>
-            {reviewSuccess ? (
-              <div className="rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">
-                Спасибо! Отзыв отправлен на модерацию.
-              </div>
-            ) : (
-              <form onSubmit={handleSubmitReview} className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">Оценка</label>
-                  <div className="flex gap-1">
-                    {[1,2,3,4,5].map(n => (
-                      <button
-                        key={n}
-                        type="button"
-                        onClick={() => setReviewForm(f => ({ ...f, rating: n }))}
-                      >
-                        <Star className={`w-6 h-6 ${n <= reviewForm.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-200'}`} />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">Ваше имя</label>
-                  <input
-                    value={reviewForm.author_name}
-                    onChange={e => setReviewForm(f => ({ ...f, author_name: e.target.value }))}
-                    placeholder="Айгерим"
-                    required
-                    className="h-11 w-full rounded-lg border border-gray-200 px-4 text-sm focus:outline-none focus:border-gray-900"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">Отзыв</label>
-                  <textarea
-                    value={reviewForm.text}
-                    onChange={e => setReviewForm(f => ({ ...f, text: e.target.value }))}
-                    placeholder="Расскажите о товаре..."
-                    required
-                    rows={4}
-                    className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:border-gray-900 resize-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">
-                    Фото (необязательно)
-                  </label>
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={handleReviewPhotoUpload}
-                    className="text-sm text-gray-600"
-                    disabled={uploadingPhotos}
-                  />
-                  {uploadingPhotos && (
-                    <p className="text-xs text-gray-400 mt-1">Загрузка фото...</p>
-                  )}
-                  {reviewPhotos.length > 0 && (
-                    <div className="flex gap-2 flex-wrap mt-2">
-                      {reviewPhotos.map((url, i) => (
-                        <div key={i} className="relative">
-                          <img src={url} alt="" className="w-16 h-16 object-cover rounded-lg" />
-                          <button
-                            type="button"
-                            onClick={() => setReviewPhotos(prev => prev.filter((_, j) => j !== i))}
-                            className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center text-xs"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
+            <>
+              <div className="space-y-4">
+                {(reviewsExpanded ? reviews : reviews.slice(0, 3)).map((r) => (
+                  <div key={r.id} className="flex gap-3 pb-4 border-b border-[#f0ede8] last:border-0 last:pb-0">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#f5f2ed] flex items-center justify-center text-xs font-medium text-[#1a1a18]">
+                      {(r.author_name || 'П')[0]}
                     </div>
-                  )}
-                </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-medium text-[#1a1a18]">{r.author_name || 'Покупатель'}</span>
+                        <div className="flex gap-0.5">
+                          {[1,2,3,4,5].map((n) => (
+                            <Star key={n} className={`w-3 h-3 ${n <= r.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-200'}`} />
+                          ))}
+                        </div>
+                      </div>
+                      {r.text && <p className="text-sm text-gray-600 leading-relaxed">{r.text}</p>}
+                      {r.photos?.length > 0 && (
+                        <div className="flex gap-2 mt-2">
+                          {r.photos.map((photo, i) => (
+                            <img key={i} src={photo} alt="" className="w-14 h-14 object-cover rounded-lg" />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {reviews.length > 3 && (
                 <button
-                  type="submit"
-                  disabled={submittingReview}
-                  className="h-11 px-6 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-700 transition-colors disabled:opacity-60"
+                  onClick={() => setReviewsExpanded((v) => !v)}
+                  className="mt-4 text-sm text-gray-500 hover:text-gray-900 underline"
                 >
-                  {submittingReview ? 'Отправляем...' : 'Отправить отзыв'}
+                  {reviewsExpanded ? 'Свернуть' : `Читать все отзывы (${reviewCount})`}
                 </button>
-              </form>
-            )}
-          </div>
+              )}
+            </>
+          )}
         </section>
-
-        {related.length > 0 && (
-          <section className="mt-16 border-t border-gray-100 pt-10">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Похожие товары</h2>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-              {related.map((p) => <ProductCard key={p.id} product={p} />)}
-            </div>
-          </section>
-        )}
       </div>
 
         {videoOpen && embedUrl && (
@@ -899,12 +888,26 @@ export default function ProductPage() {
         )}
 
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#f0ede8] px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] z-50">
-        <button
-          onClick={() => sizesForColor.length > 0 ? setSizeSheetOpen(true) : handleAddToCart()}
-          className="w-full h-[52px] rounded-lg bg-[#1a1a18] text-white text-sm font-medium"
-        >
-          {added ? '✓ Добавлено в корзину' : 'Добавить в корзину'}
-        </button>
+        {!added ? (
+          <button
+            onClick={() => sizesForColor.length > 0 ? setSizeSheetOpen(true) : handleAddToCart()}
+            className="w-full h-[52px] rounded-lg bg-[#D4537E] hover:bg-[#c44870] text-white text-sm font-medium transition-colors"
+          >
+            Добавить в корзину
+          </button>
+        ) : (
+          <div className="flex gap-2">
+            <button className="flex-1 h-[52px] rounded-lg border-2 border-green-500 text-green-600 bg-white text-sm font-medium">
+              ✓ В корзине
+            </button>
+            <button
+              onClick={() => navigate('/cart')}
+              className="flex-1 h-[52px] rounded-lg bg-[#D4537E] hover:bg-[#c44870] text-white text-sm font-medium transition-colors"
+            >
+              Оформить заказ →
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Size Bottom Sheet — mobile only */}
@@ -991,7 +994,7 @@ export default function ProductPage() {
             <button
               onClick={handleSheetAddToCart}
               disabled={sizesForColor.length > 0 && !selectedSize}
-              className="w-full h-[52px] rounded-xl bg-[#1a1a18] text-white text-sm font-medium disabled:opacity-40 transition-opacity"
+              className="w-full h-[52px] rounded-xl bg-[#D4537E] hover:bg-[#c44870] text-white text-sm font-medium disabled:opacity-40 transition-colors"
             >
               В корзину
             </button>
@@ -1049,12 +1052,109 @@ export default function ProductPage() {
         </div>
       )}
 
+      {/* Review modal */}
+      {reviewModalOpen && (
+        <div
+          className="fixed inset-0 z-[60] flex items-end md:items-center justify-center bg-black/50"
+          onClick={() => setReviewModalOpen(false)}
+        >
+          <div
+            className="bg-white w-full md:max-w-lg rounded-t-2xl md:rounded-2xl px-5 pt-5 pb-8 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-5">
+              <span className="text-base font-semibold text-[#1a1a18]">Оставить отзыв</span>
+              <button onClick={() => setReviewModalOpen(false)} className="text-gray-400 hover:text-gray-700">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            {reviewSuccess ? (
+              <div className="rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">
+                Спасибо! Отзыв отправлен на модерацию.
+              </div>
+            ) : (
+              <form onSubmit={handleSubmitReview} className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">Оценка</label>
+                  <div className="flex gap-1">
+                    {[1,2,3,4,5].map((n) => (
+                      <button key={n} type="button" onClick={() => setReviewForm((f) => ({ ...f, rating: n }))}>
+                        <Star className={`w-7 h-7 ${n <= reviewForm.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-200'}`} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">Ваше имя</label>
+                  <input
+                    value={reviewForm.author_name}
+                    onChange={(e) => setReviewForm((f) => ({ ...f, author_name: e.target.value }))}
+                    placeholder="Айгерим"
+                    required
+                    className="h-11 w-full rounded-lg border border-gray-200 px-4 text-sm focus:outline-none focus:border-gray-900"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">Отзыв</label>
+                  <textarea
+                    value={reviewForm.text}
+                    onChange={(e) => setReviewForm((f) => ({ ...f, text: e.target.value }))}
+                    placeholder="Расскажите о товаре..."
+                    required
+                    rows={4}
+                    className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:border-gray-900 resize-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">Фото (необязательно)</label>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleReviewPhotoUpload}
+                    className="text-sm text-gray-600"
+                    disabled={uploadingPhotos}
+                  />
+                  {uploadingPhotos && <p className="text-xs text-gray-400 mt-1">Загрузка фото...</p>}
+                  {reviewPhotos.length > 0 && (
+                    <div className="flex gap-2 flex-wrap mt-2">
+                      {reviewPhotos.map((url, i) => (
+                        <div key={i} className="relative">
+                          <img src={url} alt="" className="w-16 h-16 object-cover rounded-lg" />
+                          <button
+                            type="button"
+                            onClick={() => setReviewPhotos((prev) => prev.filter((_, j) => j !== i))}
+                            className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center text-xs"
+                          >×</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="submit"
+                  disabled={submittingReview}
+                  className="h-12 w-full rounded-lg bg-[#1a1a18] text-white text-sm font-medium hover:bg-gray-700 transition-colors disabled:opacity-60"
+                >
+                  {submittingReview ? 'Отправляем...' : 'Отправить отзыв'}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
       <Toast
         message="✓ Добавлено в корзину"
         isVisible={added}
         type="success"
         onClick={() => navigate('/cart')}
         actionText="Перейти →"
+      />
+      <Toast
+        message="Ссылка скопирована"
+        isVisible={linkCopied}
+        type="success"
       />
     </div>
   )

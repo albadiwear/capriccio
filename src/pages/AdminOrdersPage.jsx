@@ -393,7 +393,7 @@ export default function AdminOrdersPage() {
       {userParam && (
         <div className="mb-2 flex items-center gap-3">
           <button
-            onClick={() => navigate('/admin/orders')}
+            onClick={() => { window.location.href = '/admin/orders' }}
             className="inline-flex items-center gap-1.5 text-sm text-gray-500 transition-colors hover:text-gray-900"
           >
             <ArrowLeft className="h-4 w-4" />

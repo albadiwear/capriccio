@@ -222,7 +222,7 @@ export default function AdminOrdersPage() {
     }
 
     loadOrders()
-  }, [])
+  }, [userParam])
 
   async function awardReferralCommission(order) {
     if (!order?.referral_code) return

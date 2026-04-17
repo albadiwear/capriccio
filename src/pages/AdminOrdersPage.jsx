@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
-import { MessageCircle, ShoppingBag, TrendingUp, X } from 'lucide-react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { ArrowLeft, MessageCircle, ShoppingBag, TrendingUp, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 const STATUSES = [
@@ -179,6 +179,7 @@ function OrderDetailsModal({ order, onClose, onStatusChange }) {
 }
 
 export default function AdminOrdersPage() {
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const userParam = searchParams.get('user')
   const [orders, setOrders] = useState([])
@@ -389,6 +390,17 @@ export default function AdminOrdersPage() {
 
   return (
     <div>
+      {userParam && (
+        <div className="mb-2 flex items-center gap-3">
+          <button
+            onClick={() => navigate('/admin/orders')}
+            className="inline-flex items-center gap-1.5 text-sm text-gray-500 transition-colors hover:text-gray-900"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Все заказы
+          </button>
+        </div>
+      )}
       <div className="mb-6">
         <h1 className="text-xl font-bold text-gray-900">Заказы</h1>
       </div>

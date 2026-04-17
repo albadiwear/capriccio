@@ -12,6 +12,9 @@ import {
   Share2,
   Minus,
   Plus,
+  ArrowLeft,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useCartStore } from '../store/cartStore'
@@ -134,6 +137,7 @@ export default function ProductPage() {
   const [reviewsExpanded, setReviewsExpanded] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
   const [shareModalOpen, setShareModalOpen] = useState(false)
+  const [screenshotModalOpen, setScreenshotModalOpen] = useState(false)
   const [zoomed, setZoomed] = useState(false)
   const [panX, setPanX] = useState(0)
   const [panY, setPanY] = useState(0)
@@ -141,6 +145,7 @@ export default function ProductPage() {
   const [zoomOriginY, setZoomOriginY] = useState(50)
   const [isPanning, setIsPanning] = useState(false)
 
+  const hiddenTimeRef = useRef(0)
   const touchStartY = useRef(null)
   const imgContainerRef = useRef(null)
   const imgTouchStartX = useRef(0)
@@ -242,6 +247,34 @@ export default function ProductPage() {
   }, [activeImage])
 
   useEffect(() => { setQuantity(1) }, [selectedSize])
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        if (Date.now() - hiddenTimeRef.current < 500) {
+          setScreenshotModalOpen(true)
+        }
+      } else {
+        hiddenTimeRef.current = Date.now()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [])
+
+  function handleZoomToggle() {
+    if (zoomed) {
+      setZoomed(false)
+      setPanX(0)
+      setPanY(0)
+    } else {
+      setZoomOriginX(50)
+      setZoomOriginY(50)
+      setZoomed(true)
+      setPanX(0)
+      setPanY(0)
+    }
+  }
 
   function handleImgTouchStart(e) {
     const t = e.touches[0]
@@ -461,6 +494,43 @@ export default function ProductPage() {
                   }}
                   draggable={false}
                 />
+                {/* Back button — top left */}
+                <button
+                  onClick={() => navigate(-1)}
+                  className="absolute top-3 left-3 w-9 h-9 flex items-center justify-center rounded-full bg-white/70 backdrop-blur-sm shadow-sm"
+                  aria-label="Назад"
+                >
+                  <ArrowLeft className="w-4 h-4 text-[#1a1a18]" />
+                </button>
+
+                {/* Top-right actions: zoom, share, wishlist */}
+                <div className="absolute top-3 right-3 flex gap-1.5">
+                  <button
+                    onClick={handleZoomToggle}
+                    className="w-9 h-9 flex items-center justify-center rounded-full bg-white/70 backdrop-blur-sm shadow-sm"
+                    aria-label={zoomed ? 'Уменьшить' : 'Увеличить'}
+                  >
+                    {zoomed
+                      ? <ZoomOut className="w-4 h-4 text-[#1a1a18]" />
+                      : <ZoomIn className="w-4 h-4 text-[#1a1a18]" />
+                    }
+                  </button>
+                  <button
+                    onClick={handleShare}
+                    className="w-9 h-9 flex items-center justify-center rounded-full bg-white/70 backdrop-blur-sm shadow-sm"
+                    aria-label="Поделиться"
+                  >
+                    <Share2 className="w-4 h-4 text-[#1a1a18]" />
+                  </button>
+                  <button
+                    onClick={() => setWished((w) => !w)}
+                    className="w-9 h-9 flex items-center justify-center rounded-full bg-white/70 backdrop-blur-sm shadow-sm"
+                    aria-label="В избранное"
+                  >
+                    <Heart className={`w-4 h-4 transition-all ${wished ? 'fill-red-500 text-red-500 scale-110' : 'text-[#1a1a18]'}`} />
+                  </button>
+                </div>
+
                 {/* Dot indicators */}
                 {images.length > 1 && (
                   <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 pointer-events-none">
@@ -1244,6 +1314,48 @@ export default function ProductPage() {
                 Скопировать ссылку
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Screenshot modal */}
+      {screenshotModalOpen && (
+        <div
+          className="fixed inset-0 z-[80] flex items-end justify-center bg-black/50"
+          onClick={() => setScreenshotModalOpen(false)}
+        >
+          <div
+            className="bg-white w-full rounded-t-2xl px-5 pt-5 pb-8"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <p className="text-base font-semibold text-[#1a1a18]">Ссылка лучше, чем скриншот</p>
+                <p className="text-sm text-gray-500 mt-0.5">Поделитесь ссылкой на товар в мессенджерах</p>
+              </div>
+              <button onClick={() => setScreenshotModalOpen(false)} className="text-gray-400 hover:text-gray-700 ml-3 flex-shrink-0">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            {product && (
+              <div className="flex items-center gap-3 mb-4 p-3 rounded-xl bg-[#f5f2ed]">
+                {images[0] && (
+                  <img src={images[0]} alt={product.name} className="w-14 h-14 rounded-lg object-cover flex-shrink-0" />
+                )}
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-[#1a1a18] line-clamp-2 leading-snug">{product.name}</p>
+                  <p className="text-sm font-semibold text-[#1a1a18] mt-0.5">
+                    {(product.sale_price || product.price)?.toLocaleString('ru-RU')} ₸
+                  </p>
+                </div>
+              </div>
+            )}
+            <button
+              onClick={() => { setScreenshotModalOpen(false); setShareModalOpen(true) }}
+              className="w-full h-12 rounded-xl bg-[#D4537E] hover:bg-[#c44870] text-white text-sm font-medium transition-colors"
+            >
+              Поделиться →
+            </button>
           </div>
         </div>
       )}

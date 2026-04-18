@@ -18,8 +18,13 @@ export const useAuthStore = create((set) => ({
   },
 
   initialize: () => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      set({ session, user: session?.user ?? null, loading: false })
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session) {
+        const { data: refreshed } = await supabase.auth.refreshSession()
+        set({ session: refreshed.session, user: refreshed.session?.user ?? null, loading: false })
+      } else {
+        set({ session: null, user: null, loading: false })
+      }
     })
 
     if (authSubscription) {

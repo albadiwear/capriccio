@@ -25,7 +25,8 @@ export default function ProtectedRoute({ children, adminOnly = false, managerOnl
       })
   }, [user])
 
-  const isAdmin = userRole === 'admin'
+  const adminEmail = import.meta.env.VITE_ADMIN_EMAIL
+  const isAdmin = userRole === 'admin' || (adminEmail && user?.email === adminEmail)
   const isManager = userRole === 'manager' || userRole === 'admin'
 
   if (loading || (user && roleLoading)) {

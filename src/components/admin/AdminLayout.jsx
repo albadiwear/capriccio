@@ -45,7 +45,9 @@ function SidebarContent({ onClose }) {
   const [contentOpen, setContentOpen] = useState(isContentRoute)
   const [pendingCount, setPendingCount] = useState(0)
   const [unreadChatsCount, setUnreadChatsCount] = useState(0)
+  const adminEmail = import.meta.env.VITE_ADMIN_EMAIL
   const [userRole, setUserRole] = useState(null)
+  const effectiveRole = userRole ?? (adminEmail && user?.email === adminEmail ? 'admin' : null)
 
   useEffect(() => {
     if (isContentRoute) {
@@ -128,7 +130,7 @@ function SidebarContent({ onClose }) {
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {NAV_ITEMS.filter((item) => !item.adminOnly || userRole === 'admin').map(({ label, icon: Icon, to, badgeKey }) => {
+        {NAV_ITEMS.filter((item) => !item.adminOnly || effectiveRole === 'admin').map(({ label, icon: Icon, to, badgeKey }) => {
           const badge = badgeKey === 'academy' && pendingCount > 0
             ? pendingCount
             : badgeKey === 'chats' && unreadChatsCount > 0
@@ -159,7 +161,7 @@ function SidebarContent({ onClose }) {
           )
         })}
 
-        {userRole === 'admin' && <div className="pt-1">
+        {effectiveRole === 'admin' && <div className="pt-1">
           <button
             onClick={() => setContentOpen((current) => !current)}
             className={`flex w-full items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${

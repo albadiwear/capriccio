@@ -18,12 +18,12 @@ import { useAuthStore } from '../../store/authStore'
 import { supabase } from '../../lib/supabase'
 
 const NAV_ITEMS = [
-  { label: 'Дашборд', icon: LayoutDashboard, to: '/admin' },
-  { label: 'Товары', icon: Package, to: '/admin/products' },
+  { label: 'Дашборд', icon: LayoutDashboard, to: '/admin', adminOnly: true },
+  { label: 'Товары', icon: Package, to: '/admin/products', adminOnly: true },
   { label: 'Лиды', icon: Users, to: '/admin/leads' },
   { label: 'Заказы', icon: ShoppingBag, to: '/admin/orders' },
-  { label: 'Партнёры', icon: Handshake, to: '/admin/partners' },
-  { label: 'Академия', icon: GraduationCap, to: '/admin/academy', badgeKey: 'academy' },
+  { label: 'Партнёры', icon: Handshake, to: '/admin/partners', adminOnly: true },
+  { label: 'Академия', icon: GraduationCap, to: '/admin/academy', badgeKey: 'academy', adminOnly: true },
   { label: 'Чаты', icon: MessageCircle, to: '/admin/chats', badgeKey: 'chats' },
 ]
 
@@ -38,16 +38,28 @@ function SidebarContent({ onClose }) {
   const location = useLocation()
   const navigate = useNavigate()
   const signOut = useAuthStore((state) => state.signOut)
+  const user = useAuthStore((state) => state.user)
   const isContentRoute = CONTENT_ITEMS.some((item) => location.pathname === item.to)
   const [contentOpen, setContentOpen] = useState(isContentRoute)
   const [pendingCount, setPendingCount] = useState(0)
   const [unreadChatsCount, setUnreadChatsCount] = useState(0)
+  const [userRole, setUserRole] = useState(null)
 
   useEffect(() => {
     if (isContentRoute) {
       setContentOpen(true)
     }
   }, [isContentRoute])
+
+  useEffect(() => {
+    if (!user?.id) return
+    supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+      .then(({ data }) => setUserRole(data?.role ?? null))
+  }, [user?.id])
 
   useEffect(() => {
     async function loadPending() {
@@ -114,7 +126,7 @@ function SidebarContent({ onClose }) {
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {NAV_ITEMS.map(({ label, icon: Icon, to, badgeKey }) => {
+        {NAV_ITEMS.filter((item) => !item.adminOnly || userRole === 'admin').map(({ label, icon: Icon, to, badgeKey }) => {
           const badge = badgeKey === 'academy' && pendingCount > 0
             ? pendingCount
             : badgeKey === 'chats' && unreadChatsCount > 0
@@ -145,7 +157,7 @@ function SidebarContent({ onClose }) {
           )
         })}
 
-        <div className="pt-1">
+        {userRole === 'admin' && <div className="pt-1">
           <button
             onClick={() => setContentOpen((current) => !current)}
             className={`flex w-full items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
@@ -182,7 +194,7 @@ function SidebarContent({ onClose }) {
               ))}
             </div>
           )}
-        </div>
+        </div>}
       </nav>
 
       <div className="px-3 py-4 border-t border-gray-800">

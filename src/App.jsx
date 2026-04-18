@@ -106,7 +106,7 @@ function App() {
         {/* Admin layout */}
         <Route
           path="/admin/*"
-          element={<ProtectedRoute adminOnly><AdminLayout /></ProtectedRoute>}
+          element={<ProtectedRoute managerOnly><AdminLayout /></ProtectedRoute>}
         >
           <Route index element={<AdminPage />} />
           <Route path="products" element={<AdminProductsPage />} />

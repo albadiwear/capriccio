@@ -95,16 +95,15 @@ export default function PartnerPage() {
       setReferral(currentReferral)
       setPendingWithdrawal(pendingReq)
 
-      if (currentReferral.id) {
-        const { data: txData } = await supabase
-          .from('referral_transactions')
-          .select('*')
-          .eq('referral_id', currentReferral.id)
-          .order('created_at', { ascending: false })
-        setTransactions(txData || [])
-      } else {
-        setTransactions([])
+      const { data: txData, error: txError } = await supabase
+        .from('referral_transactions')
+        .select('*')
+        .eq('referrer_id', user.id)
+        .order('created_at', { ascending: false })
+      if (txError) {
+        console.error('referral_transactions load error:', txError)
       }
+      setTransactions(txData || [])
 
       setLoading(false)
     }
@@ -339,7 +338,7 @@ export default function PartnerPage() {
                             </span>
                           </td>
                           <td className="px-2 py-3 text-right font-semibold text-gray-900">
-                            {Number(tx.amount || 0).toLocaleString('ru-RU')} ₸
+                            {Number(tx.commission || 0).toLocaleString('ru-RU')} ₸
                           </td>
                         </tr>
                       ))}

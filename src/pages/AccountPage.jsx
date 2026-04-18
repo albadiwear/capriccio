@@ -786,7 +786,7 @@ export default function AccountPage() {
                     </p>
                   </div>
                   <p className="text-sm font-semibold text-gray-900">
-                    {Number(transaction.amount || 0).toLocaleString('ru-RU')} ₸
+                    {Number(transaction.commission || 0).toLocaleString('ru-RU')} ₸
                   </p>
                 </div>
               ))}

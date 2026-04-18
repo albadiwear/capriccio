@@ -5,6 +5,7 @@ import {
   Package,
   ShoppingBag,
   Users,
+  Users2,
   Handshake,
   GraduationCap,
   MessageCircle,
@@ -20,6 +21,7 @@ import { supabase } from '../../lib/supabase'
 const NAV_ITEMS = [
   { label: 'Дашборд', icon: LayoutDashboard, to: '/admin', adminOnly: true },
   { label: 'Товары', icon: Package, to: '/admin/products', adminOnly: true },
+  { label: 'Команда', icon: Users2, to: '/admin/team', adminOnly: true },
   { label: 'Лиды', icon: Users, to: '/admin/leads' },
   { label: 'Заказы', icon: ShoppingBag, to: '/admin/orders' },
   { label: 'Партнёры', icon: Handshake, to: '/admin/partners', adminOnly: true },

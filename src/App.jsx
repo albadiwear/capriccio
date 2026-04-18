@@ -42,6 +42,7 @@ import AdminChatsPage from './pages/admin/AdminChatsPage'
 import AdminReviewsPage from './pages/admin/AdminReviewsPage'
 import AdminAcademyPage from './pages/admin/AdminAcademyPage'
 import AdminOrderDetailPage from './pages/AdminOrderDetailPage'
+import AdminTeamPage from './pages/admin/AdminTeamPage'
 
 // Other
 import OnboardingPage from './pages/OnboardingPage'
@@ -110,6 +111,7 @@ function App() {
           <Route index element={<AdminPage />} />
           <Route path="products" element={<AdminProductsPage />} />
           <Route path="leads" element={<AdminLeadsPage />} />
+          <Route path="team" element={<AdminTeamPage />} />
           <Route path="chats" element={<AdminChatsPage />} />
           <Route path="orders" element={<AdminOrdersPage />} />
           <Route path="orders/:id" element={<AdminOrderDetailPage />} />

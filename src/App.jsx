@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
 import { useEffect } from 'react'
+import { saveRefCode } from './utils/referral'
 import Layout from './components/layout/Layout'
 import ProtectedRoute from './components/layout/ProtectedRoute'
 import AdminLayout from './components/admin/AdminLayout'
@@ -62,6 +63,8 @@ function App() {
     const ref = urlParams.get('ref')
 
     if (ref) {
+      saveRefCode(ref)
+      // keep legacy keys so CheckoutPage can still read them
       localStorage.setItem('ref_code', ref)
       localStorage.setItem('ref_expires', String(Date.now() + 30 * 24 * 60 * 60 * 1000))
     }

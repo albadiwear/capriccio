@@ -7,6 +7,7 @@ import DirectionsSection from '../components/home/DirectionsSection'
 import CatalogPreview from '../components/home/CatalogPreview'
 import ReviewsSection from '../components/home/ReviewsSection'
 import { supabase } from '../lib/supabase'
+import { getRefCode, clearRefCode } from '../utils/referral'
 
 export default function HomePage() {
   const user = useAuthStore((state) => state.user)
@@ -183,6 +184,25 @@ export default function HomePage() {
     }
 
     if (data?.user) {
+      // Link referral if a ref code was stored
+      const refCode = getRefCode()
+      if (refCode) {
+        const { data: referrerRow } = await supabase
+          .from('users')
+          .select('id')
+          .eq('referral_code', refCode)
+          .maybeSingle()
+        if (referrerRow?.id) {
+          await supabase.from('referrals').insert({
+            referrer_id: referrerRow.id,
+            referred_id: data.user.id,
+            ref_code: refCode,
+            status: 'pending',
+          })
+        }
+        clearRefCode()
+      }
+
       setLoading(false)
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
         if (event === 'SIGNED_IN' && session) {

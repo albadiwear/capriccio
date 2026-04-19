@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Mail, Phone, User } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/authStore'
+import { getRefCode, markReferralConverted, clearRefCode } from '../utils/referral'
 
 const catalogTags = [
   'Пуховики',
@@ -99,6 +100,28 @@ export default function PromoLanding() {
           full_name: fullName,
           phone,
         })
+
+        const refCode = getRefCode()
+        if (refCode) {
+          const { data: referrer } = await supabase
+            .from('users')
+            .select('id')
+            .eq('referral_code', refCode)
+            .maybeSingle()
+          if (referrer?.id) {
+            await Promise.all([
+              supabase.from('users').update({ referred_by: referrer.id }).eq('id', authUser.id),
+              supabase.from('referrals').insert({
+                referrer_id: referrer.id,
+                referred_id: authUser.id,
+                ref_code: refCode,
+                status: 'pending',
+              }),
+            ])
+            await markReferralConverted(refCode)
+          }
+          clearRefCode()
+        }
       }
 
       await initialize()

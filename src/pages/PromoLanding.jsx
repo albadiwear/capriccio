@@ -104,31 +104,8 @@ export default function PromoLanding() {
 
         const refCode = getRefCode()
         if (refCode) {
-          try {
-            const { data: referrer } = await supabase
-              .from('users')
-              .select('id')
-              .eq('referral_code', refCode)
-              .maybeSingle()
-
-            if (referrer?.id) {
-              await new Promise(resolve => setTimeout(resolve, 1500))
-              await Promise.all([
-                supabase.rpc('set_referred_by', { p_user_id: authUser.id, p_referral_code: refCode }),
-                supabase.from('referrals').insert({
-                  referrer_id: referrer.id,
-                  referred_id: authUser.id,
-                  ref_code: refCode,
-                  status: 'pending',
-                }),
-              ])
-              await markReferralConverted(refCode)
-            }
-          } catch (referralError) {
-            console.error('[referral] link after signup failed:', referralError)
-          } finally {
-            clearRefCode()
-          }
+          await markReferralConverted(refCode)
+          clearRefCode()
         }
       }
 

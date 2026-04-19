@@ -185,34 +185,10 @@ export default function HomePage() {
     }
 
     if (data?.user) {
-      // Link referral if a ref code was stored
       const refCode = getRefCode()
       if (refCode) {
-        try {
-          const { data: referrerRow } = await supabase
-            .from('users')
-            .select('id')
-            .eq('referral_code', refCode)
-            .maybeSingle()
-
-          if (referrerRow?.id) {
-            await new Promise(resolve => setTimeout(resolve, 1500))
-            await Promise.all([
-              supabase.rpc('set_referred_by', { p_user_id: data.user.id, p_referral_code: refCode }),
-              supabase.from('referrals').insert({
-                referrer_id: referrerRow.id,
-                referred_id: data.user.id,
-                ref_code: refCode,
-                status: 'pending',
-              }),
-            ])
-            await markReferralConverted(refCode)
-          }
-        } catch (referralError) {
-          console.error('[referral] link after signup failed:', referralError)
-        } finally {
-          clearRefCode()
-        }
+        await markReferralConverted(refCode)
+        clearRefCode()
       }
 
       setLoading(false)

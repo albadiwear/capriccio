@@ -97,7 +97,7 @@ export default function PartnerPage() {
 
       const { data: txData, error: txError } = await supabase
         .from('referral_transactions')
-        .select('*')
+        .select('id, referrer_id, referee_id, order_id, order_amount, commission, status, created_at')
         .eq('referrer_id', user.id)
         .order('created_at', { ascending: false })
       if (txError) {

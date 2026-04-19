@@ -185,6 +185,7 @@ export default function PartnerPage() {
       amount: amt,
       method: form.method,
       details: form.details.trim(),
+      kaspi_phone: form.method === 'kaspi' ? form.details.trim() : null,
       status: 'pending',
     })
 

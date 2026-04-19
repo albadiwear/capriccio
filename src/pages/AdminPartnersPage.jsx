@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { Check, Handshake, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
@@ -27,14 +27,16 @@ export default function AdminPartnersPage() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('partners')
   const [withdrawalFilter, setWithdrawalFilter] = useState('pending')
+  const [showAllPartners, setShowAllPartners] = useState(false)
+  const [partnersSort, setPartnersSort] = useState('balance') // balance | earned | monthly_sales | registered
 
   async function load() {
     setLoading(true)
     const [{ data: refs }, { data: reqs }] = await Promise.all([
       supabase
         .from('referrals')
-        .select('*, users(full_name, email)')
-        .order('total_earned', { ascending: false }),
+        .select('*, users(full_name, email, created_at)')
+        .order('balance', { ascending: false }),
       supabase
         .from('withdrawal_requests')
         .select('*, users(full_name, email)')
@@ -76,6 +78,37 @@ export default function AdminPartnersPage() {
     ? withdrawals
     : withdrawals.filter((w) => w.status === withdrawalFilter)
 
+  const activePartners = useMemo(
+    () => (partners || []).filter((p) => Number(p.total_earned || 0) > 0 || Number(p.monthly_sales || 0) > 0),
+    [partners]
+  )
+
+  const visiblePartners = useMemo(
+    () => (showAllPartners ? (partners || []) : activePartners),
+    [activePartners, partners, showAllPartners]
+  )
+
+  const sortedPartners = useMemo(() => {
+    const list = [...(visiblePartners || [])]
+
+    list.sort((a, b) => {
+      if (partnersSort === 'earned') {
+        return Number(b.total_earned || 0) - Number(a.total_earned || 0)
+      }
+      if (partnersSort === 'monthly_sales') {
+        return Number(b.monthly_sales || 0) - Number(a.monthly_sales || 0)
+      }
+      if (partnersSort === 'registered') {
+        const ad = new Date(a.users?.created_at || a.created_at || 0).getTime()
+        const bd = new Date(b.users?.created_at || b.created_at || 0).getTime()
+        return bd - ad
+      }
+      return Number(b.balance || 0) - Number(a.balance || 0)
+    })
+
+    return list
+  }, [partnersSort, visiblePartners])
+
   return (
     <div>
       <h1 className="mb-6 text-xl font-bold text-gray-900">Партнёры</h1>
@@ -100,57 +133,91 @@ export default function AdminPartnersPage() {
 
       {/* Partners tab */}
       {tab === 'partners' && (
-        <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white">
-          {loading ? (
-            <div className="space-y-3 p-6">
-              {[1, 2, 3].map((i) => <div key={i} className="h-10 animate-pulse rounded bg-gray-100" />)}
+        <>
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-gray-600">
+              Активных партнёров: <span className="font-medium text-gray-900">{activePartners.length}</span> из{' '}
+              <span className="font-medium text-gray-900">{partners.length}</span>
+            </p>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowAllPartners((v) => !v)}
+                className={`h-9 rounded-lg px-3 text-xs font-medium transition-colors ${
+                  showAllPartners
+                    ? 'bg-gray-900 text-white'
+                    : 'border border-gray-200 bg-white text-gray-600 hover:border-gray-400'
+                }`}
+              >
+                {showAllPartners ? 'Показываем всех' : 'Показать всех'}
+              </button>
+
+              <select
+                value={partnersSort}
+                onChange={(e) => setPartnersSort(e.target.value)}
+                className="h-9 rounded-lg border border-gray-200 bg-white px-3 text-xs font-medium text-gray-700 outline-none transition-colors focus:border-gray-900"
+              >
+                <option value="balance">По балансу</option>
+                <option value="earned">По заработку</option>
+                <option value="monthly_sales">По продажам/мес</option>
+                <option value="registered">По дате регистрации</option>
+              </select>
             </div>
-          ) : partners.length === 0 ? (
-            <div className="flex flex-col items-center py-12 text-gray-400">
-              <Handshake className="mb-3 h-10 w-10 text-gray-200" />
-              <p className="text-sm">Партнёров пока нет</p>
-            </div>
-          ) : (
-            <table className="w-full min-w-[800px] text-sm">
-              <thead>
-                <tr className="border-b border-gray-100 text-xs text-gray-500">
-                  <th className="px-4 py-3 text-left font-medium">Имя</th>
-                  <th className="px-4 py-3 text-left font-medium">Email</th>
-                  <th className="px-4 py-3 text-left font-medium">Уровень</th>
-                  <th className="px-4 py-3 text-left font-medium">Реф. код</th>
-                  <th className="px-4 py-3 text-right font-medium">Продажи/мес</th>
-                  <th className="px-4 py-3 text-right font-medium">Баланс</th>
-                  <th className="px-4 py-3 text-right font-medium">Заработано</th>
-                  <th className="px-4 py-3 text-right font-medium">Выведено</th>
-                </tr>
-              </thead>
-              <tbody>
-                {partners.map((p) => (
-                  <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-900">{p.users?.full_name || '—'}</td>
-                    <td className="px-4 py-3 text-gray-500">{p.users?.email || '—'}</td>
-                    <td className="px-4 py-3">
-                      <select
-                        value={p.level || 'start'}
-                        onChange={(e) => handleChangeLevel(p.id, e.target.value)}
-                        className={`h-8 rounded-lg border-0 px-2.5 text-xs font-medium outline-none ${LEVEL_META[p.level]?.cls || LEVEL_META.start.cls}`}
-                      >
-                        <option value="start">Старт</option>
-                        <option value="active">Активный</option>
-                        <option value="pro">Про</option>
-                      </select>
-                    </td>
-                    <td className="px-4 py-3 text-gray-700">{p.referral_code || '—'}</td>
-                    <td className="px-4 py-3 text-right text-gray-700">{Number(p.monthly_sales || 0)}</td>
-                    <td className="px-4 py-3 text-right font-medium text-green-600">{Number(p.balance || 0).toLocaleString('ru-RU')} ₸</td>
-                    <td className="px-4 py-3 text-right text-gray-700">{Number(p.total_earned || 0).toLocaleString('ru-RU')} ₸</td>
-                    <td className="px-4 py-3 text-right text-gray-500">{Number(p.total_withdrawn || 0).toLocaleString('ru-RU')} ₸</td>
+          </div>
+
+          <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white">
+            {loading ? (
+              <div className="space-y-3 p-6">
+                {[1, 2, 3].map((i) => <div key={i} className="h-10 animate-pulse rounded bg-gray-100" />)}
+              </div>
+            ) : sortedPartners.length === 0 ? (
+              <div className="flex flex-col items-center py-12 text-gray-400">
+                <Handshake className="mb-3 h-10 w-10 text-gray-200" />
+                <p className="text-sm">Партнёров не найдено</p>
+              </div>
+            ) : (
+              <table className="w-full min-w-[800px] text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100 text-xs text-gray-500">
+                    <th className="px-4 py-3 text-left font-medium">Имя</th>
+                    <th className="px-4 py-3 text-left font-medium">Email</th>
+                    <th className="px-4 py-3 text-left font-medium">Уровень</th>
+                    <th className="px-4 py-3 text-left font-medium">Реф. код</th>
+                    <th className="px-4 py-3 text-right font-medium">Продажи/мес</th>
+                    <th className="px-4 py-3 text-right font-medium">Баланс</th>
+                    <th className="px-4 py-3 text-right font-medium">Заработано</th>
+                    <th className="px-4 py-3 text-right font-medium">Выведено</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+                </thead>
+                <tbody>
+                  {sortedPartners.map((p) => (
+                    <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50">
+                      <td className="px-4 py-3 font-medium text-gray-900">{p.users?.full_name || '—'}</td>
+                      <td className="px-4 py-3 text-gray-500">{p.users?.email || '—'}</td>
+                      <td className="px-4 py-3">
+                        <select
+                          value={p.level || 'start'}
+                          onChange={(e) => handleChangeLevel(p.id, e.target.value)}
+                          className={`h-8 rounded-lg border-0 px-2.5 text-xs font-medium outline-none ${LEVEL_META[p.level]?.cls || LEVEL_META.start.cls}`}
+                        >
+                          <option value="start">Старт</option>
+                          <option value="active">Активный</option>
+                          <option value="pro">Про</option>
+                        </select>
+                      </td>
+                      <td className="px-4 py-3 text-gray-700">{p.referral_code || '—'}</td>
+                      <td className="px-4 py-3 text-right text-gray-700">{Number(p.monthly_sales || 0)}</td>
+                      <td className="px-4 py-3 text-right font-medium text-green-600">{Number(p.balance || 0).toLocaleString('ru-RU')} ₸</td>
+                      <td className="px-4 py-3 text-right text-gray-700">{Number(p.total_earned || 0).toLocaleString('ru-RU')} ₸</td>
+                      <td className="px-4 py-3 text-right text-gray-500">{Number(p.total_withdrawn || 0).toLocaleString('ru-RU')} ₸</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </>
       )}
 
       {/* Withdrawals tab */}

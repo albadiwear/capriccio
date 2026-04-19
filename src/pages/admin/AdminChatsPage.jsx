@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
-import { Send, Bot, User, Search, MessageCircle, PanelRightClose, PanelRightOpen, Paperclip, X, Zap, ShoppingBag } from 'lucide-react'
+import { Send, Bot, User, Search, MessageCircle, PanelRightClose, PanelRightOpen, Paperclip, X, Zap, ShoppingBag, ExternalLink } from 'lucide-react'
 
 export default function AdminChatsPage() {
   const [chats, setChats] = useState([])
@@ -515,6 +515,15 @@ export default function AdminChatsPage() {
         <div className="w-64 border-l border-gray-100 flex flex-col flex-shrink-0 bg-white overflow-y-auto">
           <div className="px-4 py-4">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Профиль клиента</p>
+            {selectedChat?.user_id && (
+              <button
+                onClick={() => window.open(`/admin/leads?user=${selectedChat.user_id}`, '_blank')}
+                className="w-full border border-[#f0ede8] text-[#1a1a18] rounded-lg px-3 py-2 text-sm flex items-center gap-2 hover:bg-[#f0ede8] transition-colors mb-3"
+              >
+                <ExternalLink size={14} />
+                Открыть профиль лида
+              </button>
+            )}
             {profile ? (
               <div className="space-y-3">
                 {profile.city && (

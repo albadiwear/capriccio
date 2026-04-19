@@ -196,6 +196,7 @@ export default function HomePage() {
             .maybeSingle()
 
           if (referrerRow?.id) {
+            await new Promise(resolve => setTimeout(resolve, 1500))
             await Promise.all([
               supabase.rpc('set_referred_by', { p_user_id: data.user.id, p_referral_code: refCode }),
               supabase.from('referrals').insert({

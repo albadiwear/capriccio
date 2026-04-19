@@ -58,7 +58,7 @@ export default function PartnerPage() {
   const [form, setForm] = useState({ amount: '', method: 'kaspi', details: '' })
   const [submitting, setSubmitting] = useState(false)
   const [notice, setNotice] = useState({ text: '', type: '' })
-  const [funnel, setFunnel] = useState({ clicks: 0, registrations: 0, onboarding: 0, purchases: 0 })
+  const [funnel, setFunnel] = useState({ clicks: 0, registrations: 0, onboarding: 0, orders: 0, purchases: 0 })
   const [userRefCode, setUserRefCode] = useState('')
 
   useEffect(() => {
@@ -98,48 +98,47 @@ export default function PartnerPage() {
       setUserRefCode(profile?.referral_code || '')
       setPendingWithdrawal(pendingReq)
 
-      // Load funnel analytics
+      // Load funnel analytics + transactions in one batch
       const myCode = currentReferral.referral_code || profile?.referral_code || fallbackCode
-      if (myCode) {
-        const [
-          { count: clicksCount },
-          { count: regsCount },
-          { data: referredUsers },
-          { count: purchasesCount },
-        ] = await Promise.all([
-          supabase.from('referral_clicks').select('id', { count: 'exact', head: true }).eq('referral_code', myCode),
-          supabase.from('users').select('id', { count: 'exact', head: true }).eq('referred_by', user.id),
-          supabase.from('users').select('id').eq('referred_by', user.id),
-          supabase.from('referral_transactions').select('id', { count: 'exact', head: true }).eq('referrer_id', user.id),
-        ])
 
-        let onboardingCount = 0
-        if (referredUsers?.length) {
-          const ids = referredUsers.map((u) => u.id)
-          const { count } = await supabase
-            .from('stylist_profiles')
-            .select('id', { count: 'exact', head: true })
-            .in('user_id', ids)
-            .eq('onboarding_completed', true)
-          onboardingCount = count || 0
-        }
+      const [
+        { count: clicksCount },
+        { count: regsCount },
+        { data: referredUsers },
+        { count: purchasesCount },
+        { data: txData },
+      ] = await Promise.all([
+        myCode
+          ? supabase.from('referral_clicks').select('id', { count: 'exact', head: true }).eq('referral_code', myCode)
+          : Promise.resolve({ count: 0 }),
+        supabase.from('users').select('id', { count: 'exact', head: true }).eq('referred_by', user.id),
+        supabase.from('users').select('id').eq('referred_by', user.id),
+        supabase.from('referral_transactions').select('id', { count: 'exact', head: true }).eq('referrer_id', user.id),
+        supabase
+          .from('referral_transactions')
+          .select('id, order_id, order_amount, commission, status, created_at')
+          .eq('referrer_id', user.id)
+          .order('created_at', { ascending: false }),
+      ])
 
-        setFunnel({
-          clicks: clicksCount || 0,
-          registrations: regsCount || 0,
-          onboarding: onboardingCount,
-          purchases: purchasesCount || 0,
-        })
-      }
+      const referredUserIds = referredUsers?.map((u) => u.id) || []
 
-      const { data: txData, error: txError } = await supabase
-        .from('referral_transactions')
-        .select('id, referrer_id, referee_id, order_id, order_amount, commission, status, created_at')
-        .eq('referrer_id', user.id)
-        .order('created_at', { ascending: false })
-      if (txError) {
-        console.error('referral_transactions load error:', txError)
-      }
+      const [{ count: onboardingCount }, { count: ordersCount }] = await Promise.all([
+        referredUserIds.length
+          ? supabase.from('stylist_profiles').select('id', { count: 'exact', head: true }).in('user_id', referredUserIds).eq('onboarding_completed', true)
+          : Promise.resolve({ count: 0 }),
+        referredUserIds.length
+          ? supabase.from('orders').select('id', { count: 'exact', head: true }).in('user_id', referredUserIds).not('status', 'in', '("cancelled","pending")')
+          : Promise.resolve({ count: 0 }),
+      ])
+
+      setFunnel({
+        clicks: clicksCount || 0,
+        registrations: regsCount || 0,
+        onboarding: onboardingCount || 0,
+        orders: ordersCount || 0,
+        purchases: purchasesCount || 0,
+      })
       setTransactions(txData || [])
 
       setLoading(false)
@@ -257,7 +256,7 @@ export default function PartnerPage() {
                   { label: 'Клики', value: funnel.clicks },
                   { label: 'Регистрации', value: funnel.registrations },
                   { label: 'Анкета', value: funnel.onboarding },
-                  { label: 'В корзине', value: null },
+                  { label: 'Заказы', value: funnel.orders },
                   { label: 'Покупки', value: funnel.purchases },
                 ].map((step, i, arr) => {
                   const prev = arr[i - 1]
@@ -268,13 +267,8 @@ export default function PartnerPage() {
                   return (
                     <div key={step.label} className="flex items-center">
                       <div className="flex flex-col items-center min-w-[90px] px-2">
-                        <div className="text-2xl font-bold text-gray-900">
-                          {step.value !== null ? step.value : '—'}
-                        </div>
+                        <div className="text-2xl font-bold text-gray-900">{step.value}</div>
                         <div className="mt-1 text-xs text-gray-500 text-center">{step.label}</div>
-                        {step.value === null && (
-                          <div className="mt-0.5 text-[10px] text-gray-400">скоро</div>
-                        )}
                       </div>
                       {i < arr.length - 1 && (
                         <div className="flex flex-col items-center px-1">
@@ -295,17 +289,12 @@ export default function PartnerPage() {
                   { label: 'Клики', value: funnel.clicks },
                   { label: 'Регистрации', value: funnel.registrations },
                   { label: 'Анкета', value: funnel.onboarding },
-                  { label: 'В корзине', value: null },
+                  { label: 'Заказы', value: funnel.orders },
                   { label: 'Покупки', value: funnel.purchases },
                 ].map((step) => (
                   <div key={step.label} className="rounded-xl border border-[#f0ede8] px-4 py-3">
-                    <div className="text-xl font-bold text-gray-900">
-                      {step.value !== null ? step.value : '—'}
-                    </div>
+                    <div className="text-xl font-bold text-gray-900">{step.value}</div>
                     <div className="mt-1 text-xs text-gray-500">{step.label}</div>
-                    {step.value === null && (
-                      <div className="text-[10px] text-gray-400">скоро</div>
-                    )}
                   </div>
                 ))}
               </div>
@@ -331,19 +320,22 @@ export default function PartnerPage() {
             </div>
 
             {/* Payout button */}
-            <div className="flex items-center gap-3">
-              {pendingWithdrawal ? (
-                <div className="inline-flex h-11 items-center gap-2 rounded-xl border border-yellow-200 bg-yellow-50 px-5 text-sm font-medium text-yellow-700">
-                  Заявка на рассмотрении ({Number(pendingWithdrawal.amount).toLocaleString('ru-RU')} ₸)
-                </div>
-              ) : balance > 0 ? (
-                <button
-                  onClick={() => setModalOpen(true)}
-                  className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#D4537E] px-5 text-sm font-medium text-white transition-colors hover:bg-[#c44370]"
-                >
-                  Запросить вывод
-                </button>
-              ) : null}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-3">
+                {pendingWithdrawal ? (
+                  <div className="inline-flex h-11 items-center gap-2 rounded-xl border border-yellow-200 bg-yellow-50 px-5 text-sm font-medium text-yellow-700">
+                    Заявка на рассмотрении ({Number(pendingWithdrawal.amount).toLocaleString('ru-RU')} ₸)
+                  </div>
+                ) : balance > 0 ? (
+                  <button
+                    onClick={() => setModalOpen(true)}
+                    className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#D4537E] px-5 text-sm font-medium text-white transition-colors hover:bg-[#c44370]"
+                  >
+                    Запросить вывод
+                  </button>
+                ) : null}
+              </div>
+              <p className="text-xs text-gray-400">Минимальная сумма вывода: 5 000 ₸</p>
             </div>
 
             {/* Referral link */}
@@ -423,7 +415,7 @@ export default function PartnerPage() {
                   <Users className="h-4 w-4 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-base font-semibold text-gray-900">Транзакции</h2>
+                  <h2 className="text-base font-semibold text-gray-900">История выплат</h2>
                   <p className="text-xs text-gray-500">Начисления по доставленным заказам</p>
                 </div>
               </div>
@@ -438,9 +430,9 @@ export default function PartnerPage() {
                     <thead>
                       <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
                         <th className="px-2 py-3 font-medium">Дата</th>
-                        <th className="px-2 py-3 font-medium">Заказ</th>
+                        <th className="px-2 py-3 text-right font-medium">Сумма заказа</th>
                         <th className="px-2 py-3 font-medium">Статус</th>
-                        <th className="px-2 py-3 text-right font-medium">Сумма</th>
+                        <th className="px-2 py-3 text-right font-medium">Комиссия</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -449,8 +441,8 @@ export default function PartnerPage() {
                           <td className="px-2 py-3 text-gray-500">
                             {tx.created_at ? new Date(tx.created_at).toLocaleDateString('ru-RU') : '—'}
                           </td>
-                          <td className="px-2 py-3 text-gray-900">
-                            {tx.order_id ? String(tx.order_id).slice(0, 8) : '—'}
+                          <td className="px-2 py-3 text-right text-gray-700">
+                            {Number(tx.order_amount || 0).toLocaleString('ru-RU')} ₸
                           </td>
                           <td className="px-2 py-3">
                             <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getTransactionStatusClass(tx.status)}`}>
@@ -463,6 +455,14 @@ export default function PartnerPage() {
                         </tr>
                       ))}
                     </tbody>
+                    <tfoot>
+                      <tr className="border-t border-gray-200">
+                        <td colSpan={3} className="px-2 py-3 text-xs font-medium text-gray-500">Итого комиссий</td>
+                        <td className="px-2 py-3 text-right font-bold text-gray-900">
+                          {transactions.reduce((sum, tx) => sum + Number(tx.commission || 0), 0).toLocaleString('ru-RU')} ₸
+                        </td>
+                      </tr>
+                    </tfoot>
                   </table>
                 </div>
               )}

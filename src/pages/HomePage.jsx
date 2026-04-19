@@ -188,24 +188,30 @@ export default function HomePage() {
       // Link referral if a ref code was stored
       const refCode = getRefCode()
       if (refCode) {
-        const { data: referrerRow } = await supabase
-          .from('users')
-          .select('id')
-          .eq('referral_code', refCode)
-          .maybeSingle()
-        if (referrerRow?.id) {
-          await Promise.all([
-            supabase.from('users').update({ referred_by: referrerRow.id }).eq('id', data.user.id),
-            supabase.from('referrals').insert({
-              referrer_id: referrerRow.id,
-              referred_id: data.user.id,
-              ref_code: refCode,
-              status: 'pending',
-            }),
-          ])
-          await markReferralConverted(refCode)
+        try {
+          const { data: referrerRow } = await supabase
+            .from('users')
+            .select('id')
+            .eq('referral_code', refCode)
+            .maybeSingle()
+
+          if (referrerRow?.id) {
+            await Promise.all([
+              supabase.from('users').update({ referred_by: referrerRow.id }).eq('id', data.user.id),
+              supabase.from('referrals').insert({
+                referrer_id: referrerRow.id,
+                referred_id: data.user.id,
+                ref_code: refCode,
+                status: 'pending',
+              }),
+            ])
+            await markReferralConverted(refCode)
+          }
+        } catch (referralError) {
+          console.error('[referral] link after signup failed:', referralError)
+        } finally {
+          clearRefCode()
         }
-        clearRefCode()
       }
 
       setLoading(false)

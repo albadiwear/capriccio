@@ -95,7 +95,7 @@ export default function ReviewsSection() {
       setLoading(true)
       const { data } = await supabase
         .from('reviews')
-        .select('id, author_name, city, rating, text, product_category, created_at, products(category)')
+        .select('*')
         .eq('is_approved', true)
         .order('created_at', { ascending: false })
         .limit(24)
@@ -116,7 +116,7 @@ export default function ReviewsSection() {
     const realReviews = (items || [])
       .map((r) => ({
         id: r.id,
-        author_name: r.author_name || r.user_name || 'Покупатель',
+        author_name: r.author_name || r.author || r.user_name || 'Покупатель',
         city: r.city || 'Казахстан',
         rating: r.rating || 5,
         text: String(r.text || '').trim(),

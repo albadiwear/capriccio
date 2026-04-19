@@ -78,24 +78,30 @@ export default function AccessForm({ user }) {
     if (data?.user) {
       const refCode = getRefCode()
       if (refCode) {
-        const { data: referrer } = await supabase
-          .from('users')
-          .select('id')
-          .eq('referral_code', refCode)
-          .maybeSingle()
-        if (referrer?.id) {
-          await Promise.all([
-            supabase.from('users').update({ referred_by: referrer.id }).eq('id', data.user.id),
-            supabase.from('referrals').insert({
-              referrer_id: referrer.id,
-              referred_id: data.user.id,
-              ref_code: refCode,
-              status: 'pending',
-            }),
-          ])
-          await markReferralConverted(refCode)
+        try {
+          const { data: referrer } = await supabase
+            .from('users')
+            .select('id')
+            .eq('referral_code', refCode)
+            .maybeSingle()
+
+          if (referrer?.id) {
+            await Promise.all([
+              supabase.from('users').update({ referred_by: referrer.id }).eq('id', data.user.id),
+              supabase.from('referrals').insert({
+                referrer_id: referrer.id,
+                referred_id: data.user.id,
+                ref_code: refCode,
+                status: 'pending',
+              }),
+            ])
+            await markReferralConverted(refCode)
+          }
+        } catch (referralError) {
+          console.error('[referral] link after signup failed:', referralError)
+        } finally {
+          clearRefCode()
         }
-        clearRefCode()
       }
 
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {

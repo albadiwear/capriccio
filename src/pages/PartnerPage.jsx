@@ -183,9 +183,7 @@ export default function PartnerPage() {
     const { error } = await supabase.from('withdrawal_requests').insert({
       user_id: user.id,
       amount: amt,
-      method: form.method,
-      details: form.details.trim(),
-      kaspi_phone: form.method === 'kaspi' ? form.details.trim() : null,
+      kaspi_phone: form.details.trim(),
       status: 'pending',
     })
 

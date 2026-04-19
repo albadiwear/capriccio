@@ -106,7 +106,7 @@ export default function PartnerPage() {
           { count: purchasesCount },
         ] = await Promise.all([
           supabase.from('referral_clicks').select('id', { count: 'exact', head: true }).eq('referral_code', myCode),
-          supabase.from('referral_clicks').select('id', { count: 'exact', head: true }).eq('referral_code', myCode).eq('converted', true),
+          supabase.from('users').select('id', { count: 'exact', head: true }).eq('referred_by', user.id),
           supabase.from('users').select('id').eq('referred_by', user.id),
           supabase.from('referral_transactions').select('id', { count: 'exact', head: true }).eq('referrer_id', user.id),
         ])

@@ -41,7 +41,15 @@ export async function trackReferralClick(code) {
     } catch { /* ignore */ }
   }
 
-  await supabase.from('referral_clicks').insert({ referral_code: code, converted: false })
+  const { error } = await supabase
+    .from('referral_clicks')
+    .insert({ referral_code: code, converted: false })
+
+  if (error) {
+    console.error('[referral] trackReferralClick failed:', error)
+    return // don't mark localStorage so the next visit retries
+  }
+
   localStorage.setItem(clickKey, JSON.stringify({ clickedAt: Date.now() }))
 }
 

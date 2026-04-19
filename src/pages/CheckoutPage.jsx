@@ -301,7 +301,10 @@ export default function CheckoutPage() {
         }))
       )
 
-      if (itemsError) console.error('order_items error:', itemsError)
+      if (itemsError) {
+        console.error('order_items error:', itemsError)
+        throw new Error('Не удалось сохранить товары заказа. Попробуйте ещё раз.')
+      }
 
       if (!user && email) {
         const tempPassword = Math.random().toString(36).slice(-10)

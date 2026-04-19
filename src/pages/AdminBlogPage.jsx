@@ -12,7 +12,7 @@ function slugify(str) {
     .replace(/^-|-$/g, '')
 }
 
-const EMPTY_FORM = { title: '', slug: '', category: 'Мода', content: '', is_published: false, cover_url: '' }
+const EMPTY_FORM = { title: '', slug: '', category: 'Мода', content: '', is_published: false, preview_image: '' }
 
 export default function AdminBlogPage() {
   const [posts, setPosts] = useState([])
@@ -46,7 +46,7 @@ export default function AdminBlogPage() {
       category: post.category || 'Мода',
       content: post.content || '',
       is_published: post.is_published || false,
-      cover_url: post.cover_url || post.cover_image || '',
+      preview_image: post.preview_image || post.cover_url || post.cover_image || '',
     })
     setModalOpen(true)
   }
@@ -59,7 +59,7 @@ export default function AdminBlogPage() {
     const { error } = await supabase.storage.from('product-images').upload(path, file)
     if (!error) {
       const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(path)
-      setForm((f) => ({ ...f, cover_url: publicUrl }))
+      setForm((f) => ({ ...f, preview_image: publicUrl }))
     }
     setUploading(false)
   }
@@ -73,7 +73,7 @@ export default function AdminBlogPage() {
       category: form.category,
       content: form.content,
       is_published: form.is_published,
-      cover_url: form.cover_url || null,
+      preview_image: form.preview_image || null,
     }
     if (editing) {
       await supabase.from('blog_posts').update(payload).eq('id', editing)
@@ -188,8 +188,8 @@ export default function AdminBlogPage() {
                 <input
                   type="text"
                   placeholder="URL изображения (например /blog/blog-puhovik.png)"
-                  value={form.cover_url || ''}
-                  onChange={e => setForm(f => ({ ...f, cover_url: e.target.value }))}
+                  value={form.preview_image || ''}
+                  onChange={e => setForm(f => ({ ...f, preview_image: e.target.value }))}
                   className="border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-gray-900"
                 />
                 <p className="text-xs text-gray-400">или загрузите файл:</p>

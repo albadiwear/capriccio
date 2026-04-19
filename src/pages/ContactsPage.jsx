@@ -9,6 +9,7 @@ import {
   ExternalLink,
 } from 'lucide-react'
 import { useSEO } from '../hooks/useSEO'
+import { supabase } from '../lib/supabase'
 
 const contactItems = [
   {
@@ -59,17 +60,50 @@ export default function ContactsPage() {
   })
   const [formData, setFormData] = useState(initialForm)
   const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
 
   const handleChange = (event) => {
     const { name, value } = event.target
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
-    console.log(formData)
-    setSubmitted(true)
-    setFormData(initialForm)
+    if (submitting) return
+    setSubmitting(true)
+    setSubmitError('')
+
+    const payload = {
+      full_name: formData.name.trim(),
+      phone: formData.phone.trim() || null,
+      email: formData.email.trim(),
+      message: `${formData.subject ? `Тема: ${formData.subject}\n\n` : ''}${formData.message}`.trim(),
+      source: 'contact_form',
+      lead_status: 'Новый',
+    }
+
+    try {
+      const { error: leadsError } = await supabase.from('leads').insert(payload)
+      if (leadsError) {
+        // Fallback table used elsewhere in the project.
+        const { error: queueError } = await supabase.from('notifications_queue').insert({
+          user_id: null,
+          type: 'contact_form',
+          channel: 'email',
+          payload,
+        })
+        if (queueError) throw queueError
+      }
+
+      setSubmitted(true)
+      setFormData(initialForm)
+    } catch (e) {
+      console.error('contact form submit error:', e)
+      setSubmitError('Не удалось отправить. Попробуйте ещё раз.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -148,6 +182,11 @@ export default function ContactsPage() {
                   Спасибо! Мы свяжемся с вами в ближайшее время
                 </div>
               )}
+              {submitError && (
+                <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {submitError}
+                </div>
+              )}
 
               <form onSubmit={handleSubmit} className="mt-6 space-y-4">
                 <input
@@ -193,9 +232,10 @@ export default function ContactsPage() {
                 />
                 <button
                   type="submit"
+                  disabled={submitting}
                   className="h-12 w-full rounded-lg bg-gray-900 px-6 text-sm font-medium text-white transition-colors hover:bg-gray-700"
                 >
-                  Отправить
+                  {submitting ? 'Отправляем...' : 'Отправить'}
                 </button>
               </form>
             </div>

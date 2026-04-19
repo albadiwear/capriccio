@@ -52,6 +52,7 @@ export default function BlogPostPage() {
         .from('blog_posts')
         .select('*')
         .eq('slug', slug)
+        .eq('is_published', true)
         .single()
 
       if (!data) {

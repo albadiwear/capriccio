@@ -59,6 +59,7 @@ export default function PartnerPage() {
   const [submitting, setSubmitting] = useState(false)
   const [notice, setNotice] = useState({ text: '', type: '' })
   const [funnel, setFunnel] = useState({ clicks: 0, registrations: 0, onboarding: 0, purchases: 0 })
+  const [userRefCode, setUserRefCode] = useState('')
 
   useEffect(() => {
     if (!user) navigate('/login', { replace: true })
@@ -94,6 +95,7 @@ export default function PartnerPage() {
         monthly_sales: 0, monthly_revenue: 0, level: 'start',
       }
       setReferral(currentReferral)
+      setUserRefCode(profile?.referral_code || '')
       setPendingWithdrawal(pendingReq)
 
       // Load funnel analytics
@@ -146,8 +148,8 @@ export default function PartnerPage() {
     load()
   }, [user])
 
-  const referralCode = referral?.referral_code || user?.user_metadata?.referral_code || ''
-  const referralLink = `${window.location.origin}?ref=${referralCode}`
+  const referralCode = userRefCode || user?.user_metadata?.referral_code || ''
+  const referralLink = `https://capriccio.vercel.app?ref=${referralCode}`
   const balance = Number(referral?.balance || 0)
   const totalEarned = Number(referral?.total_earned || 0)
   const totalWithdrawn = Number(referral?.total_withdrawn || 0)

@@ -58,6 +58,7 @@ export default function PartnerPage() {
   const [form, setForm] = useState({ amount: '', method: 'kaspi', details: '' })
   const [submitting, setSubmitting] = useState(false)
   const [notice, setNotice] = useState({ text: '', type: '' })
+  const [funnel, setFunnel] = useState({ clicks: 0, registrations: 0, onboarding: 0, purchases: 0 })
 
   useEffect(() => {
     if (!user) navigate('/login', { replace: true })
@@ -94,6 +95,40 @@ export default function PartnerPage() {
       }
       setReferral(currentReferral)
       setPendingWithdrawal(pendingReq)
+
+      // Load funnel analytics
+      const myCode = currentReferral.referral_code || profile?.referral_code || fallbackCode
+      if (myCode) {
+        const [
+          { count: clicksCount },
+          { count: regsCount },
+          { data: referredUsers },
+          { count: purchasesCount },
+        ] = await Promise.all([
+          supabase.from('referral_clicks').select('id', { count: 'exact', head: true }).eq('referral_code', myCode),
+          supabase.from('referral_clicks').select('id', { count: 'exact', head: true }).eq('referral_code', myCode).eq('converted', true),
+          supabase.from('users').select('id').eq('referred_by', user.id),
+          supabase.from('referral_transactions').select('id', { count: 'exact', head: true }).eq('referrer_id', user.id),
+        ])
+
+        let onboardingCount = 0
+        if (referredUsers?.length) {
+          const ids = referredUsers.map((u) => u.id)
+          const { count } = await supabase
+            .from('stylist_profiles')
+            .select('id', { count: 'exact', head: true })
+            .in('user_id', ids)
+            .eq('onboarding_completed', true)
+          onboardingCount = count || 0
+        }
+
+        setFunnel({
+          clicks: clicksCount || 0,
+          registrations: regsCount || 0,
+          onboarding: onboardingCount,
+          purchases: purchasesCount || 0,
+        })
+      }
 
       const { data: txData, error: txError } = await supabase
         .from('referral_transactions')
@@ -208,6 +243,89 @@ export default function PartnerPage() {
               <StatCard icon={Wallet} label="Баланс" value={`${balance.toLocaleString('ru-RU')} ₸`} hint="Доступно к выводу" />
               <StatCard icon={TrendingUp} label="Заработано" value={`${totalEarned.toLocaleString('ru-RU')} ₸`} hint="Всего за период" />
               <StatCard icon={CreditCard} label="Выведено" value={`${totalWithdrawn.toLocaleString('ru-RU')} ₸`} hint="Подтверждённые выплаты" />
+            </div>
+
+            {/* Funnel */}
+            <div className="rounded-2xl border border-[#f0ede8] bg-white p-6">
+              <h2 className="mb-5 text-base font-semibold text-gray-900">Воронка продаж</h2>
+
+              {/* Desktop: single row with arrows; Mobile: 2-column grid */}
+              <div className="hidden sm:flex items-stretch gap-0">
+                {[
+                  { label: 'Клики', value: funnel.clicks },
+                  { label: 'Регистрации', value: funnel.registrations },
+                  { label: 'Анкета', value: funnel.onboarding },
+                  { label: 'В корзине', value: null },
+                  { label: 'Покупки', value: funnel.purchases },
+                ].map((step, i, arr) => {
+                  const prev = arr[i - 1]
+                  const convPct = prev && prev.value > 0 && step.value !== null
+                    ? Math.round((step.value / prev.value) * 100)
+                    : null
+
+                  return (
+                    <div key={step.label} className="flex items-center">
+                      <div className="flex flex-col items-center min-w-[90px] px-2">
+                        <div className="text-2xl font-bold text-gray-900">
+                          {step.value !== null ? step.value : '—'}
+                        </div>
+                        <div className="mt-1 text-xs text-gray-500 text-center">{step.label}</div>
+                        {step.value === null && (
+                          <div className="mt-0.5 text-[10px] text-gray-400">скоро</div>
+                        )}
+                      </div>
+                      {i < arr.length - 1 && (
+                        <div className="flex flex-col items-center px-1">
+                          <div className="text-gray-300 text-lg leading-none">›</div>
+                          {convPct !== null && (
+                            <div className="text-[10px] text-[#D4537E] font-medium">{convPct}%</div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Mobile: 2-col grid */}
+              <div className="grid grid-cols-2 gap-3 sm:hidden">
+                {[
+                  { label: 'Клики', value: funnel.clicks },
+                  { label: 'Регистрации', value: funnel.registrations },
+                  { label: 'Анкета', value: funnel.onboarding },
+                  { label: 'В корзине', value: null },
+                  { label: 'Покупки', value: funnel.purchases },
+                ].map((step) => (
+                  <div key={step.label} className="rounded-xl border border-[#f0ede8] px-4 py-3">
+                    <div className="text-xl font-bold text-gray-900">
+                      {step.value !== null ? step.value : '—'}
+                    </div>
+                    <div className="mt-1 text-xs text-gray-500">{step.label}</div>
+                    {step.value === null && (
+                      <div className="text-[10px] text-gray-400">скоро</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Conversion labels for mobile */}
+              <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 sm:hidden">
+                {funnel.clicks > 0 && (
+                  <span className="text-xs text-gray-500">
+                    Клики → Рег: <span className="font-medium text-[#D4537E]">{Math.round((funnel.registrations / funnel.clicks) * 100)}%</span>
+                  </span>
+                )}
+                {funnel.registrations > 0 && (
+                  <span className="text-xs text-gray-500">
+                    Рег → Анкета: <span className="font-medium text-[#D4537E]">{Math.round((funnel.onboarding / funnel.registrations) * 100)}%</span>
+                  </span>
+                )}
+                {funnel.onboarding > 0 && (
+                  <span className="text-xs text-gray-500">
+                    Анкета → Покупка: <span className="font-medium text-[#D4537E]">{Math.round((funnel.purchases / funnel.onboarding) * 100)}%</span>
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Payout button */}

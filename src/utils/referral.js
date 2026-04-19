@@ -1,5 +1,8 @@
+import { supabase } from '../lib/supabase'
+
 const KEY = 'capriccio_ref'
 const TTL = 30 * 24 * 60 * 60 * 1000 // 30 days
+const CLICK_TTL = 24 * 60 * 60 * 1000 // 24 hours
 
 export function saveRefCode(code) {
   if (!code) return
@@ -24,4 +27,40 @@ export function getRefCode() {
 
 export function clearRefCode() {
   localStorage.removeItem(KEY)
+}
+
+export async function trackReferralClick(code) {
+  if (!code) return
+
+  const clickKey = `capriccio_ref_clicked_${code}`
+  const raw = localStorage.getItem(clickKey)
+  if (raw) {
+    try {
+      const { clickedAt } = JSON.parse(raw)
+      if (Date.now() - clickedAt < CLICK_TTL) return // already tracked within 24h
+    } catch { /* ignore */ }
+  }
+
+  await supabase.from('referral_clicks').insert({ referral_code: code, converted: false })
+  localStorage.setItem(clickKey, JSON.stringify({ clickedAt: Date.now() }))
+}
+
+export async function markReferralConverted(code) {
+  if (!code) return
+  // Find the most recent unconverted click for this code and mark it converted
+  const { data: click } = await supabase
+    .from('referral_clicks')
+    .select('id')
+    .eq('referral_code', code)
+    .eq('converted', false)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (click?.id) {
+    await supabase
+      .from('referral_clicks')
+      .update({ converted: true, converted_at: new Date().toISOString() })
+      .eq('id', click.id)
+  }
 }

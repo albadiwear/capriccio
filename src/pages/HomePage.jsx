@@ -7,7 +7,7 @@ import DirectionsSection from '../components/home/DirectionsSection'
 import CatalogPreview from '../components/home/CatalogPreview'
 import ReviewsSection from '../components/home/ReviewsSection'
 import { supabase } from '../lib/supabase'
-import { getRefCode, clearRefCode } from '../utils/referral'
+import { getRefCode, clearRefCode, markReferralConverted } from '../utils/referral'
 
 export default function HomePage() {
   const user = useAuthStore((state) => state.user)
@@ -199,6 +199,7 @@ export default function HomePage() {
             ref_code: refCode,
             status: 'pending',
           })
+          await markReferralConverted(refCode)
         }
         clearRefCode()
       }

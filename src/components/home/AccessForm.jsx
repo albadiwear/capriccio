@@ -87,7 +87,7 @@ export default function AccessForm({ user }) {
 
           if (referrer?.id) {
             await Promise.all([
-              supabase.from('users').update({ referred_by: referrer.id }).eq('id', data.user.id),
+              supabase.rpc('set_referred_by', { p_user_id: data.user.id, p_referral_code: refCode }),
               supabase.from('referrals').insert({
                 referrer_id: referrer.id,
                 referred_id: data.user.id,

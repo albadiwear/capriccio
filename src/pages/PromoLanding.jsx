@@ -113,7 +113,7 @@ export default function PromoLanding() {
 
             if (referrer?.id) {
               await Promise.all([
-                supabase.from('users').update({ referred_by: referrer.id }).eq('id', authUser.id),
+                supabase.rpc('set_referred_by', { p_user_id: authUser.id, p_referral_code: refCode }),
                 supabase.from('referrals').insert({
                   referrer_id: referrer.id,
                   referred_id: authUser.id,

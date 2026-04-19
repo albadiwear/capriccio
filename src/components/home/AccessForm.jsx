@@ -60,6 +60,7 @@ export default function AccessForm({ user }) {
     setError('')
     setMessage('')
 
+    console.log('[referral] signUp called in: AccessForm.jsx')
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,

@@ -305,6 +305,7 @@ export default function CheckoutPage() {
 
       if (!user && email) {
         const tempPassword = Math.random().toString(36).slice(-10)
+        console.log('[referral] signUp called in: CheckoutPage.jsx')
         const { data: newUser } = await supabase.auth.signUp({
           email,
           password: tempPassword,

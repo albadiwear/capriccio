@@ -171,6 +171,7 @@ export default function HomePage() {
       return
     }
 
+    console.log('[referral] signUp called in: HomePage.jsx')
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,

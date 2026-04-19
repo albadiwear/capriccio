@@ -59,6 +59,7 @@ export default function PromoLanding() {
     try {
       const password = `Capr_${Math.random().toString(36).slice(-6)}`
       console.log('[referral] signUp called in: PromoLanding.jsx')
+      const refCode = getRefCode()
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -66,6 +67,7 @@ export default function PromoLanding() {
           data: {
             full_name: fullName,
             phone,
+            ref_code: refCode || null,
           },
         },
       })
@@ -102,7 +104,6 @@ export default function PromoLanding() {
           phone,
         })
 
-        const refCode = getRefCode()
         if (refCode) {
           await markReferralConverted(refCode)
           clearRefCode()

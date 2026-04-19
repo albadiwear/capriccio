@@ -61,11 +61,12 @@ export default function AccessForm({ user }) {
     setMessage('')
 
     console.log('[referral] signUp called in: AccessForm.jsx')
+    const refCode = getRefCode()
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { full_name: name, phone },
+        data: { full_name: name, phone, ref_code: refCode || null },
       },
     })
 
@@ -76,7 +77,6 @@ export default function AccessForm({ user }) {
     }
 
     if (data?.user) {
-      const refCode = getRefCode()
       if (refCode) {
         await markReferralConverted(refCode)
         clearRefCode()

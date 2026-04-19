@@ -172,10 +172,11 @@ export default function HomePage() {
     }
 
     console.log('[referral] signUp called in: HomePage.jsx')
+    const refCode = getRefCode()
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: name, phone } },
+      options: { data: { full_name: name, phone, ref_code: refCode || null } },
     })
 
     if (signUpError) {
@@ -185,7 +186,6 @@ export default function HomePage() {
     }
 
     if (data?.user) {
-      const refCode = getRefCode()
       if (refCode) {
         await markReferralConverted(refCode)
         clearRefCode()

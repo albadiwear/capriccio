@@ -709,7 +709,7 @@ export default function AccountPage() {
   const renderPartnerSection = () => {
     const balance = Number(referral?.balance || 0)
     const earned = Number(referral?.total_earned || 0)
-    const withdrawn = Number(referral?.withdrawn || 0)
+    const withdrawn = Number(referral?.total_withdrawn || 0)
 
     return (
       <div className="space-y-4">

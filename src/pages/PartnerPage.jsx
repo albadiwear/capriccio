@@ -123,14 +123,14 @@ export default function PartnerPage() {
 
       const referredUserIds = referredUsers?.map((u) => u.id) || []
 
-      const [{ count: onboardingCount }, { count: ordersCount }] = await Promise.all([
-        referredUserIds.length
-          ? supabase.from('stylist_profiles').select('id', { count: 'exact', head: true }).in('user_id', referredUserIds).eq('onboarding_completed', true)
-          : Promise.resolve({ count: 0 }),
-        referredUserIds.length
-          ? supabase.from('orders').select('id', { count: 'exact', head: true }).in('user_id', referredUserIds).not('status', 'in', '("cancelled","pending")')
-          : Promise.resolve({ count: 0 }),
-      ])
+        const [{ count: onboardingCount }, { count: ordersCount }] = await Promise.all([
+          referredUserIds.length
+            ? supabase.from('stylist_profiles').select('id', { count: 'exact', head: true }).in('user_id', referredUserIds).eq('onboarding_completed', true)
+            : Promise.resolve({ count: 0 }),
+          referredUserIds.length
+            ? supabase.from('orders').select('id', { count: 'exact', head: true }).in('user_id', referredUserIds).not('status', 'in', '(cancelled,pending)')
+            : Promise.resolve({ count: 0 }),
+        ])
 
       setFunnel({
         clicks: clicksCount || 0,

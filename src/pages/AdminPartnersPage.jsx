@@ -281,7 +281,7 @@ export default function AdminPartnersPage() {
                           {Number(r.amount || 0).toLocaleString('ru-RU')} ₸
                         </td>
                         <td className="px-4 py-3 text-gray-700">
-                          {METHOD_LABELS[r.method] || r.method || r.kaspi_phone ? 'Kaspi' : '—'}
+                          {METHOD_LABELS[r.method] || r.method || (r.kaspi_phone ? 'Kaspi' : '—')}
                         </td>
                         <td className="px-4 py-3 max-w-[200px]">
                           <p className="text-gray-600 text-xs leading-5 whitespace-pre-wrap">

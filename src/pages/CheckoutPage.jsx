@@ -257,6 +257,7 @@ export default function CheckoutPage() {
         delivery_address: deliveryAddress,
         payment_method: selectedPayment,
         referral_code: refCode || null,
+        comment: comment.trim() || null,
       }
 
       let { data: order, error: orderError } = await supabase

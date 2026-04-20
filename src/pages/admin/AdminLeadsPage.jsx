@@ -727,7 +727,7 @@ export default function AdminLeadsPage() {
                             </div>
                           ))}
                         </div>
-                        {profile.style_preferences?.length > 0 && (
+                        {profile?.style_preferences?.length > 0 && (
                           <div className="flex flex-wrap gap-2 mt-2">
                             {profile.style_preferences.map(s => (
                               <span key={s} className="px-2 py-1 bg-purple-50 text-purple-700 rounded-full text-xs">{s}</span>

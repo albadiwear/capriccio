@@ -72,8 +72,6 @@ function OrderDetailsModal({ order, onClose, onStatusChange }) {
   const customerPhone = getCustomerPhone(order)
   const comment = order.comment || order.notes || order.customer_comment || '—'
 
-  console.log('order_items:', order.order_items)
-
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
@@ -214,8 +212,6 @@ export default function AdminOrdersPage() {
       }
 
       const { data } = await query
-
-      console.log('Первый заказ:', JSON.stringify(data[0], null, 2))
 
       setOrders(data || [])
       setLoading(false)

@@ -145,8 +145,6 @@ export default function OnboardingPage() {
       if (upsertError) {
         console.error('Ошибка сохранения профиля:', JSON.stringify(upsertError, null, 2))
         alert('Ошибка: ' + upsertError.message)
-      } else {
-        console.log('Профиль сохранён успешно')
       }
 
       const userId = user?.id || currentUser.id

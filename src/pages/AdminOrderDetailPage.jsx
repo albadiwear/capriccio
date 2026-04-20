@@ -75,7 +75,6 @@ export default function AdminOrderDetailPage() {
         `)
         .eq('id', id)
         .maybeSingle()
-      console.log('order data:', data, 'error:', error)
       setOrder(data)
       setLoading(false)
     }

@@ -221,14 +221,11 @@ export default function AdminProductsPage() {
           stock: parseInt(v.stock, 10) || 0,
         }))
 
-        console.log('Варианты для записи:', JSON.stringify(variantsToInsert, null, 2))
-
         const { error: variantsError } = await supabase
           .from('product_variants')
           .insert(variantsToInsert)
 
         if (variantsError) console.error('Ошибка:', JSON.stringify(variantsError, null, 2))
-        else console.log('Варианты успешно записаны')
       }
     }
 

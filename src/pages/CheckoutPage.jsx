@@ -266,8 +266,6 @@ export default function CheckoutPage() {
         .single()
 
       if (orderError && orderError.message?.toLowerCase().includes('referral_code')) {
-        console.log('ref_code for order:', refCode)
-
         const fallbackOrderResponse = await supabase
           .from('orders')
           .insert({
@@ -308,7 +306,6 @@ export default function CheckoutPage() {
 
       if (!user && email) {
         const tempPassword = Math.random().toString(36).slice(-10)
-        console.log('[referral] signUp called in: CheckoutPage.jsx')
         const { data: newUser } = await supabase.auth.signUp({
           email,
           password: tempPassword,

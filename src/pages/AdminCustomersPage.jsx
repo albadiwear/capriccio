@@ -49,7 +49,7 @@ export default function AdminCustomersPage() {
     setOrders([])
 
     const [{ data: profileData }, { data: ordersData }] = await Promise.all([
-      supabase.from('stylist_profiles').select('*').eq('user_id', customer.id).single(),
+      supabase.from('stylist_profiles').select('*').eq('user_id', customer.id).maybeSingle(),
       supabase.from('orders').select('id, created_at, total_amount, status').eq('user_id', customer.id).order('created_at', { ascending: false }).limit(5)
     ])
 

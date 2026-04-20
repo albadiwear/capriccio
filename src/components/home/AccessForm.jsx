@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { getRefCode, markReferralConverted, clearRefCode } from '../../utils/referral'
 
 export default function AccessForm({ user }) {
   const navigate = useNavigate()
+  const authSubscriptionRef = useRef(null)
   const [mode, setMode] = useState('login') // 'login' | 'register'
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('+7')
@@ -13,6 +14,13 @@ export default function AccessForm({ user }) {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    return () => {
+      authSubscriptionRef.current?.unsubscribe?.()
+      authSubscriptionRef.current = null
+    }
+  }, [])
 
   useEffect(() => {
     if (user) {
@@ -60,7 +68,6 @@ export default function AccessForm({ user }) {
     setError('')
     setMessage('')
 
-    console.log('[referral] signUp called in: AccessForm.jsx')
     const refCode = getRefCode()
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
@@ -83,8 +90,10 @@ export default function AccessForm({ user }) {
       }
 
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        authSubscriptionRef.current = subscription
         if (event === 'SIGNED_IN' && session) {
           subscription.unsubscribe()
+          authSubscriptionRef.current = null
           setLoading(false)
           navigate('/onboarding')
         }

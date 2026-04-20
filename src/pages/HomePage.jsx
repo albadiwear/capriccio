@@ -13,6 +13,7 @@ export default function HomePage() {
   const user = useAuthStore((state) => state.user)
   const navigate = useNavigate()
   const [checking, setChecking] = useState(true)
+  const authSubscriptionRef = useRef(null)
 
   useSEO({
     title: 'Capriccio — закрытый клуб',
@@ -88,6 +89,13 @@ export default function HomePage() {
     setError('')
     setMessage('')
   }, [user])
+
+  useEffect(() => {
+    return () => {
+      authSubscriptionRef.current?.unsubscribe?.()
+      authSubscriptionRef.current = null
+    }
+  }, [])
 
   useEffect(() => {
     if (!user?.id) {
@@ -171,7 +179,6 @@ export default function HomePage() {
       return
     }
 
-    console.log('[referral] signUp called in: HomePage.jsx')
     const refCode = getRefCode()
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
@@ -193,8 +200,10 @@ export default function HomePage() {
 
       setLoading(false)
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        authSubscriptionRef.current = subscription
         if (event === 'SIGNED_IN' && session) {
           subscription.unsubscribe()
+          authSubscriptionRef.current = null
           navigate('/onboarding')
         }
       })

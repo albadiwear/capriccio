@@ -58,8 +58,6 @@ export default function AdminChatsPage() {
   useEffect(() => {
     if (!selectedChat?.id) return
 
-    console.log('subscribing to chat:', selectedChat.id)
-
     const channel = supabase
       .channel(`messages-${selectedChat.id}`)
       .on('postgres_changes', {
@@ -68,12 +66,9 @@ export default function AdminChatsPage() {
         table: 'stylist_messages',
         filter: `chat_id=eq.${selectedChat.id}`,
       }, (payload) => {
-        console.log('realtime message received:', payload)
         setMessages(prev => [...prev, payload.new])
       })
-      .subscribe((status) => {
-        console.log('channel status:', status)
-      })
+      .subscribe()
 
     return () => {
       supabase.removeChannel(channel)
@@ -202,10 +197,8 @@ export default function AdminChatsPage() {
 
   async function sendProduct(product) {
     if (!selectedChat) {
-      console.log('NO SELECTED CHAT')
       return
     }
-    console.log('sendProduct called', product, selectedChat.id)
     const imageUrl = Array.isArray(product.images) ? product.images[0] : product.images
     const payload = {
       chat_id: selectedChat.id,
@@ -218,9 +211,7 @@ export default function AdminChatsPage() {
         image: imageUrl,
       }
     }
-    console.log('inserting payload', payload)
     const { data, error } = await supabase.from('stylist_messages').insert(payload)
-    console.log('result', data, error)
     if (error) {
       console.error('INSERT ERROR', error)
       return

@@ -110,7 +110,7 @@ export default function AccountPage() {
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false }),
-      supabase.from('referrals').select('*').eq('user_id', user.id).single(),
+      supabase.from('referrals').select('*').eq('user_id', user.id).maybeSingle(),
       supabase
         .from('referral_transactions')
         .select('*')

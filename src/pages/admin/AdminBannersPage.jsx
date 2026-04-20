@@ -91,43 +91,46 @@ export default function AdminBannersPage() {
     if (!heroFile) return
 
     setHeroUploading(true)
+    try {
+      const fileExt = heroFile.name.split('.').pop()
+      const filePath = `hero-main.${fileExt}`
 
-    const fileExt = heroFile.name.split('.').pop()
-    const filePath = `hero-main.${fileExt}`
+      const { error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(filePath, heroFile, { upsert: true })
 
-    const { error: uploadError } = await supabase.storage
-      .from('product-images')
-      .upload(filePath, heroFile, { upsert: true })
+      if (uploadError) throw uploadError
 
-    if (uploadError) {
+      const { data: urlData } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(filePath)
+
+      const publicUrl = urlData.publicUrl
+
+      const payload = {
+        title: 'Hero главной страницы',
+        image_url: publicUrl,
+        is_active: true,
+        type: 'image',
+        position: 0,
+      }
+
+      if (heroBanner?.id) {
+        const { error } = await supabase.from('banners').update(payload).eq('id', heroBanner.id)
+        if (error) throw error
+      } else {
+        const { error } = await supabase.from('banners').insert(payload)
+        if (error) throw error
+      }
+
+      setHeroFile(null)
+      loadHeroBanner()
+      load()
+    } catch (e) {
+      console.error('AdminBannersPage.handleHeroUpload error:', e)
+    } finally {
       setHeroUploading(false)
-      throw uploadError
     }
-
-    const { data: urlData } = supabase.storage
-      .from('product-images')
-      .getPublicUrl(filePath)
-
-    const publicUrl = urlData.publicUrl
-
-    const payload = {
-      title: 'Hero главной страницы',
-      image_url: publicUrl,
-      is_active: true,
-      type: 'image',
-      position: 0,
-    }
-
-    if (heroBanner?.id) {
-      await supabase.from('banners').update(payload).eq('id', heroBanner.id)
-    } else {
-      await supabase.from('banners').insert(payload)
-    }
-
-    setHeroUploading(false)
-    setHeroFile(null)
-    loadHeroBanner()
-    load()
   }
 
   function openCreate() {
@@ -177,52 +180,55 @@ export default function AdminBannersPage() {
 
     setSaving(true)
 
-    let imageUrl = form.image_url || null
+    try {
+      let imageUrl = form.image_url || null
 
-    if (selectedImageFile) {
-      setUploadingImage(true)
-      const fileExt = selectedImageFile.name.split('.').pop()
-      const filePath = `banners/${Date.now()}.${fileExt}`
-      const { error: uploadError } = await supabase.storage
-        .from('product-images')
-        .upload(filePath, selectedImageFile, { upsert: true })
+      if (selectedImageFile) {
+        setUploadingImage(true)
+        const fileExt = selectedImageFile.name.split('.').pop()
+        const filePath = `banners/${Date.now()}.${fileExt}`
+        const { error: uploadError } = await supabase.storage
+          .from('product-images')
+          .upload(filePath, selectedImageFile, { upsert: true })
 
-      if (uploadError) {
-        setUploadingImage(false)
-        setSaving(false)
-        throw uploadError
+        if (uploadError) throw uploadError
+
+        const { data: urlData } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(filePath)
+
+        imageUrl = urlData.publicUrl
       }
 
-      const { data: urlData } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(filePath)
+      const payload = {
+        title: form.title,
+        subtitle: form.subtitle,
+        button_text: form.button_text,
+        button_url: form.button_url,
+        image_url: imageUrl,
+        video_url: form.video_url || null,
+        type: form.type,
+        position: Number(form.position) || 1,
+        is_active: form.is_active,
+      }
 
-      imageUrl = urlData.publicUrl
+      if (editing) {
+        const { error } = await supabase.from('banners').update(payload).eq('id', editing)
+        if (error) throw error
+      } else {
+        const { error } = await supabase.from('banners').insert(payload)
+        if (error) throw error
+      }
+
+      setModalOpen(false)
+      setSelectedImageFile(null)
+      load()
+    } catch (e) {
+      console.error('AdminBannersPage.handleSave error:', e)
+    } finally {
       setUploadingImage(false)
+      setSaving(false)
     }
-
-    const payload = {
-      title: form.title,
-      subtitle: form.subtitle,
-      button_text: form.button_text,
-      button_url: form.button_url,
-      image_url: imageUrl,
-      video_url: form.video_url || null,
-      type: form.type,
-      position: Number(form.position) || 1,
-      is_active: form.is_active,
-    }
-
-    if (editing) {
-      await supabase.from('banners').update(payload).eq('id', editing)
-    } else {
-      await supabase.from('banners').insert(payload)
-    }
-
-    setSaving(false)
-    setModalOpen(false)
-    setSelectedImageFile(null)
-    load()
   }
 
   async function handleDelete(id, title) {

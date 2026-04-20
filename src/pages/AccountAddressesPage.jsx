@@ -37,13 +37,22 @@ export default function AccountAddressesPage() {
 
   async function loadAddresses() {
     setLoading(true)
-    const { data } = await supabase
-      .from('addresses')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-    setAddresses(data || [])
-    setLoading(false)
+    try {
+      const { data, error } = await supabase
+        .from('addresses')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setAddresses(data || [])
+    } catch (e) {
+      console.error('AccountAddressesPage.loadAddresses error:', e)
+      setAddresses([])
+      setError('Не удалось загрузить адреса. Попробуйте обновить страницу.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   function handleAddressChange(e) {

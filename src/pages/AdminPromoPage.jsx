@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Plus, Trash2, Tag } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import Toast from '../components/ui/Toast'
 
 const EMPTY_FORM = {
   code: '',
@@ -18,50 +19,94 @@ export default function AdminPromoPage() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const [showForm, setShowForm] = useState(false)
+  const [toast, setToast] = useState({ message: '', type: 'error', isVisible: false })
+
+  function showToast(message, type = 'error') {
+    setToast({ message, type, isVisible: true })
+    window.setTimeout(() => setToast((prev) => ({ ...prev, isVisible: false })), 2500)
+  }
 
   async function load() {
     setLoading(true)
-    const { data } = await supabase.from('promo_codes').select('*').order('created_at', { ascending: false })
-    setPromos(data || [])
-    setLoading(false)
+    try {
+      const { data, error } = await supabase
+        .from('promo_codes')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setPromos(data || [])
+    } catch (e) {
+      console.error('AdminPromoPage.load error:', e)
+      showToast('Не удалось загрузить промокоды', 'error')
+      setPromos([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { load() }, [])
 
   async function handleSave() {
-    if (!form.code || !form.discount_value) return alert('Заполните код и размер скидки')
+    if (!form.code || !form.discount_value) {
+      showToast('Заполните код и размер скидки', 'error')
+      return
+    }
     setSaving(true)
-    await supabase.from('promo_codes').insert({
-      code: form.code.toUpperCase(),
-      discount_type: form.discount_type,
-      discount_value: Number(form.discount_value),
-      min_order_amount: form.min_order_amount ? Number(form.min_order_amount) : null,
-      max_uses: form.max_uses ? Number(form.max_uses) : null,
-      expires_at: form.expires_at || null,
-      is_active: form.is_active,
-      used_count: 0,
-    })
-    setSaving(false)
-    setForm(EMPTY_FORM)
-    setShowForm(false)
-    load()
+    try {
+      const { error } = await supabase.from('promo_codes').insert({
+        code: form.code.toUpperCase(),
+        discount_type: form.discount_type,
+        discount_value: Number(form.discount_value),
+        min_order_amount: form.min_order_amount ? Number(form.min_order_amount) : null,
+        max_uses: form.max_uses ? Number(form.max_uses) : null,
+        expires_at: form.expires_at || null,
+        is_active: form.is_active,
+        used_count: 0,
+      })
+
+      if (error) throw error
+
+      setForm(EMPTY_FORM)
+      setShowForm(false)
+      load()
+    } catch (e) {
+      console.error('AdminPromoPage.handleSave error:', e)
+      showToast('Не удалось сохранить промокод', 'error')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleDelete(id, code) {
     if (!window.confirm(`Удалить промокод "${code}"?`)) return
-    await supabase.from('promo_codes').delete().eq('id', id)
-    load()
+    try {
+      const { error } = await supabase.from('promo_codes').delete().eq('id', id)
+      if (error) throw error
+      load()
+    } catch (e) {
+      console.error('AdminPromoPage.handleDelete error:', e)
+      showToast('Не удалось удалить промокод', 'error')
+    }
   }
 
   async function toggleActive(id, val) {
-    await supabase.from('promo_codes').update({ is_active: val }).eq('id', id)
     setPromos(prev => prev.map(p => p.id === id ? { ...p, is_active: val } : p))
+    try {
+      const { error } = await supabase.from('promo_codes').update({ is_active: val }).eq('id', id)
+      if (error) throw error
+    } catch (e) {
+      console.error('AdminPromoPage.toggleActive error:', e)
+      showToast('Не удалось обновить статус промокода', 'error')
+      setPromos(prev => prev.map(p => p.id === id ? { ...p, is_active: !val } : p))
+    }
   }
 
   const inputCls = 'border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-gray-900'
 
   return (
     <div>
+      <Toast message={toast.message} type={toast.type} isVisible={toast.isVisible} />
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold text-gray-900">Промокоды</h1>
         <button onClick={() => setShowForm(!showForm)}

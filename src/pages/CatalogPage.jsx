@@ -288,36 +288,44 @@ export default function CatalogPage() {
     const loadProducts = async () => {
       setLoading(true)
       setHasMore(false)
-      let query = supabase
-        .from('products')
-        .select('*, product_variants(*)')
-        .eq('is_active', true)
+      try {
+        let query = supabase
+          .from('products')
+          .select('*, product_variants(*)')
+          .eq('is_active', true)
 
-      if (activeCategory !== 'Все') {
-        if (activeCategory === 'Скидки') {
-          query = query.not('sale_price', 'is', null)
-        } else if (activeCategory === 'Новинки') {
-          query = query.eq('is_new', true)
-        } else {
-          query = query.ilike('category', activeCategory)
+        if (activeCategory !== 'Все') {
+          if (activeCategory === 'Скидки') {
+            query = query.not('sale_price', 'is', null)
+          } else if (activeCategory === 'Новинки') {
+            query = query.eq('is_new', true)
+          } else {
+            query = query.ilike('category', activeCategory)
+          }
         }
+
+        if (filters.onSale) query = query.not('sale_price', 'is', null)
+        if (filters.priceMin) query = query.gte('price', filters.priceMin)
+        if (filters.priceMax) query = query.lte('price', filters.priceMax)
+        if (filters.seasons?.length > 0) query = query.in('season', filters.seasons)
+        if (filters.sizes?.length > 0) query = query.eq('product_variants.size', filters.sizes[0])
+
+        // Sorting: always newest first on mobile flow
+        query = query.order('created_at', { ascending: false })
+        query = query.range(0, PAGE_SIZE - 1)
+
+        const { data, error } = await query
+        if (error) throw error
+
+        setProducts(data || [])
+        setHasMore((data || []).length === PAGE_SIZE)
+      } catch (e) {
+        console.error('CatalogPage.loadProducts error:', e)
+        setProducts([])
+        setHasMore(false)
+      } finally {
+        setLoading(false)
       }
-
-      if (filters.onSale) query = query.not('sale_price', 'is', null)
-      if (filters.priceMin) query = query.gte('price', filters.priceMin)
-      if (filters.priceMax) query = query.lte('price', filters.priceMax)
-      if (filters.seasons?.length > 0) query = query.in('season', filters.seasons)
-      if (filters.sizes?.length > 0) query = query.eq('product_variants.size', filters.sizes[0])
-
-      // Sorting: always newest first on mobile flow
-      query = query.order('created_at', { ascending: false })
-      query = query.range(0, PAGE_SIZE - 1)
-
-      const { data, error } = await query
-      if (error) console.error(error)
-      setProducts(data || [])
-      setHasMore((data || []).length === PAGE_SIZE)
-      setLoading(false)
     }
 
     const timer = window.setTimeout(loadProducts, 300)

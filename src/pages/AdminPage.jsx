@@ -43,32 +43,41 @@ export default function AdminPage() {
 
   useEffect(() => {
     async function load() {
-      const [
-        { count: ordersCount },
-        { data: revenueData },
-        { count: customersCount },
-        { count: productsCount },
-        { data: orders },
-      ] = await Promise.all([
-        supabase.from('orders').select('*', { count: 'exact', head: true }),
-        supabase.from('orders').select('total_amount').eq('status', 'delivered'),
-        supabase.from('users').select('*', { count: 'exact', head: true }),
-        supabase.from('products').select('*', { count: 'exact', head: true }),
-        supabase.from('orders')
-          .select('id, order_number, total_amount, status, created_at, customer_email')
-          .order('created_at', { ascending: false })
-          .limit(5),
-      ])
+      try {
+        const [
+          { count: ordersCount, error: ordersCountError },
+          { data: revenueData, error: revenueError },
+          { count: customersCount, error: customersError },
+          { count: productsCount, error: productsError },
+          { data: orders, error: ordersError },
+        ] = await Promise.all([
+          supabase.from('orders').select('*', { count: 'exact', head: true }),
+          supabase.from('orders').select('total_amount').eq('status', 'delivered'),
+          supabase.from('users').select('*', { count: 'exact', head: true }),
+          supabase.from('products').select('*', { count: 'exact', head: true }),
+          supabase.from('orders')
+            .select('id, order_number, total_amount, status, created_at, customer_email')
+            .order('created_at', { ascending: false })
+            .limit(5),
+        ])
 
-      const revenue = (revenueData || []).reduce((sum, o) => sum + (o.total_amount || 0), 0)
-      setMetrics({
-        orders: ordersCount || 0,
-        revenue,
-        customers: customersCount || 0,
-        products: productsCount || 0,
-      })
-      setRecentOrders(orders || [])
-      setLoading(false)
+        const firstError =
+          ordersCountError || revenueError || customersError || productsError || ordersError
+        if (firstError) throw firstError
+
+        const revenue = (revenueData || []).reduce((sum, o) => sum + (o.total_amount || 0), 0)
+        setMetrics({
+          orders: ordersCount || 0,
+          revenue,
+          customers: customersCount || 0,
+          products: productsCount || 0,
+        })
+        setRecentOrders(orders || [])
+      } catch (e) {
+        console.error('AdminPage.load error:', e)
+      } finally {
+        setLoading(false)
+      }
     }
     load()
   }, [])

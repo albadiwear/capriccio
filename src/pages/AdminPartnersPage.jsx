@@ -32,19 +32,32 @@ export default function AdminPartnersPage() {
 
   async function load() {
     setLoading(true)
-    const [{ data: refs }, { data: reqs }] = await Promise.all([
-      supabase
-        .from('referrals')
-        .select('*, users(full_name, email, created_at)')
-        .order('balance', { ascending: false }),
-      supabase
-        .from('withdrawal_requests')
-        .select('*, users(full_name, email)')
-        .order('created_at', { ascending: false }),
-    ])
-    setPartners(refs || [])
-    setWithdrawals(reqs || [])
-    setLoading(false)
+    try {
+      const [
+        { data: refs, error: refsError },
+        { data: reqs, error: reqsError },
+      ] = await Promise.all([
+        supabase
+          .from('referrals')
+          .select('*, users(full_name, email, created_at)')
+          .order('balance', { ascending: false }),
+        supabase
+          .from('withdrawal_requests')
+          .select('*, users(full_name, email)')
+          .order('created_at', { ascending: false }),
+      ])
+
+      if (refsError || reqsError) throw (refsError || reqsError)
+
+      setPartners(refs || [])
+      setWithdrawals(reqs || [])
+    } catch (e) {
+      console.error('AdminPartnersPage.load error:', e)
+      setPartners([])
+      setWithdrawals([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { load() }, [])
@@ -55,22 +68,33 @@ export default function AdminPartnersPage() {
   }
 
   async function handleApprove(req) {
-    const partner = partners.find((p) => p.user_id === req.user_id)
-    const currentBalance = Number(partner?.balance || 0)
+    try {
+      const partner = partners.find((p) => p.user_id === req.user_id)
+      const currentBalance = Number(partner?.balance || 0)
 
-    await Promise.all([
-      supabase.from('withdrawal_requests').update({ status: 'approved' }).eq('id', req.id),
-      supabase.from('referrals').update({
-        balance: Math.max(0, currentBalance - Number(req.amount)),
-        total_withdrawn: Number(partner?.total_withdrawn || 0) + Number(req.amount),
-      }).eq('user_id', req.user_id),
-    ])
-    load()
+      const [{ error: reqError }, { error: refError }] = await Promise.all([
+        supabase.from('withdrawal_requests').update({ status: 'approved' }).eq('id', req.id),
+        supabase.from('referrals').update({
+          balance: Math.max(0, currentBalance - Number(req.amount)),
+          total_withdrawn: Number(partner?.total_withdrawn || 0) + Number(req.amount),
+        }).eq('user_id', req.user_id),
+      ])
+
+      if (reqError || refError) throw (reqError || refError)
+      load()
+    } catch (e) {
+      console.error('AdminPartnersPage.handleApprove error:', e)
+    }
   }
 
   async function handleReject(id) {
-    await supabase.from('withdrawal_requests').update({ status: 'rejected' }).eq('id', id)
-    load()
+    try {
+      const { error } = await supabase.from('withdrawal_requests').update({ status: 'rejected' }).eq('id', id)
+      if (error) throw error
+      load()
+    } catch (e) {
+      console.error('AdminPartnersPage.handleReject error:', e)
+    }
   }
 
   const pendingCount = withdrawals.filter((w) => w.status === 'pending').length

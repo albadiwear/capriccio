@@ -33,13 +33,21 @@ export default function AccountOrdersPage() {
 
   async function loadOrders() {
     setLoading(true)
-    const { data } = await supabase
-      .from('orders')
-      .select('*, order_items(*, products(*))')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-    setOrders(data || [])
-    setLoading(false)
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*, order_items(*, products(*))')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setOrders(data || [])
+    } catch (e) {
+      console.error('AccountOrdersPage.loadOrders error:', e)
+      setOrders([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (

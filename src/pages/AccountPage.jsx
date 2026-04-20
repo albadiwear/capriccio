@@ -90,63 +90,71 @@ export default function AccountPage() {
     setPageLoading(true)
     setError('')
 
-    const [
-      profileResponse,
-      ordersResponse,
-      wishlistResponse,
-      addressesResponse,
-      referralResponse,
-      transactionsResponse,
-    ] = await Promise.all([
-      supabase.from('users').select('*').eq('id', user.id).single(),
-      supabase
-        .from('orders')
-        .select('*, order_items(*, products(*))')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false }),
-      supabase.from('wishlist').select('*, products(*)').eq('user_id', user.id),
-      supabase
-        .from('addresses')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false }),
-      supabase.from('referrals').select('*').eq('user_id', user.id).maybeSingle(),
-      supabase
-        .from('referral_transactions')
-        .select('*')
-        .eq('referrer_id', user.id)
-        .order('created_at', { ascending: false }),
-    ])
+    const timeoutId = setTimeout(() => setPageLoading(false), 5000)
 
-    const profileData = profileResponse.data
-    setProfile({
-      full_name: profileData?.full_name || user.user_metadata?.full_name || '',
-      email: user.email || '',
-      phone: profileData?.phone || user.user_metadata?.phone || '',
-      city: profileData?.city || '',
-      avatar_url: profileData?.avatar_url || '',
-      referral_code:
-        profileData?.referral_code ||
-        user.user_metadata?.referral_code ||
-        user.id.slice(0, 8).toUpperCase(),
-    })
+    try {
+      const [
+        profileResponse,
+        ordersResponse,
+        wishlistResponse,
+        addressesResponse,
+        referralResponse,
+        transactionsResponse,
+      ] = await Promise.all([
+        supabase.from('users').select('*').eq('id', user.id).maybeSingle(),
+        supabase
+          .from('orders')
+          .select('*, order_items(*, products(*))')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false }),
+        supabase.from('wishlist').select('*, products(*)').eq('user_id', user.id),
+        supabase
+          .from('addresses')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false }),
+        supabase.from('referrals').select('*').eq('user_id', user.id).maybeSingle(),
+        supabase
+          .from('referral_transactions')
+          .select('*')
+          .eq('referrer_id', user.id)
+          .order('created_at', { ascending: false }),
+      ])
 
-    setOrders(ordersResponse.data || [])
-    setWishlist(wishlistResponse.data || [])
-    setAddresses(addressesResponse.data || [])
-    setReferral(referralResponse.data || null)
-    setTransactions(transactionsResponse.data || [])
+      const profileData = profileResponse.data
+      setProfile({
+        full_name: profileData?.full_name || user.user_metadata?.full_name || '',
+        email: user.email || '',
+        phone: profileData?.phone || user.user_metadata?.phone || '',
+        city: profileData?.city || '',
+        avatar_url: profileData?.avatar_url || '',
+        referral_code:
+          profileData?.referral_code ||
+          user.user_metadata?.referral_code ||
+          user.id.slice(0, 8).toUpperCase(),
+      })
 
-    if (
-      ordersResponse.error ||
-      wishlistResponse.error ||
-      addressesResponse.error ||
-      transactionsResponse.error
-    ) {
-      setError('Не удалось загрузить часть данных. Попробуйте обновить страницу.')
+      setOrders(ordersResponse.data || [])
+      setWishlist(wishlistResponse.data || [])
+      setAddresses(addressesResponse.data || [])
+      setReferral(referralResponse.data || null)
+      setTransactions(transactionsResponse.data || [])
+
+      if (
+        ordersResponse.error ||
+        wishlistResponse.error ||
+        addressesResponse.error ||
+        transactionsResponse.error
+      ) {
+        setError('Не удалось загрузить часть данных. Попробуйте обновить страницу.')
+      }
+    } catch (e) {
+      console.error('AccountPage.loadAccountData error:', e)
+      setError('Не удалось загрузить данные. Попробуйте обновить страницу.')
+    } finally {
+      clearTimeout(timeoutId)
+      setPageLoading(false)
     }
-
-    setPageLoading(false)
   }
 
   const handleProfileChange = (event) => {

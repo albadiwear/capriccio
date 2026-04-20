@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { Mail, Phone, User } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/authStore'
-import { getRefCode, markReferralConverted, clearRefCode } from '../utils/referral'
+import { getRefCode } from '../utils/referral'
+import { registerWithReferral } from '../utils/registerWithReferral'
 
 const catalogTags = [
   'Пуховики',
@@ -104,8 +105,7 @@ export default function PromoLanding() {
         })
 
         if (refCode) {
-          await markReferralConverted(refCode)
-          clearRefCode()
+          await registerWithReferral({ userId: authUser.id, refCode })
         }
       }
 

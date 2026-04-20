@@ -2,29 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, MessageCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-
-const STATUSES = [
-  { value: 'pending', label: 'Новый', color: 'bg-yellow-100 text-yellow-700' },
-  { value: 'confirmed', label: 'Подтверждён', color: 'bg-blue-100 text-blue-700' },
-  { value: 'shipping', label: 'В доставке', color: 'bg-orange-100 text-orange-700' },
-  { value: 'delivered', label: 'Доставлен', color: 'bg-green-100 text-green-700' },
-  { value: 'cancelled', label: 'Отменён', color: 'bg-red-100 text-red-700' },
-]
-
-const STATUS_MAP = Object.fromEntries(STATUSES.map((s) => [s.value, s]))
-
-const PAYMENT_LABELS = {
-  card: 'Карта Visa / Mastercard',
-  cod: 'Наложенный платёж',
-  crypto: 'Криптовалюта (USDT)',
-}
-
-const DELIVERY_LABELS = {
-  courier: 'Курьер',
-  pickup: 'Самовывоз',
-  post: 'Почта',
-  cdek: 'СДЭК',
-}
+import { ORDER_STATUSES as STATUSES, ORDER_STATUS_MAP as STATUS_MAP, PAYMENT_LABELS, DELIVERY_LABELS } from '../utils/labels'
 
 function getCustomerName(order) {
   return order.users?.full_name || order.delivery_address?.full_name || order.customer_name || '—'

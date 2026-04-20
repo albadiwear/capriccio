@@ -2,22 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, MessageCircle, ShoppingBag, TrendingUp } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-
-const STATUSES = [
-  { value: 'pending', label: 'Новый', color: 'bg-yellow-100 text-yellow-700' },
-  { value: 'confirmed', label: 'Подтверждён', color: 'bg-blue-100 text-blue-700' },
-  { value: 'shipping', label: 'В доставке', color: 'bg-orange-100 text-orange-700' },
-  { value: 'delivered', label: 'Доставлен', color: 'bg-green-100 text-green-700' },
-  { value: 'cancelled', label: 'Отменён', color: 'bg-red-100 text-red-700' },
-]
-
-const STATUS_MAP = Object.fromEntries(STATUSES.map((status) => [status.value, status]))
-
-const PAYMENT_LABELS = {
-  card: 'Карта Visa / Mastercard',
-  cod: 'Наложенный платёж',
-  crypto: 'Криптовалюта (USDT)',
-}
+import { ORDER_STATUSES as STATUSES, ORDER_STATUS_MAP as STATUS_MAP, PAYMENT_LABELS } from '../utils/labels'
 
 function MetricCard({ icon: Icon, label, value, loading }) {
   return (

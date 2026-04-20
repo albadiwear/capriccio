@@ -1,25 +1,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import { Check, Handshake, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-
-const LEVEL_META = {
-  start: { label: 'Старт', cls: 'bg-gray-100 text-gray-700' },
-  active: { label: 'Активный', cls: 'bg-blue-100 text-blue-700' },
-  pro: { label: 'Про', cls: 'bg-green-100 text-green-700' },
-}
-
-const METHOD_LABELS = {
-  kaspi: 'Kaspi',
-  bank: 'Bank transfer',
-  cash: 'Наличные',
-}
-
-const STATUS_META = {
-  pending: { label: 'Ожидает', cls: 'bg-yellow-100 text-yellow-700' },
-  approved: { label: 'Подтверждён', cls: 'bg-blue-100 text-blue-700' },
-  rejected: { label: 'Отклонён', cls: 'bg-red-100 text-red-600' },
-  paid: { label: 'Выплачено', cls: 'bg-green-100 text-green-700' },
-}
+import { PARTNER_LEVEL_META as LEVEL_META, PARTNER_METHOD_LABELS as METHOD_LABELS, WITHDRAWAL_STATUS_META as STATUS_META } from '../utils/labels'
 
 export default function AdminPartnersPage() {
   const [partners, setPartners] = useState([])

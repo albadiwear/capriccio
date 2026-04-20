@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useCartStore } from '../store/cartStore'
 import { useAuthStore } from '../store/authStore'
 import { getRefCode } from '../utils/referral'
+import { registerWithReferral } from '../utils/registerWithReferral'
 
 const DELIVERY_OPTIONS = [
   { value: 'courier', label: 'Курьер', cost: 1500 },
@@ -320,6 +321,10 @@ export default function CheckoutPage() {
             phone,
           })
         }
+      }
+
+      if (user?.id && refCode) {
+        await registerWithReferral({ userId: user.id, refCode })
       }
 
       clearCart()

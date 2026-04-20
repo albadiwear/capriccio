@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
-import { getRefCode, markReferralConverted, clearRefCode } from '../../utils/referral'
+import { getRefCode } from '../../utils/referral'
+import { registerWithReferral } from '../../utils/registerWithReferral'
 
 export default function AccessForm({ user }) {
   const navigate = useNavigate()
@@ -85,8 +86,7 @@ export default function AccessForm({ user }) {
 
     if (data?.user) {
       if (refCode) {
-        await markReferralConverted(refCode)
-        clearRefCode()
+        await registerWithReferral({ userId: data.user.id, refCode })
       }
 
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {

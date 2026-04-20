@@ -41,6 +41,7 @@ const CLOTHING_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL']
 export default function OnboardingPage() {
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
+  const authLoading = useAuthStore((state) => state.loading)
   const [checking, setChecking] = useState(true)
   const [showIntro, setShowIntro] = useState(true)
   const [step, setStep] = useState(0)
@@ -64,38 +65,29 @@ export default function OnboardingPage() {
   })
 
   useEffect(() => {
-    let attempts = 0
-    const maxAttempts = 10
+    if (authLoading) return
 
-    const interval = setInterval(async () => {
-      attempts++
-      const { data: { user: currentUser } } = await supabase.auth.getUser()
+    if (!user) {
+      navigate('/', { replace: true })
+      return
+    }
 
-      if (currentUser) {
-        clearInterval(interval)
-        const { data, error } = await supabase
-          .from('stylist_profiles')
-          .select('onboarding_completed')
-          .eq('user_id', currentUser.id)
-          .maybeSingle()
-        // If profile doesn't exist yet (or request failed) we should show onboarding.
-        if (!error && data?.onboarding_completed === true) {
-          navigate('/catalog', { replace: true })
-          return
-        }
-        setChecking(false)
+    async function checkProfile() {
+      const { data, error } = await supabase
+        .from('stylist_profiles')
+        .select('onboarding_completed')
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      if (!error && data?.onboarding_completed === true) {
+        navigate('/catalog', { replace: true })
         return
       }
+      setChecking(false)
+    }
 
-      if (attempts >= maxAttempts) {
-        clearInterval(interval)
-        setChecking(false)
-        navigate('/', { replace: true })
-      }
-    }, 300)
-
-    return () => clearInterval(interval)
-  }, [navigate])
+    checkProfile()
+  }, [user, authLoading, navigate])
 
   if (checking) return null
 
@@ -119,39 +111,36 @@ export default function OnboardingPage() {
   }
 
   const handleFinish = async () => {
+    if (!user) return
     setSaving(true)
-    const { data: { user: currentUser } } = await supabase.auth.getUser()
-    if (currentUser) {
-      const payload = {
-        user_id: currentUser.id,
-        age: form.age ? parseInt(form.age) : null,
-        city: form.city || null,
-        lifestyle: form.lifestyle || null,
-        clothing_size: form.clothing_size || null,
-        shoe_size: form.shoe_size || null,
-        chest: form.chest ? parseFloat(form.chest) : null,
-        waist: form.waist ? parseFloat(form.waist) : null,
-        hips: form.hips ? parseFloat(form.hips) : null,
-        height: form.height ? parseFloat(form.height) : null,
-        weight: form.weight ? parseFloat(form.weight) : null,
-        body_type: form.body_type || null,
-        color_type: form.color_type || null,
-        budget_min: form.budget_min ? parseInt(form.budget_min) : null,
-        budget_max: form.budget_max ? parseInt(form.budget_max) : null,
-        style_preferences: form.style_preferences.length > 0 ? form.style_preferences : null,
-        updated_at: new Date().toISOString(),
-      }
-      const { error: upsertError } = await supabase.from('stylist_profiles').upsert(payload, { onConflict: 'user_id' })
-      if (upsertError) {
-        console.error('Ошибка сохранения профиля:', JSON.stringify(upsertError, null, 2))
-        alert('Ошибка: ' + upsertError.message)
-      }
 
-      const userId = user?.id || currentUser.id
-      await supabase
-        .from('stylist_profiles')
-        .upsert({ user_id: userId, onboarding_completed: true }, { onConflict: 'user_id' })
+    const payload = {
+      user_id: user.id,
+      age: form.age ? parseInt(form.age) : null,
+      city: form.city || null,
+      lifestyle: form.lifestyle || null,
+      clothing_size: form.clothing_size || null,
+      shoe_size: form.shoe_size || null,
+      chest: form.chest ? parseFloat(form.chest) : null,
+      waist: form.waist ? parseFloat(form.waist) : null,
+      hips: form.hips ? parseFloat(form.hips) : null,
+      height: form.height ? parseFloat(form.height) : null,
+      weight: form.weight ? parseFloat(form.weight) : null,
+      body_type: form.body_type || null,
+      color_type: form.color_type || null,
+      budget_min: form.budget_min ? parseInt(form.budget_min) : null,
+      budget_max: form.budget_max ? parseInt(form.budget_max) : null,
+      style_preferences: form.style_preferences.length > 0 ? form.style_preferences : null,
+      onboarding_completed: true,
+      updated_at: new Date().toISOString(),
     }
+
+    const { error: upsertError } = await supabase.from('stylist_profiles').upsert(payload, { onConflict: 'user_id' })
+    if (upsertError) {
+      console.error('Ошибка сохранения профиля:', JSON.stringify(upsertError, null, 2))
+      alert('Ошибка: ' + upsertError.message)
+    }
+
     setSaving(false)
     navigate('/catalog')
   }

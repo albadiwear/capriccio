@@ -7,7 +7,8 @@ import DirectionsSection from '../components/home/DirectionsSection'
 import CatalogPreview from '../components/home/CatalogPreview'
 import ReviewsSection from '../components/home/ReviewsSection'
 import { supabase } from '../lib/supabase'
-import { getRefCode, clearRefCode, markReferralConverted } from '../utils/referral'
+import { getRefCode } from '../utils/referral'
+import { registerWithReferral } from '../utils/registerWithReferral'
 
 export default function HomePage() {
   const user = useAuthStore((state) => state.user)
@@ -194,8 +195,7 @@ export default function HomePage() {
 
     if (data?.user) {
       if (refCode) {
-        await markReferralConverted(refCode)
-        clearRefCode()
+        await registerWithReferral({ userId: data.user.id, refCode })
       }
 
       setLoading(false)

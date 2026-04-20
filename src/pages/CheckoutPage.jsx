@@ -4,6 +4,7 @@ import { Tag, CheckCircle, Check } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useCartStore } from '../store/cartStore'
 import { useAuthStore } from '../store/authStore'
+import { getRefCode } from '../utils/referral'
 
 const DELIVERY_OPTIONS = [
   { value: 'courier', label: 'Курьер', cost: 1500 },
@@ -217,11 +218,7 @@ export default function CheckoutPage() {
     setSubmitting(true)
     setSubmitError('')
 
-    const refExpires = localStorage.getItem('ref_expires')
-    const refCode =
-      refExpires && Date.now() < Number(refExpires)
-        ? localStorage.getItem('ref_code')
-        : null
+    const refCode = getRefCode()
 
     try {
       const isPickup = selectedDelivery === 'pickup'

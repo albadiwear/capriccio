@@ -18,6 +18,8 @@ import {
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useCartStore } from '../store/cartStore'
+import { useWishlistStore } from '../store/wishlistStore'
+import { useAuthStore } from '../store/authStore'
 import Toast from '../components/ui/Toast'
 
 const CATEGORY_LABELS = {
@@ -112,6 +114,9 @@ export default function ProductPage() {
   const navigate = useNavigate()
   const addItem = useCartStore((state) => state.addItem)
   const cartItems = useCartStore((state) => state.items)
+  const authUser = useAuthStore((state) => state.user)
+  const wishlistItems = useWishlistStore((state) => state.items)
+  const toggleWishlist = useWishlistStore((state) => state.toggle)
 
   const [product, setProduct] = useState(null)
   const [reviews, setReviews] = useState([])
@@ -122,7 +127,15 @@ export default function ProductPage() {
   const [activeImage, setActiveImage] = useState(0)
   const [selectedColor, setSelectedColor] = useState(null)
   const [selectedSize, setSelectedSize] = useState(null)
-  const [wished, setWished] = useState(false)
+  const wished = product ? wishlistItems.some((item) => item.product_id === product.id) : false
+  const handleToggleWishlist = () => {
+    if (!product) return
+    if (!authUser?.id) {
+      navigate('/login')
+      return
+    }
+    toggleWishlist({ userId: authUser.id, productId: product.id })
+  }
   const [accordionOpen, setAccordionOpen] = useState(false)
   const [videoOpen, setVideoOpen] = useState(false)
   const [added, setAdded] = useState(false)
@@ -534,7 +547,7 @@ export default function ProductPage() {
                     <Share2 className="w-4 h-4 text-[#1a1a18]" />
                   </button>
                   <button
-                    onClick={() => setWished((w) => !w)}
+                    onClick={handleToggleWishlist}
                     className="w-9 h-9 flex items-center justify-center rounded-full bg-white/70 backdrop-blur-sm shadow-sm"
                     aria-label="В избранное"
                   >
@@ -802,7 +815,7 @@ export default function ProductPage() {
                 Заказать в WhatsApp
               </button>
               <button
-                onClick={() => setWished((w) => !w)}
+                onClick={handleToggleWishlist}
                 aria-label="В избранное"
                 className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded border border-gray-200 transition-colors hover:border-gray-900"
               >

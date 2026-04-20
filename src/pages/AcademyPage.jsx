@@ -108,6 +108,7 @@ export default function AcademyPage() {
   const [userProfile, setUserProfile] = useState(null)
   const [orderLoading, setOrderLoading] = useState(false)
   const [orderSuccess, setOrderSuccess] = useState(false)
+  const [orderError, setOrderError] = useState('')
 
   const [accessStatus, setAccessStatus] = useState(null)
   const [userOrder, setUserOrder] = useState(null)
@@ -116,6 +117,7 @@ export default function AcademyPage() {
   const [progress, setProgress] = useState([])
   const [achievements, setAchievements] = useState([])
   const [activeTab, setActiveTab] = useState('lessons')
+  const [academyError, setAcademyError] = useState('')
 
   useEffect(() => {
     if (user) {
@@ -131,22 +133,31 @@ export default function AcademyPage() {
   }, [user])
 
   const checkAccess = async () => {
-    const { data } = await supabase
-      .from('academy_orders')
-      .select('status, tariff, tariff_name, activated_at')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+    setAcademyError('')
+    try {
+      const { data, error: accessError } = await supabase
+        .from('academy_orders')
+        .select('status, tariff, tariff_name, activated_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
 
-    if (!data) {
-      setAccessStatus('none')
-    } else {
-      setAccessStatus(data.status)
-      setUserOrder(data)
-      if (data.status === 'active') {
-        loadAcademyData(data.tariff)
+      if (accessError) throw accessError
+
+      if (!data) {
+        setAccessStatus('none')
+      } else {
+        setAccessStatus(data.status)
+        setUserOrder(data)
+        if (data.status === 'active') {
+          loadAcademyData(data.tariff)
+        }
       }
+    } catch (e) {
+      console.error('AcademyPage.checkAccess error:', e)
+      setAcademyError('Не удалось загрузить информацию о доступе')
+      setAccessStatus('none')
     }
   }
 
@@ -159,22 +170,33 @@ export default function AcademyPage() {
           ? ['start', 'basic']
           : ['start']
 
-    const [contentRes, progressRes, pointsRes, achRes] = await Promise.all([
-      supabase
-        .from('academy_content')
-        .select('*')
-        .in('tariff_level', levels)
-        .eq('is_published', true)
-        .order('sort_order'),
-      supabase.from('academy_progress').select('*').eq('user_id', user.id),
-      supabase.from('academy_points').select('*').eq('user_id', user.id).maybeSingle(),
-      supabase.from('academy_achievements').select('*').eq('user_id', user.id),
-    ])
+    setAcademyError('')
+    try {
+      const [contentRes, progressRes, pointsRes, achRes] = await Promise.all([
+        supabase
+          .from('academy_content')
+          .select('*')
+          .in('tariff_level', levels)
+          .eq('is_published', true)
+          .order('sort_order'),
+        supabase.from('academy_progress').select('*').eq('user_id', user.id),
+        supabase.from('academy_points').select('*').eq('user_id', user.id).maybeSingle(),
+        supabase.from('academy_achievements').select('*').eq('user_id', user.id),
+      ])
 
-    setContent(contentRes.data || [])
-    setProgress(progressRes.data || [])
-    setPoints(pointsRes.data || null)
-    setAchievements(achRes.data || [])
+      if (contentRes.error) throw contentRes.error
+      if (progressRes.error) throw progressRes.error
+      if (pointsRes.error) throw pointsRes.error
+      if (achRes.error) throw achRes.error
+
+      setContent(contentRes.data || [])
+      setProgress(progressRes.data || [])
+      setPoints(pointsRes.data || null)
+      setAchievements(achRes.data || [])
+    } catch (e) {
+      console.error('AcademyPage.loadAcademyData error:', e)
+      setAcademyError('Не удалось загрузить материалы академии')
+    }
   }
 
   const isCompleted = (contentId) =>
@@ -188,48 +210,58 @@ export default function AcademyPage() {
   const handleComplete = async (item) => {
     if (isCompleted(item.id)) return
 
-    await supabase.from('academy_progress').upsert({
-      user_id: user.id,
-      content_id: item.id,
-      completed: true,
-      completed_at: new Date().toISOString(),
-    })
+    setAcademyError('')
+    try {
+      const { error: progressError } = await supabase.from('academy_progress').upsert({
+        user_id: user.id,
+        content_id: item.id,
+        completed: true,
+        completed_at: new Date().toISOString(),
+      })
+      if (progressError) throw progressError
 
-    const earnedPoints = item.type === 'video' ? 10 : item.type === 'article' ? 5 : 3
-    const currentPoints = points?.points || 0
-    const currentTotal = points?.total_earned || 0
+      const earnedPoints = item.type === 'video' ? 10 : item.type === 'article' ? 5 : 3
+      const currentPoints = points?.points || 0
+      const currentTotal = points?.total_earned || 0
 
-    await supabase.from('academy_points').upsert({
-      user_id: user.id,
-      points: currentPoints + earnedPoints,
-      total_earned: currentTotal + earnedPoints,
-      last_activity: new Date().toISOString().split('T')[0],
-      updated_at: new Date().toISOString(),
-    })
+      const { error: pointsError } = await supabase.from('academy_points').upsert({
+        user_id: user.id,
+        points: currentPoints + earnedPoints,
+        total_earned: currentTotal + earnedPoints,
+        last_activity: new Date().toISOString().split('T')[0],
+        updated_at: new Date().toISOString(),
+      })
+      if (pointsError) throw pointsError
 
-    await supabase.from('academy_points_log').insert({
-      user_id: user.id,
-      points: earnedPoints,
-      reason: `Завершено: ${item.title}`,
-      content_id: item.id,
-    })
+      const { error: logError } = await supabase.from('academy_points_log').insert({
+        user_id: user.id,
+        points: earnedPoints,
+        reason: `Завершено: ${item.title}`,
+        content_id: item.id,
+      })
+      if (logError) throw logError
 
-    const completedCount = progress.filter((p) => p.completed).length + 1
-    const existing = achievements.map((a) => a.achievement)
-    const toAdd = []
+      const completedCount = progress.filter((p) => p.completed).length + 1
+      const existing = achievements.map((a) => a.achievement)
+      const toAdd = []
 
-    if (completedCount >= 1 && !existing.includes('first_lesson'))
-      toAdd.push({ user_id: user.id, achievement: 'first_lesson' })
-    if (completedCount >= 5 && !existing.includes('five_lessons'))
-      toAdd.push({ user_id: user.id, achievement: 'five_lessons' })
-    if (completedCount >= 10 && !existing.includes('ten_lessons'))
-      toAdd.push({ user_id: user.id, achievement: 'ten_lessons' })
+      if (completedCount >= 1 && !existing.includes('first_lesson'))
+        toAdd.push({ user_id: user.id, achievement: 'first_lesson' })
+      if (completedCount >= 5 && !existing.includes('five_lessons'))
+        toAdd.push({ user_id: user.id, achievement: 'five_lessons' })
+      if (completedCount >= 10 && !existing.includes('ten_lessons'))
+        toAdd.push({ user_id: user.id, achievement: 'ten_lessons' })
 
-    if (toAdd.length > 0) {
-      await supabase.from('academy_achievements').insert(toAdd)
+      if (toAdd.length > 0) {
+        const { error: achError } = await supabase.from('academy_achievements').insert(toAdd)
+        if (achError) throw achError
+      }
+
+      loadAcademyData(userOrder?.tariff)
+    } catch (e) {
+      console.error('AcademyPage.handleComplete error:', e)
+      setAcademyError('Не удалось сохранить прогресс. Попробуйте ещё раз.')
     }
-
-    loadAcademyData()
   }
 
   const handleSelectTariff = (tariff, name, price) => {
@@ -242,6 +274,7 @@ export default function AcademyPage() {
 
   const handleConfirmOrder = async () => {
     setOrderLoading(true)
+    setOrderError('')
     try {
       const { error } = await supabase.from('academy_orders').insert({
         user_id: user.id,
@@ -256,8 +289,8 @@ export default function AcademyPage() {
       if (error) throw error
       setOrderSuccess(true)
     } catch (e) {
-      console.error(e)
-      alert('Ошибка при отправке заявки. Попробуйте ещё раз.')
+      console.error('AcademyPage.handleConfirmOrder error:', e)
+      setOrderError('Не удалось отправить заявку. Попробуйте ещё раз.')
     }
     setOrderLoading(false)
   }
@@ -418,6 +451,12 @@ export default function AcademyPage() {
 
     return (
       <div className="max-w-3xl mx-auto px-4 py-6 pb-28 md:pb-8">
+
+        {academyError && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {academyError}
+          </div>
+        )}
 
         {/* Приветствие + баллы */}
         <div className="bg-[#1a1a18] rounded-2xl p-5 mb-4 text-white">
@@ -975,6 +1014,10 @@ export default function AcademyPage() {
                   После подтверждения заявка будет отправлена. Мы активируем доступ в течение 24 часов
                   и отправим уведомление на email.
                 </p>
+
+                {orderError && (
+                  <p className="mb-3 text-sm text-red-600">{orderError}</p>
+                )}
 
                 <button
                   type="button"

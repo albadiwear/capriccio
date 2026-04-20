@@ -33,10 +33,17 @@ export default function AdminReviewsPage() {
   async function load() {
     setLoading(true)
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('reviews')
       .select('*, products(name, images)')
       .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('AdminReviewsPage.load error:', error)
+      setReviews([])
+      setLoading(false)
+      return
+    }
 
     setReviews(data || [])
     setLoading(false)
@@ -47,7 +54,11 @@ export default function AdminReviewsPage() {
   }, [])
 
   async function handleApprove(id) {
-    await supabase.from('reviews').update({ is_approved: true }).eq('id', id)
+    const { error } = await supabase.from('reviews').update({ is_approved: true }).eq('id', id)
+    if (error) {
+      console.error('AdminReviewsPage.handleApprove error:', error)
+      return
+    }
     setReviews((current) =>
       current.map((review) =>
         review.id === id ? { ...review, is_approved: true } : review
@@ -56,7 +67,11 @@ export default function AdminReviewsPage() {
   }
 
   async function handleHide(id) {
-    await supabase.from('reviews').update({ is_approved: false }).eq('id', id)
+    const { error } = await supabase.from('reviews').update({ is_approved: false }).eq('id', id)
+    if (error) {
+      console.error('AdminReviewsPage.handleHide error:', error)
+      return
+    }
     setReviews((current) =>
       current.map((review) =>
         review.id === id ? { ...review, is_approved: false } : review
@@ -67,7 +82,11 @@ export default function AdminReviewsPage() {
   async function handleDelete(id) {
     if (!window.confirm('Удалить этот отзыв?')) return
 
-    await supabase.from('reviews').delete().eq('id', id)
+    const { error } = await supabase.from('reviews').delete().eq('id', id)
+    if (error) {
+      console.error('AdminReviewsPage.handleDelete error:', error)
+      return
+    }
     setReviews((current) => current.filter((review) => review.id !== id))
   }
 

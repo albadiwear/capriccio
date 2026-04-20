@@ -27,31 +27,41 @@ export default function WishlistPage() {
   const [wishlistItems, setWishlistItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [authChecked, setAuthChecked] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     async function loadWishlist() {
       setLoading(true)
+      setError('')
 
-      const {
-        data: { user: currentUser },
-      } = await supabase.auth.getUser()
+      try {
+        const {
+          data: { user: currentUser },
+        } = await supabase.auth.getUser()
 
-      setUser(currentUser || null)
-      setAuthChecked(true)
+        setUser(currentUser || null)
+        setAuthChecked(true)
 
-      if (!currentUser) {
+        if (!currentUser) {
+          setWishlistItems([])
+          return
+        }
+
+        const { data, error: loadError } = await supabase
+          .from('wishlist')
+          .select('*, products(*)')
+          .eq('user_id', currentUser.id)
+
+        if (loadError) throw loadError
+
+        setWishlistItems(data || [])
+      } catch (e) {
+        console.error('WishlistPage.loadWishlist error:', e)
+        setError('Не удалось загрузить избранное')
         setWishlistItems([])
+      } finally {
         setLoading(false)
-        return
       }
-
-      const { data } = await supabase
-        .from('wishlist')
-        .select('*, products(*)')
-        .eq('user_id', currentUser.id)
-
-      setWishlistItems(data || [])
-      setLoading(false)
     }
 
     loadWishlist()
@@ -60,13 +70,20 @@ export default function WishlistPage() {
   async function handleRemove(productId) {
     if (!user) return
 
-    await supabase
-      .from('wishlist')
-      .delete()
-      .eq('user_id', user.id)
-      .eq('product_id', productId)
+    try {
+      const { error: deleteError } = await supabase
+        .from('wishlist')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('product_id', productId)
 
-    setWishlistItems((current) => current.filter((item) => item.product_id !== productId))
+      if (deleteError) throw deleteError
+
+      setWishlistItems((current) => current.filter((item) => item.product_id !== productId))
+    } catch (e) {
+      console.error('WishlistPage.handleRemove error:', e)
+      setError('Не удалось удалить товар из избранного')
+    }
   }
 
   function handleAddToCart(product) {
@@ -88,6 +105,11 @@ export default function WishlistPage() {
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[240px_1fr]">
           <AccountSidebarDesktop />
           <div>
+            {error && !loading && (
+              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {error}
+              </div>
+            )}
             {loading ? (
               <WishlistSkeleton />
             ) : authChecked && !user ? (

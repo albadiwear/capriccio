@@ -38,6 +38,9 @@ export default function AdminAcademyPage() {
   const [newContent, setNewContent] = useState(EMPTY_CONTENT)
   const [addLoading, setAddLoading] = useState(false)
 
+  const [statusMessage, setStatusMessage] = useState('')
+  const [error, setError] = useState('')
+
   useEffect(() => {
     if (tab === 'pending' || tab === 'active') {
       loadOrders()
@@ -50,63 +53,135 @@ export default function AdminAcademyPage() {
 
   const loadOrders = async () => {
     setOrdersLoading(true)
-    const { data } = await supabase
-      .from('academy_orders')
-      .select('*')
-      .eq('status', tab)
-      .order('created_at', { ascending: false })
-    setOrders(data || [])
-    setOrdersLoading(false)
+    setError('')
+    try {
+      const { data, error: loadError } = await supabase
+        .from('academy_orders')
+        .select('*')
+        .eq('status', tab)
+        .order('created_at', { ascending: false })
+      if (loadError) throw loadError
+      setOrders(data || [])
+    } catch (e) {
+      console.error('AdminAcademyPage.loadOrders error:', e)
+      setError('Не удалось загрузить заявки')
+      setOrders([])
+    } finally {
+      setOrdersLoading(false)
+    }
   }
 
-  const handleActivate = async (orderId, userEmail, _tariffName) => {
-    await supabase
-      .from('academy_orders')
-      .update({ status: 'active', activated_at: new Date().toISOString() })
-      .eq('id', orderId)
-    alert(`Доступ активирован для ${userEmail}`)
-    loadOrders()
+  const handleActivate = async (orderId, userEmail) => {
+    setError('')
+    setStatusMessage('')
+    try {
+      const { error: updateError } = await supabase
+        .from('academy_orders')
+        .update({ status: 'active', activated_at: new Date().toISOString() })
+        .eq('id', orderId)
+      if (updateError) throw updateError
+      setStatusMessage(`Доступ активирован для ${userEmail}`)
+      loadOrders()
+    } catch (e) {
+      console.error('AdminAcademyPage.handleActivate error:', e)
+      setError('Не удалось активировать доступ')
+    }
   }
 
   const handleCancel = async (orderId) => {
-    await supabase.from('academy_orders').update({ status: 'cancelled' }).eq('id', orderId)
-    loadOrders()
+    setError('')
+    try {
+      const { error: updateError } = await supabase
+        .from('academy_orders')
+        .update({ status: 'cancelled' })
+        .eq('id', orderId)
+      if (updateError) throw updateError
+      loadOrders()
+    } catch (e) {
+      console.error('AdminAcademyPage.handleCancel error:', e)
+      setError('Не удалось отклонить заявку')
+    }
   }
 
   const handleRevoke = async (orderId) => {
-    await supabase.from('academy_orders').update({ status: 'cancelled' }).eq('id', orderId)
-    loadOrders()
+    setError('')
+    try {
+      const { error: updateError } = await supabase
+        .from('academy_orders')
+        .update({ status: 'cancelled' })
+        .eq('id', orderId)
+      if (updateError) throw updateError
+      loadOrders()
+    } catch (e) {
+      console.error('AdminAcademyPage.handleRevoke error:', e)
+      setError('Не удалось отозвать доступ')
+    }
   }
 
   // --- Content ---
 
   const loadContent = async () => {
     setContentLoading(true)
-    const { data } = await supabase.from('academy_content').select('*').order('sort_order')
-    setContentList(data || [])
-    setContentLoading(false)
+    setError('')
+    try {
+      const { data, error: loadError } = await supabase
+        .from('academy_content')
+        .select('*')
+        .order('sort_order')
+      if (loadError) throw loadError
+      setContentList(data || [])
+    } catch (e) {
+      console.error('AdminAcademyPage.loadContent error:', e)
+      setError('Не удалось загрузить материалы')
+      setContentList([])
+    } finally {
+      setContentLoading(false)
+    }
   }
 
   const handleAddContent = async () => {
     if (!newContent.title || !newContent.content_url) return
     setAddLoading(true)
-    const { error } = await supabase.from('academy_content').insert(newContent)
-    if (!error) {
+    setError('')
+    try {
+      const { error: insertError } = await supabase.from('academy_content').insert(newContent)
+      if (insertError) throw insertError
       setNewContent(EMPTY_CONTENT)
       loadContent()
+    } catch (e) {
+      console.error('AdminAcademyPage.handleAddContent error:', e)
+      setError('Не удалось добавить материал')
+    } finally {
+      setAddLoading(false)
     }
-    setAddLoading(false)
   }
 
   const handleTogglePublish = async (id, current) => {
-    await supabase.from('academy_content').update({ is_published: !current }).eq('id', id)
-    loadContent()
+    setError('')
+    try {
+      const { error: updateError } = await supabase
+        .from('academy_content')
+        .update({ is_published: !current })
+        .eq('id', id)
+      if (updateError) throw updateError
+      loadContent()
+    } catch (e) {
+      console.error('AdminAcademyPage.handleTogglePublish error:', e)
+      setError('Не удалось изменить публикацию')
+    }
   }
 
   const handleDeleteContent = async (id) => {
     if (!confirm('Удалить материал?')) return
-    await supabase.from('academy_content').delete().eq('id', id)
-    loadContent()
+    setError('')
+    try {
+      const { error: deleteError } = await supabase.from('academy_content').delete().eq('id', id)
+      if (deleteError) throw deleteError
+      loadContent()
+    } catch (e) {
+      console.error('AdminAcademyPage.handleDeleteContent error:', e)
+      setError('Не удалось удалить материал')
+    }
   }
 
   const setField = (key, value) => setNewContent((prev) => ({ ...prev, [key]: value }))
@@ -119,6 +194,17 @@ export default function AdminAcademyPage() {
         <h1 className="text-2xl font-semibold text-gray-900">Академия</h1>
         <p className="mt-1 text-sm text-gray-500">Заявки, участники и материалы</p>
       </div>
+
+      {error && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+      {statusMessage && (
+        <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+          {statusMessage}
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-gray-200 mb-6">
@@ -189,7 +275,7 @@ export default function AdminAcademyPage() {
                           <div className="flex items-center justify-end gap-2">
                             <button
                               type="button"
-                              onClick={() => handleActivate(order.id, order.user_email, order.tariff_name)}
+                              onClick={() => handleActivate(order.id, order.user_email)}
                               className="rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-700 transition-colors"
                             >
                               Активировать

@@ -6,6 +6,7 @@ import { useSEO } from '../hooks/useSEO'
 import ProductFeed from '../components/catalog/ProductFeed'
 import Toast from '../components/ui/Toast'
 import ProductCard from '../components/catalog/ProductCard'
+import { saveRefCode } from '../utils/referral'
 
 const CATEGORY_MAP = {
   puhoviki: 'Пуховики',
@@ -278,10 +279,7 @@ export default function CatalogPage() {
     const urlParams = new URLSearchParams(window.location.search)
     const ref = urlParams.get('ref')
 
-    if (ref) {
-      localStorage.setItem('ref_code', ref)
-      localStorage.setItem('ref_expires', String(Date.now() + 30 * 24 * 60 * 60 * 1000))
-    }
+    if (ref) saveRefCode(ref)
   }, [])
 
   useEffect(() => {

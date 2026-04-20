@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, MessageCircle, ShoppingBag, TrendingUp, X } from 'lucide-react'
+import { ArrowLeft, MessageCircle, ShoppingBag, TrendingUp } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 const STATUSES = [
@@ -49,133 +49,6 @@ function getCustomerPhone(order) {
   return order.users?.phone || order.delivery_address?.phone || order.customer_phone || ''
 }
 
-function getCustomerEmail(order) {
-  return order.users?.email || order.customer_email || '—'
-}
-
-function getDeliveryAddress(order) {
-  const address = order.delivery_address || {}
-
-  return [
-    address.city,
-    address.street,
-    address.house ? `д. ${address.house}` : null,
-    address.apartment ? `кв. ${address.apartment}` : null,
-    address.postal_code ? `индекс ${address.postal_code}` : null,
-  ]
-    .filter(Boolean)
-    .join(', ')
-}
-
-function OrderDetailsModal({ order, onClose, onStatusChange }) {
-  const orderNumber = String(order.id).slice(0, 8)
-  const customerPhone = getCustomerPhone(order)
-  const comment = order.comment || order.notes || order.customer_comment || '—'
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-
-      <div className="relative my-6 w-full max-w-2xl rounded-2xl bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">Детали заказа</h2>
-            <p className="mt-1 text-sm text-gray-500">Номер заказа: {orderNumber}</p>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 transition-colors hover:text-gray-900"
-            aria-label="Закрыть"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div className="max-h-[80vh] space-y-6 overflow-y-auto px-6 py-5">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-xl bg-gray-50 p-4">
-              <p className="mb-2 text-xs uppercase tracking-wider text-gray-400">Покупатель</p>
-              <p className="font-medium text-gray-900">{getCustomerName(order)}</p>
-              <p className="mt-1 text-sm text-gray-600">{customerPhone || '—'}</p>
-              <p className="mt-1 text-sm text-gray-600">{getCustomerEmail(order)}</p>
-            </div>
-
-            <div className="rounded-xl bg-gray-50 p-4">
-              <p className="mb-2 text-xs uppercase tracking-wider text-gray-400">Адрес доставки</p>
-              <p className="text-sm leading-6 text-gray-700">{getDeliveryAddress(order) || '—'}</p>
-            </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-xl border border-gray-100 p-4">
-              <p className="mb-2 text-xs uppercase tracking-wider text-gray-400">Способ оплаты</p>
-              <p className="text-sm font-medium text-gray-900">
-                {PAYMENT_LABELS[order.payment_method] || order.payment_method || '—'}
-              </p>
-            </div>
-
-            <div className="rounded-xl border border-gray-100 p-4">
-              <p className="mb-2 text-xs uppercase tracking-wider text-gray-400">Статус</p>
-              <select
-                value={order.status}
-                onChange={(event) => onStatusChange(order.id, event.target.value)}
-                className={`h-10 rounded-lg border-0 px-3 text-sm font-medium outline-none ${STATUS_MAP[order.status]?.color || 'bg-gray-100 text-gray-700'}`}
-              >
-                {STATUSES.map((status) => (
-                  <option key={status.value} value={status.value}>
-                    {status.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <p className="mb-3 text-xs uppercase tracking-wider text-gray-400">Список товаров</p>
-            <div className="overflow-hidden rounded-xl border border-gray-100">
-              {order.order_items?.length > 0 ? (
-                order.order_items.map((item) => (
-                  <div
-                    key={item.id}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      padding: '8px 0',
-                      borderBottom: '1px solid #f0f0f0',
-                    }}
-                  >
-                    <div>
-                      <p style={{ fontWeight: 500 }}>{item.products?.name || '—'}</p>
-                      <p style={{ fontSize: 12, color: '#888' }}>
-                        Размер: {item.product_variants?.size || '—'} · {item.quantity} шт.
-                      </p>
-                    </div>
-                    <p style={{ fontWeight: 500 }}>{Number(item.price).toLocaleString('ru-RU')} ₸</p>
-                  </div>
-                ))
-              ) : (
-                <p className="px-4 py-5 text-sm text-gray-400">Товары не найдены</p>
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-xl bg-gray-50 p-4">
-            <p className="mb-2 text-xs uppercase tracking-wider text-gray-400">Комментарий</p>
-            <p className="text-sm text-gray-700">{comment}</p>
-          </div>
-
-          <div className="flex justify-between border-t border-gray-100 pt-4">
-            <span className="text-base font-medium text-gray-600">Итого</span>
-            <span className="text-xl font-bold text-gray-900">
-              {order.total_amount?.toLocaleString('ru-RU')} ₸
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 export default function AdminOrdersPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -184,7 +57,6 @@ export default function AdminOrdersPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
-  const [selectedOrder, setSelectedOrder] = useState(null)
 
   useEffect(() => {
     async function loadOrders() {
@@ -258,10 +130,6 @@ export default function AdminOrdersPage() {
 
     setOrders((current) =>
       current.map((order) => (order.id === orderId ? { ...order, status } : order))
-    )
-
-    setSelectedOrder((current) =>
-      current?.id === orderId ? { ...current, status } : current
     )
   }
 
@@ -458,13 +326,6 @@ export default function AdminOrdersPage() {
         )}
       </div>
 
-      {selectedOrder && (
-        <OrderDetailsModal
-          order={selectedOrder}
-          onClose={() => setSelectedOrder(null)}
-          onStatusChange={handleStatusChange}
-        />
-      )}
     </div>
   )
 }

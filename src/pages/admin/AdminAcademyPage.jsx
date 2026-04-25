@@ -18,6 +18,9 @@ const EMPTY_CONTENT = {
   tariff_level: 'basic',
   sort_order: 0,
   is_published: true,
+  topic: '',
+  thumbnail_url: '',
+  duration_minutes: 0,
 }
 
 function formatDate(iso) {
@@ -45,6 +48,7 @@ export default function AdminAcademyPage() {
     if (tab === 'pending' || tab === 'active') {
       loadOrders()
     } else if (tab === 'content') {
+      setContentLoading(true)
       loadContent()
     }
   }, [tab])
@@ -130,6 +134,7 @@ export default function AdminAcademyPage() {
         .order('sort_order')
       if (loadError) throw loadError
       setContentList(data || [])
+      if (!data || data.length === 0) setError('Материалы не найдены в базе данных')
     } catch (e) {
       console.error('AdminAcademyPage.loadContent error:', e)
       setError('Не удалось загрузить материалы')
@@ -313,7 +318,10 @@ export default function AdminAcademyPage() {
         <div>
           {/* Add form */}
           <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
-            <h3 className="font-medium mb-4 text-gray-900">Добавить материал</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-medium text-gray-900">Добавить материал</h3>
+              <span className="text-xs text-gray-400">Загружено: {contentList.length} материалов</span>
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
               <div>
@@ -375,6 +383,38 @@ export default function AdminAcademyPage() {
               </div>
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+              <div>
+                <label className="text-sm text-gray-500 mb-1 block">Тема</label>
+                <input
+                  value={newContent.topic}
+                  onChange={(e) => setField('topic', e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400"
+                  placeholder="Капсула / Цвет / Фигура / Шопинг"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-gray-500 mb-1 block">Превью</label>
+                <input
+                  value={newContent.thumbnail_url}
+                  onChange={(e) => setField('thumbnail_url', e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400"
+                  placeholder="https://... (URL изображения)"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-gray-500 mb-1 block">Длительность (мин)</label>
+                <input
+                  type="number"
+                  value={newContent.duration_minutes}
+                  onChange={(e) => setField('duration_minutes', Number(e.target.value))}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400"
+                  placeholder="15"
+                  min="0"
+                />
+              </div>
+            </div>
+
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 text-sm cursor-pointer text-gray-700">
                 <input
@@ -409,6 +449,7 @@ export default function AdminAcademyPage() {
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Название</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Тип</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Тема</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Тариф</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
                       <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
@@ -425,6 +466,9 @@ export default function AdminAcademyPage() {
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
                           {TYPE_LABEL[item.type] || item.type}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
+                          {item.topic || '—'}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
                           {TARIFF_LABEL[item.tariff_level] || item.tariff_level}

@@ -113,9 +113,6 @@ export default function AcademyPage() {
   const [accessStatus, setAccessStatus] = useState(null)
   const [userOrder, setUserOrder] = useState(null)
   const [content, setContent] = useState([])
-  const [points, setPoints] = useState(null)
-  const [progress, setProgress] = useState([])
-  const [achievements, setAchievements] = useState([])
   const [activeTab, setActiveTab] = useState('lessons')
   const [academyError, setAcademyError] = useState('')
 
@@ -172,95 +169,18 @@ export default function AcademyPage() {
 
     setAcademyError('')
     try {
-      const [contentRes, progressRes, pointsRes, achRes] = await Promise.all([
-        supabase
-          .from('academy_content')
-          .select('*')
-          .in('tariff_level', levels)
-          .eq('is_published', true)
-          .order('sort_order'),
-        supabase.from('academy_progress').select('*').eq('user_id', user.id),
-        supabase.from('academy_points').select('*').eq('user_id', user.id).maybeSingle(),
-        supabase.from('academy_achievements').select('*').eq('user_id', user.id),
-      ])
+      const { data, error } = await supabase
+        .from('academy_content')
+        .select('*')
+        .in('tariff_level', levels)
+        .eq('is_published', true)
+        .order('sort_order')
 
-      if (contentRes.error) throw contentRes.error
-      if (progressRes.error) throw progressRes.error
-      if (pointsRes.error) throw pointsRes.error
-      if (achRes.error) throw achRes.error
-
-      setContent(contentRes.data || [])
-      setProgress(progressRes.data || [])
-      setPoints(pointsRes.data || null)
-      setAchievements(achRes.data || [])
+      if (error) throw error
+      setContent(data || [])
     } catch (e) {
       console.error('AcademyPage.loadAcademyData error:', e)
       setAcademyError('Не удалось загрузить материалы академии')
-    }
-  }
-
-  const isCompleted = (contentId) =>
-    progress.some((p) => p.content_id === contentId && p.completed)
-
-  const isUnlocked = (index, items) => {
-    if (index === 0) return true
-    return isCompleted(items[index - 1].id)
-  }
-
-  const handleComplete = async (item) => {
-    if (isCompleted(item.id)) return
-
-    setAcademyError('')
-    try {
-      const { error: progressError } = await supabase.from('academy_progress').upsert({
-        user_id: user.id,
-        content_id: item.id,
-        completed: true,
-        completed_at: new Date().toISOString(),
-      })
-      if (progressError) throw progressError
-
-      const earnedPoints = item.type === 'video' ? 10 : item.type === 'article' ? 5 : 3
-      const currentPoints = points?.points || 0
-      const currentTotal = points?.total_earned || 0
-
-      const { error: pointsError } = await supabase.from('academy_points').upsert({
-        user_id: user.id,
-        points: currentPoints + earnedPoints,
-        total_earned: currentTotal + earnedPoints,
-        last_activity: new Date().toISOString().split('T')[0],
-        updated_at: new Date().toISOString(),
-      })
-      if (pointsError) throw pointsError
-
-      const { error: logError } = await supabase.from('academy_points_log').insert({
-        user_id: user.id,
-        points: earnedPoints,
-        reason: `Завершено: ${item.title}`,
-        content_id: item.id,
-      })
-      if (logError) throw logError
-
-      const completedCount = progress.filter((p) => p.completed).length + 1
-      const existing = achievements.map((a) => a.achievement)
-      const toAdd = []
-
-      if (completedCount >= 1 && !existing.includes('first_lesson'))
-        toAdd.push({ user_id: user.id, achievement: 'first_lesson' })
-      if (completedCount >= 5 && !existing.includes('five_lessons'))
-        toAdd.push({ user_id: user.id, achievement: 'five_lessons' })
-      if (completedCount >= 10 && !existing.includes('ten_lessons'))
-        toAdd.push({ user_id: user.id, achievement: 'ten_lessons' })
-
-      if (toAdd.length > 0) {
-        const { error: achError } = await supabase.from('academy_achievements').insert(toAdd)
-        if (achError) throw achError
-      }
-
-      loadAcademyData(userOrder?.tariff)
-    } catch (e) {
-      console.error('AcademyPage.handleComplete error:', e)
-      setAcademyError('Не удалось сохранить прогресс. Попробуйте ещё раз.')
     }
   }
 
@@ -439,15 +359,6 @@ export default function AcademyPage() {
     const lessons = content.filter((c) => c.type === 'video')
     const articles = content.filter((c) => c.type === 'article')
     const resources = content.filter((c) => c.type === 'telegram' || c.type === 'link')
-    const completedCount = progress.filter((p) => p.completed).length
-    const trackableCount = content.filter((c) => c.type !== 'telegram' && c.type !== 'link').length
-    const progressPct = trackableCount > 0 ? Math.round((completedCount / trackableCount) * 100) : 0
-
-    const ACH_LABEL = {
-      first_lesson: '🎯 Первый урок',
-      five_lessons: '🔥 5 уроков',
-      ten_lessons: '⭐ 10 уроков',
-    }
 
     return (
       <div className="max-w-3xl mx-auto px-4 py-6 pb-28 md:pb-8">
@@ -458,59 +369,14 @@ export default function AcademyPage() {
           </div>
         )}
 
-        {/* Приветствие + баллы */}
+        {/* Приветствие */}
         <div className="bg-[#1a1a18] rounded-2xl p-5 mb-4 text-white">
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <p className="text-[#888780] text-xs mb-1">Академия Capriccio</p>
-              <h2 className="text-xl font-medium">
-                Привет, {user?.user_metadata?.full_name?.split(' ')[0] || 'подруга'}! 👋
-              </h2>
-              <p className="text-[#888780] text-xs mt-1">Тариф: {userOrder?.tariff_name}</p>
-            </div>
-            <div className="bg-white/10 rounded-xl px-4 py-3 text-center flex-shrink-0">
-              <p className="text-2xl font-medium">{points?.points || 0}</p>
-              <p className="text-[#888780] text-xs">баллов</p>
-              <p className="text-[10px] text-[#888780]">= {points?.points || 0} ₸ скидки</p>
-            </div>
-          </div>
-
-          <div>
-            <div className="flex justify-between text-xs text-[#888780] mb-1.5">
-              <span>Прогресс</span>
-              <span>{completedCount} / {trackableCount} уроков</span>
-            </div>
-            <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-[#D4537E] rounded-full transition-all duration-500"
-                style={{ width: `${progressPct}%` }}
-              />
-            </div>
-          </div>
-
-          {points?.streak_days > 0 && (
-            <div className="mt-3 flex items-center gap-1.5">
-              <span>🔥</span>
-              <span className="text-sm">{points.streak_days} дней подряд</span>
-            </div>
-          )}
+          <p className="text-[#888780] text-xs mb-1">Академия Capriccio</p>
+          <h2 className="text-xl font-medium">
+            Привет, {user?.user_metadata?.full_name?.split(' ')[0] || 'подруга'}! 👋
+          </h2>
+          <p className="text-[#888780] text-xs mt-1">Тариф: {userOrder?.tariff_name}</p>
         </div>
-
-        {/* Достижения */}
-        {achievements.length > 0 && (
-          <div className="mb-4 overflow-x-auto">
-            <div className="flex gap-2 pb-1">
-              {achievements.map((ach) => (
-                <div
-                  key={ach.id}
-                  className="flex-shrink-0 bg-[#FBEAF0] rounded-xl px-3 py-2 text-xs font-medium text-[#72243E]"
-                >
-                  {ACH_LABEL[ach.achievement] || ach.achievement}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Табы */}
         <div className="flex gap-1 border-b border-[#f0ede8] mb-4">
@@ -543,69 +409,34 @@ export default function AcademyPage() {
                 <p className="text-sm">Видеоуроки скоро появятся</p>
               </div>
             )}
-            {lessons.map((item, index, arr) => {
-              const completed = isCompleted(item.id)
-              const unlocked = isUnlocked(index, arr)
-              return (
-                <div
-                  key={item.id}
-                  className={`border rounded-2xl overflow-hidden transition-all ${
-                    completed
-                      ? 'border-[#1D9E75] bg-[#E1F5EE]'
-                      : unlocked
-                        ? 'border-[#f0ede8] bg-white hover:border-[#1a1a18]'
-                        : 'border-[#f0ede8] bg-[#f5f2ed] opacity-60'
-                  }`}
-                >
-                  <div className="flex gap-4 p-4">
-                    <div
-                      className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-medium flex-shrink-0 ${
-                        completed
-                          ? 'bg-[#1D9E75] text-white'
-                          : unlocked
-                            ? 'bg-[#1a1a18] text-white'
-                            : 'bg-[#e0ddd8] text-[#888780]'
-                      }`}
-                    >
-                      {completed ? '✓' : unlocked ? index + 1 : '🔒'}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm text-[#1a1a18] mb-0.5">{item.title}</p>
-                      <p className="text-xs text-[#888780] line-clamp-2 mb-2">{item.description}</p>
-                      <div className="flex items-center gap-3">
-                        {item.duration_minutes > 0 && (
-                          <span className="text-xs text-[#888780]">⏱ {item.duration_minutes} мин</span>
-                        )}
-                        <span className="text-xs text-[#1D9E75] font-medium">+10 баллов</span>
-                      </div>
-                    </div>
+            {lessons.map((item) => (
+              <div key={item.id} className="border border-[#f0ede8] rounded-2xl overflow-hidden bg-white hover:border-[#1a1a18] transition-all">
+                <div className="flex gap-4 p-4">
+                  <div className="w-10 h-10 rounded-xl bg-[#1a1a18] flex items-center justify-center text-white text-lg flex-shrink-0">
+                    🎥
                   </div>
-                  {unlocked && (
-                    <div className="px-4 pb-4 flex gap-2">
-                      {item.content_url && (
-                        <a
-                          href={item.content_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex-1 bg-[#1a1a18] text-white text-xs font-medium py-2.5 rounded-xl text-center"
-                        >
-                          {completed ? 'Смотреть снова' : '▶ Смотреть урок'}
-                        </a>
-                      )}
-                      {!completed && (
-                        <button
-                          type="button"
-                          onClick={() => handleComplete(item)}
-                          className="flex-1 border border-[#1D9E75] text-[#1D9E75] text-xs font-medium py-2.5 rounded-xl"
-                        >
-                          ✓ Отметить просмотренным
-                        </button>
-                      )}
-                    </div>
-                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm text-[#1a1a18] mb-0.5">{item.title}</p>
+                    <p className="text-xs text-[#888780] line-clamp-2 mb-2">{item.description}</p>
+                    {item.duration_minutes > 0 && (
+                      <span className="text-xs text-[#888780]">⏱ {item.duration_minutes} мин</span>
+                    )}
+                  </div>
                 </div>
-              )
-            })}
+                {item.content_url && (
+                  <div className="px-4 pb-4">
+                    <a
+                      href={item.content_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block w-full bg-[#1a1a18] text-white text-xs font-medium py-2.5 rounded-xl text-center"
+                    >
+                      ▶ Смотреть урок
+                    </a>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
 
@@ -618,59 +449,29 @@ export default function AcademyPage() {
                 <p className="text-sm">Статьи скоро появятся</p>
               </div>
             )}
-            {articles.map((item, index, arr) => {
-              const completed = isCompleted(item.id)
-              const unlocked = isUnlocked(index, arr)
-              return (
-                <div
-                  key={item.id}
-                  className={`border rounded-2xl p-4 transition-all ${
-                    completed
-                      ? 'border-[#1D9E75] bg-[#E1F5EE]'
-                      : unlocked
-                        ? 'border-[#f0ede8] bg-white'
-                        : 'border-[#f0ede8] bg-[#f5f2ed] opacity-60'
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <div
-                      className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg flex-shrink-0 ${
-                        completed ? 'bg-[#1D9E75]' : 'bg-[#f5f2ed]'
-                      }`}
-                    >
-                      {completed ? '✓' : '📖'}
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-sm mb-0.5">{item.title}</p>
-                      <p className="text-xs text-[#888780] mb-3">{item.description}</p>
-                      {unlocked && (
-                        <div className="flex gap-4">
-                          {item.content_url && (
-                            <a
-                              href={item.content_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs font-medium text-[#1a1a18] underline"
-                            >
-                              Читать →
-                            </a>
-                          )}
-                          {!completed && (
-                            <button
-                              type="button"
-                              onClick={() => handleComplete(item)}
-                              className="text-xs font-medium text-[#1D9E75]"
-                            >
-                              ✓ Прочитано (+5 баллов)
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
+            {articles.map((item) => (
+              <div key={item.id} className="border border-[#f0ede8] rounded-2xl p-4 bg-white">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-[#f5f2ed] flex items-center justify-center text-lg flex-shrink-0">
+                    📖
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-sm mb-0.5">{item.title}</p>
+                    <p className="text-xs text-[#888780] mb-3">{item.description}</p>
+                    {item.content_url && (
+                      <a
+                        href={item.content_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-medium text-[#1a1a18] underline"
+                      >
+                        Читать →
+                      </a>
+                    )}
                   </div>
                 </div>
-              )
-            })}
+              </div>
+            ))}
           </div>
         )}
 

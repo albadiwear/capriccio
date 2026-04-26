@@ -7,7 +7,7 @@ const STATUS_BADGE = {
   cancelled: <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">Отклонён</span>,
 }
 
-const TYPE_LABEL = { video: '🎥 Видео', article: '📖 Статья', telegram: '✈️ Telegram', link: '🔗 Ссылка' }
+const TYPE_LABEL = { video: '🎥 Видео', article: '📖 Статья', guide: '📄 Гайд', telegram: '✈️ Telegram', link: '🔗 Ссылка' }
 const TARIFF_LABEL = { start: 'Старт (все)', basic: 'Базовый и выше', premium: 'Только Премиум' }
 
 const EMPTY_CONTENT = {
@@ -337,38 +337,47 @@ export default function AdminAcademyPage() {
 
       {/* Content tab */}
       {tab === 'content' && (
-        <div>
-          {/* Add form */}
-          <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
+	          <div>
+	            {/* Add form */}
+	            <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-medium text-gray-900">Добавить материал</h3>
               <span className="text-xs text-gray-400">Загружено: {contentList.length} материалов</span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="text-sm text-gray-500 mb-1 block">Название</label>
-                <input
-                  value={newContent.title}
-                  onChange={(e) => setField('title', e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400"
-                  placeholder="Капсульный гардероб за 7 дней"
-                />
-              </div>
-              <div>
-                <label className="text-sm text-gray-500 mb-1 block">Тип</label>
-                <select
-                  value={newContent.type}
-                  onChange={(e) => setField('type', e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400"
-                >
-                  <option value="video">🎥 Видео</option>
-                  <option value="article">📖 Статья</option>
-                  <option value="telegram">✈️ Telegram</option>
-                  <option value="link">🔗 Ссылка</option>
-                </select>
-              </div>
-            </div>
+	            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+	              <div>
+	                <label className="text-sm text-gray-500 mb-1 block">Название</label>
+	                <input
+	                  value={newContent.title}
+	                  onChange={(e) => setField('title', e.target.value)}
+	                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400"
+	                  placeholder="Капсульный гардероб за 7 дней"
+	                />
+	              </div>
+	              <div>
+	                <label className="text-sm text-gray-500 mb-1 block">Тип</label>
+	                <select
+	                  value={newContent.type}
+	                  onChange={(e) =>
+	                    setNewContent((prev) => ({
+	                      ...prev,
+	                      type: e.target.value,
+	                      content_url: '',
+	                      thumbnail_url: '',
+	                      duration_minutes: 0,
+	                    }))
+	                  }
+	                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400"
+	                >
+	                  <option value="video">🎥 Видео</option>
+	                  <option value="article">📖 Статья</option>
+	                  <option value="guide">📄 Гайд</option>
+	                  <option value="telegram">✈️ Telegram</option>
+	                  <option value="link">🔗 Ссылка</option>
+	                </select>
+	              </div>
+	            </div>
 
             <div className="mb-4">
               <label className="text-sm text-gray-500 mb-1 block">Описание</label>
@@ -381,39 +390,47 @@ export default function AdminAcademyPage() {
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="text-sm text-gray-500 mb-1 block">Ссылка (URL)</label>
-                <input
-                  value={newContent.content_url}
-                  onChange={(e) => setField('content_url', e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400"
-                  placeholder="https://..."
-                />
-              </div>
-              <div>
-                <label className="text-sm text-gray-500 mb-1 block">Доступен для тарифа</label>
-                <select
-                  value={newContent.tariff_level}
-                  onChange={(e) => setField('tariff_level', e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400"
-                >
-                  <option value="start">Старт (все)</option>
-                  <option value="basic">Базовый и выше</option>
-                  <option value="premium">Только Премиум</option>
-                </select>
-              </div>
-            </div>
+	            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+	              <div>
+	                <label className="text-sm text-gray-500 mb-1 block">
+	                  {newContent.type === 'video'
+	                    ? 'Ссылка на YouTube / Vimeo'
+	                    : newContent.type === 'article'
+	                      ? 'Ссылка на статью'
+	                      : newContent.type === 'guide'
+	                        ? 'Ссылка на PDF файл'
+	                        : 'Ссылка (URL)'}
+	                </label>
+	                <input
+	                  value={newContent.content_url}
+	                  onChange={(e) => setField('content_url', e.target.value)}
+	                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400"
+	                  placeholder="https://..."
+	                />
+	              </div>
+	              <div>
+	                <label className="text-sm text-gray-500 mb-1 block">Доступен для тарифа</label>
+	                <select
+	                  value={newContent.tariff_level}
+	                  onChange={(e) => setField('tariff_level', e.target.value)}
+	                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400"
+	                >
+	                  <option value="start">Старт (все)</option>
+	                  <option value="basic">Базовый и выше</option>
+	                  <option value="premium">Только Премиум</option>
+	                </select>
+	              </div>
+	            </div>
 
 	            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
 	              <div>
 	                <label className="text-sm text-gray-500 mb-1 block">Тема</label>
 	                <input
-                  value={newContent.topic}
-                  onChange={(e) => setField('topic', e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400"
-                  placeholder="Капсула / Цвет / Фигура / Шопинг"
-                />
+	                  value={newContent.topic}
+	                  onChange={(e) => setField('topic', e.target.value)}
+	                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400"
+	                  placeholder="Капсула / Цвет / Фигура / Шопинг"
+	                />
 	              </div>
 	              <div>
 	                <label className="text-sm text-gray-500 mb-1 block">Превью (обложка)</label>
@@ -440,18 +457,22 @@ export default function AdminAcademyPage() {
 	                  </label>
 	                )}
 	              </div>
-	              <div>
-	                <label className="text-sm text-gray-500 mb-1 block">Длительность (мин)</label>
-	                <input
-                  type="number"
-                  value={newContent.duration_minutes}
-                  onChange={(e) => setField('duration_minutes', Number(e.target.value))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400"
-                  placeholder="15"
-                  min="0"
-                />
-              </div>
-            </div>
+	              {(newContent.type === 'video' || newContent.type === 'article') && (
+	                <div>
+	                  <label className="text-sm text-gray-500 mb-1 block">
+	                    {newContent.type === 'article' ? 'Время чтения (мин)' : 'Длительность (мин)'}
+	                  </label>
+	                  <input
+	                    type="number"
+	                    value={newContent.duration_minutes}
+	                    onChange={(e) => setField('duration_minutes', Number(e.target.value))}
+	                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400"
+	                    placeholder="15"
+	                    min="0"
+	                  />
+	                </div>
+	              )}
+	            </div>
 
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 text-sm cursor-pointer text-gray-700">

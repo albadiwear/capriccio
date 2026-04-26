@@ -336,19 +336,21 @@ export default function AcademyPage() {
     try {
       const { data: profile } = await supabase
         .from('users')
-        .select('full_name, phone')
+        .select('full_name, phone, avatar_url')
         .eq('id', user.id)
         .maybeSingle()
       setUserProfile({
         name: profile?.full_name || user.user_metadata?.full_name || '',
         phone: profile?.phone || user.user_metadata?.phone || '',
         email: user.email,
+        avatar: profile?.avatar_url || null,
       })
     } catch {
       setUserProfile({
         name: user.user_metadata?.full_name || '',
         phone: user.user_metadata?.phone || '',
         email: user.email,
+        avatar: null,
       })
     }
   }
@@ -463,16 +465,31 @@ export default function AcademyPage() {
 
         <div className="max-w-4xl mx-auto px-4 py-6">
           {/* Gradient banner */}
-          <div
-            className="rounded-2xl p-6 mb-6 text-white"
-            style={{ background: 'linear-gradient(135deg, #D4537E 0%, #9B4F8E 100%)' }}
-          >
-            <p className="text-xs opacity-70 mb-1">Академия Capriccio</p>
-            <h2 className="text-2xl font-medium">
-              Привет, {user?.user_metadata?.full_name?.split(' ')[0] || 'подруга'}! 👋
-            </h2>
-            <p className="text-sm opacity-70 mt-1">{userOrder?.tariff_name || 'Академия'}</p>
-          </div>
+	          <div
+	            className="rounded-2xl p-6 mb-6 text-white"
+	            style={{ background: 'linear-gradient(135deg, #D4537E 0%, #9B4F8E 100%)' }}
+	          >
+	            <div className="flex items-center gap-4">
+	              {userProfile?.avatar ? (
+	                <img
+	                  src={userProfile.avatar}
+	                  className="w-14 h-14 rounded-full object-cover border-2 border-white/30 flex-shrink-0"
+	                />
+	              ) : (
+	                <div className="w-14 h-14 rounded-full bg-white/20 border-2 border-white/30 flex items-center justify-center text-white text-xl font-medium flex-shrink-0">
+	                  {userProfile?.name?.[0]?.toUpperCase() || '?'}
+	                </div>
+	              )}
+
+	              <div className="min-w-0">
+	                <p className="text-xs opacity-60 text-white">Академия Capriccio</p>
+	                <h2 className="text-2xl font-medium text-white">
+	                  Привет, {userProfile?.name || 'подруга'}! 👋
+	                </h2>
+	                <p className="text-sm opacity-70 text-white">{userOrder?.tariff_name}</p>
+	              </div>
+	            </div>
+	          </div>
 
           {/* Filter pills */}
           <div className="flex gap-2 overflow-x-auto pb-1 mb-6 [&::-webkit-scrollbar]:hidden">

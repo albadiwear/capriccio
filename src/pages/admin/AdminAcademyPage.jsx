@@ -40,6 +40,7 @@ export default function AdminAcademyPage() {
   const [contentLoading, setContentLoading] = useState(false)
   const [newContent, setNewContent] = useState(EMPTY_CONTENT)
   const [addLoading, setAddLoading] = useState(false)
+  const [uploadingThumb, setUploadingThumb] = useState(false)
 
   const [statusMessage, setStatusMessage] = useState('')
   const [error, setError] = useState('')
@@ -190,6 +191,27 @@ export default function AdminAcademyPage() {
   }
 
   const setField = (key, value) => setNewContent((prev) => ({ ...prev, [key]: value }))
+
+  async function handleThumbUpload(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingThumb(true)
+    try {
+      const ext = file.name.split('.').pop()
+      const path = `academy/${Date.now()}.${ext}`
+      const { error } = await supabase.storage
+        .from('product-images')
+        .upload(path, file, { upsert: true })
+      if (!error) {
+        const { data: { publicUrl } } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(path)
+        setField('thumbnail_url', publicUrl)
+      }
+    } finally {
+      setUploadingThumb(false)
+    }
+  }
 
   // --- Render ---
 
@@ -383,28 +405,44 @@ export default function AdminAcademyPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-              <div>
-                <label className="text-sm text-gray-500 mb-1 block">Тема</label>
-                <input
+	            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+	              <div>
+	                <label className="text-sm text-gray-500 mb-1 block">Тема</label>
+	                <input
                   value={newContent.topic}
                   onChange={(e) => setField('topic', e.target.value)}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400"
                   placeholder="Капсула / Цвет / Фигура / Шопинг"
                 />
-              </div>
-              <div>
-                <label className="text-sm text-gray-500 mb-1 block">Превью</label>
-                <input
-                  value={newContent.thumbnail_url}
-                  onChange={(e) => setField('thumbnail_url', e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400"
-                  placeholder="https://... (URL изображения)"
-                />
-              </div>
-              <div>
-                <label className="text-sm text-gray-500 mb-1 block">Длительность (мин)</label>
-                <input
+	              </div>
+	              <div>
+	                <label className="text-sm text-gray-500 mb-1 block">Превью (обложка)</label>
+
+	                {uploadingThumb ? (
+	                  <div className="border border-dashed border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-500 w-full text-center">
+	                    Загружаем...
+	                  </div>
+	                ) : newContent.thumbnail_url ? (
+	                  <div className="space-y-2">
+	                    <img
+	                      src={newContent.thumbnail_url}
+	                      className="h-20 rounded-lg object-cover"
+	                    />
+	                    <label className="border border-dashed border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-500 w-full text-center cursor-pointer hover:border-gray-400">
+	                      Изменить
+	                      <input type="file" accept="image/*" className="hidden" onChange={handleThumbUpload} />
+	                    </label>
+	                  </div>
+	                ) : (
+	                  <label className="border border-dashed border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-500 w-full text-center cursor-pointer hover:border-gray-400">
+	                    Загрузить
+	                    <input type="file" accept="image/*" className="hidden" onChange={handleThumbUpload} />
+	                  </label>
+	                )}
+	              </div>
+	              <div>
+	                <label className="text-sm text-gray-500 mb-1 block">Длительность (мин)</label>
+	                <input
                   type="number"
                   value={newContent.duration_minutes}
                   onChange={(e) => setField('duration_minutes', Number(e.target.value))}

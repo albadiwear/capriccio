@@ -62,6 +62,7 @@ export default function AdminProductsPage() {
   const fileInputRef = useRef(null)
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
+  const [importingExcel, setImportingExcel] = useState(false)
   const [search, setSearch] = useState('')
   const [filterCat, setFilterCat] = useState('')
   const [selected, setSelected] = useState(new Set())
@@ -306,43 +307,99 @@ export default function AdminProductsPage() {
     const file = event.target.files?.[0]
     if (!file) return
 
+    setImportingExcel(true)
+
     try {
+      const REQUIRED_COLUMNS = [
+        'Название',
+        'Артикул',
+        'Категория',
+        'Бренд',
+        'Цена',
+        'Цена со скидкой',
+        'Описание',
+        'Состав',
+        'Уход',
+        'Размер',
+        'Цвет',
+        'Количество',
+      ]
+
       const buffer = await file.arrayBuffer()
       const workbook = XLSX.read(buffer, { type: 'array' })
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
+      const headerRows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' })
+      const header = Array.isArray(headerRows?.[0]) ? headerRows[0] : []
+      const headerNames = header.map((h) => String(h || '').trim()).filter(Boolean)
+      const missing = REQUIRED_COLUMNS.filter((col) => !headerNames.includes(col))
+      if (missing.length > 0) {
+        throw new Error(`В Excel не хватает колонок: ${missing.join(', ')}`)
+      }
+
       const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: '' })
 
+      const normalizeHeader = (key) =>
+        String(key || '')
+          .trim()
+          .replace(/\s+/g, ' ')
+
+      const getCell = (row, label) => {
+        const normalizedLabel = normalizeHeader(label)
+        for (const key of Object.keys(row || {})) {
+          if (normalizeHeader(key) === normalizedLabel) return row[key]
+        }
+        return ''
+      }
+
+      const parseNumber = (value) => {
+        if (value === null || value === undefined) return null
+        if (typeof value === 'number') return Number.isFinite(value) ? value : null
+        const cleaned = String(value)
+          .replace(/\s+/g, '')
+          .replace(/[₸]/g, '')
+          .replace(',', '.')
+          .replace(/[^\d.-]/g, '')
+        if (!cleaned) return null
+        const n = Number(cleaned)
+        return Number.isFinite(n) ? n : null
+      }
+
       const groupedProducts = rows.reduce((acc, row) => {
-        const billzId = String(row['Артикул'] || '').trim()
+        const billzId = String(getCell(row, 'Артикул') || '').trim()
         if (!billzId) return acc
 
         if (!acc[billzId]) {
+          const rawCategory = String(getCell(row, 'Категория') || '').trim()
           acc[billzId] = {
             product: {
-              name: String(row['Название'] || '').trim(),
+              name: String(getCell(row, 'Название') || '').trim(),
               billz_id: billzId,
               category: (() => {
-                const raw = String(row['Категория'] || '').trim()
-                if (!raw) return 'Пуховики'
-                return raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase()
+                if (!rawCategory) return 'Пуховики'
+                return rawCategory
               })(),
-              brand: String(row['Бренд'] || '').trim(),
-              price: Number(row['Цена']) || 0,
-              sale_price: row['Цена со скидкой'] ? Number(row['Цена со скидкой']) : null,
-              description: String(row['Описание'] || '').trim(),
-              composition: String(row['Состав'] || '').trim(),
-              care: String(row['Уход'] || '').trim(),
+              brand: String(getCell(row, 'Бренд') || '').trim(),
+              price: parseNumber(getCell(row, 'Цена')) || 0,
+              sale_price: parseNumber(getCell(row, 'Цена со скидкой')),
+              description: String(getCell(row, 'Описание') || '').trim(),
+              composition: String(getCell(row, 'Состав') || '').trim(),
+              care: String(getCell(row, 'Уход') || '').trim(),
               is_active: true,
             },
-            variants: [],
+            variants: new Map(),
           }
         }
 
-        acc[billzId].variants.push({
-          size: String(row['Размер'] || '').trim(),
-          color: String(row['Цвет'] || '').trim(),
+        const size = String(getCell(row, 'Размер') || '').trim()
+        const color = String(getCell(row, 'Цвет') || '').trim()
+        const stock = parseNumber(getCell(row, 'Количество')) || 0
+        const variantKey = `${size}||${color}`
+        const prev = acc[billzId].variants.get(variantKey)
+        acc[billzId].variants.set(variantKey, {
+          size,
+          color,
           color_hex: '#000000',
-          stock: parseInt(row['Количество'], 10) || 0,
+          stock: Number(prev?.stock || 0) + Number(stock || 0),
         })
 
         return acc
@@ -351,21 +408,52 @@ export default function AdminProductsPage() {
       let importedCount = 0
 
       for (const item of Object.values(groupedProducts)) {
-        const { data: productData, error: productError } = await supabase
-          .from('products')
-          .insert(item.product)
-          .select()
-          .single()
+        if (!item.product?.billz_id || !item.product?.name) continue
 
-        if (productError || !productData?.id) {
-          console.error('Ошибка импорта товара:', productError)
+        let productId = null
+
+        const { data: existingProduct, error: existingError } = await supabase
+          .from('products')
+          .select('id')
+          .eq('billz_id', item.product.billz_id)
+          .maybeSingle()
+
+        if (existingError) {
+          console.error('Excel import existing product lookup error:', existingError)
           continue
         }
 
-        const variantsToInsert = item.variants
+        if (existingProduct?.id) {
+          const { error: updateError } = await supabase
+            .from('products')
+            .update(item.product)
+            .eq('id', existingProduct.id)
+
+          if (updateError) {
+            console.error('Excel import product update error:', updateError)
+            continue
+          }
+
+          productId = existingProduct.id
+        } else {
+          const { data: productData, error: productError } = await supabase
+            .from('products')
+            .insert(item.product)
+            .select('id')
+            .maybeSingle()
+
+          if (productError || !productData?.id) {
+            console.error('Excel import product insert error:', productError)
+            continue
+          }
+
+          productId = productData.id
+        }
+
+        const variantsToInsert = Array.from(item.variants.values())
           .filter((variant) => variant.size || variant.color)
           .map((variant) => ({
-            product_id: productData.id,
+            product_id: productId,
             size: variant.size || '',
             color: variant.color || '',
             color_hex: variant.color_hex || '#000000',
@@ -378,7 +466,7 @@ export default function AdminProductsPage() {
             .insert(variantsToInsert)
 
           if (variantsError) {
-            console.error('Ошибка импорта вариантов:', variantsError)
+            console.error('Excel import variants insert error:', variantsError)
           }
         }
 
@@ -392,6 +480,7 @@ export default function AdminProductsPage() {
       alert('Не удалось импортировать Excel файл')
     } finally {
       event.target.value = ''
+      setImportingExcel(false)
     }
   }
 
@@ -408,6 +497,7 @@ export default function AdminProductsPage() {
             accept=".xlsx,.xls"
             onChange={handleImportExcel}
             className="hidden"
+            disabled={importingExcel}
           />
           {selected.size > 0 && (
             <button
@@ -427,7 +517,8 @@ export default function AdminProductsPage() {
           </button>
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="px-4 py-2 border border-gray-200 text-gray-700 text-sm rounded hover:border-gray-900 hover:text-gray-900 transition-colors"
+            disabled={importingExcel}
+            className="px-4 py-2 border border-gray-200 text-gray-700 text-sm rounded hover:border-gray-900 hover:text-gray-900 transition-colors disabled:opacity-60"
           >
             Импорт из Excel
           </button>

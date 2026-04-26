@@ -1,16 +1,24 @@
 import { useEffect, useState } from 'react'
-import { Heart, Shirt, Sparkles, Star, X } from 'lucide-react'
+import { BookOpen, ChevronDown, ExternalLink, FileText, Play, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/authStore'
 
-const HERO_IMAGE = 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=1200&q=80'
+const HERO_IMAGE = 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=800&q=80'
+
+const TYPE_ICON = {
+  video: Play,
+  article: BookOpen,
+  guide: FileText,
+  link: ExternalLink,
+  telegram: ExternalLink,
+}
 
 const TYPE_LABEL = {
   video: '🎥 Видео',
   article: '📖 Статья',
-  guide: '📋 Гайд',
-  telegram: '✈️ Telegram',
+  guide: '📄 Гайд',
   link: '🔗 Ссылка',
+  telegram: '✈️ Telegram',
 }
 
 const TYPE_GRADIENT = {
@@ -23,20 +31,95 @@ const TYPE_GRADIENT = {
 
 const FILTER_TABS = [
   { key: 'all', label: 'Все' },
-  { key: 'video', label: 'Видео' },
-  { key: 'article', label: 'Статьи' },
-  { key: 'guide', label: 'Гайды' },
-  { key: 'link', label: 'Ресурсы' },
+  { key: 'video', label: '🎥 Видео' },
+  { key: 'article', label: '📖 Статьи' },
+  { key: 'guide', label: '📄 Гайды' },
+  { key: 'link', label: '🔗 Ресурсы' },
 ]
 
-const DIRECTIONS = [
-  { title: 'Стиль и гардероб', icon: Shirt, bg: 'bg-[#FBEAF0]', color: 'text-[#72243E]', iconColor: '#72243E', desc: 'Капсульный гардероб, цветотип, образы для любого случая' },
-  { title: 'Красота и уход', icon: Sparkles, bg: 'bg-[#E1F5EE]', color: 'text-[#085041]', iconColor: '#085041', desc: 'Уход за кожей 35+, макияж который молодит' },
-  { title: 'Здоровье и энергия', icon: Heart, bg: 'bg-[#EEEDFE]', color: 'text-[#3C3489]', iconColor: '#3C3489', desc: 'Питание, движение, сон — как выглядеть лучше' },
-  { title: 'Уверенность', icon: Star, bg: 'bg-[#FAEEDA]', color: 'text-[#633806]', iconColor: '#633806', desc: 'Психология стиля, найди себя' },
+const TARIFFS = [
+  {
+    key: 'start',
+    emoji: '🌱',
+    name: 'Старт',
+    price: 0,
+    priceLabel: 'Бесплатно',
+    desc: 'Попробуй без риска',
+    features: ['2 урока', 'Определи свой стиль', 'Базовый капсульный гардероб'],
+    popular: false,
+    btnClass: 'w-full border border-[#1a1a18] text-[#1a1a18] rounded-xl py-3 text-sm font-medium hover:bg-[#f9f7f4] transition-colors',
+    btnLabel: 'Начать бесплатно',
+  },
+  {
+    key: 'basic',
+    emoji: '⭐',
+    name: 'Стандарт',
+    price: 4990,
+    priceLabel: '4 990 ₸',
+    priceSuffix: '/мес',
+    desc: 'Полный курс стиля',
+    features: ['6 уроков', 'Цветотип', 'Типы фигур', 'Образы для работы', 'Шопинг без ошибок', 'Уход за кожей 35+', 'Уверенность через стиль'],
+    popular: true,
+    btnClass: 'w-full bg-[#D4537E] text-white rounded-xl py-3 text-sm font-medium hover:bg-[#c44370] transition-colors',
+    btnLabel: 'Выбрать →',
+  },
+  {
+    key: 'premium',
+    emoji: '👑',
+    name: 'Премиум',
+    price: 12900,
+    priceLabel: '12 900 ₸',
+    desc: 'Личный подход',
+    features: ['Всё из Стандарта', 'Разбор гардероба лично', 'Закрытый чат', 'Вебинары раз в месяц'],
+    popular: false,
+    btnClass: 'w-full bg-[#1a1a18] text-white rounded-xl py-3 text-sm font-medium hover:bg-gray-800 transition-colors',
+    btnLabel: 'Выбрать →',
+  },
+  {
+    key: 'vip',
+    emoji: '💎',
+    name: 'VIP',
+    price: 50000,
+    priceLabel: '50 000 ₸',
+    desc: 'Полное сопровождение',
+    features: ['Всё из Премиума', '3 сессии со стилистом', 'Шопинг-гид лично под тебя', 'Сопровождение 3 месяца'],
+    popular: false,
+    btnClass: 'w-full bg-[#1a1a18] text-white rounded-xl py-3 text-sm font-medium hover:bg-gray-800 transition-colors',
+    btnLabel: 'Выбрать →',
+  },
 ]
 
-function AccessModal({ open, onClose, user, onSuccess }) {
+const PAINS = [
+  { emoji: '😩', title: 'Гардероб полный, надеть нечего', desc: 'Каждое утро стресс и ощущение что нет нужной вещи' },
+  { emoji: '🛍️', title: 'Покупаю и не ношу', desc: 'Заходишь в магазин, берёшь «что-то» и потом жалеешь' },
+  { emoji: '🤔', title: 'Хочу стильно, но боюсь', desc: 'Страх выглядеть не по возрасту или слишком броско' },
+  { emoji: '💸', title: 'Трачу, но не то', desc: 'Деньги уходят на вещи которые не сочетаются между собой' },
+]
+
+const TOPICS = [
+  { emoji: '👗', title: 'Стиль и гардероб', desc: 'Капсульный гардероб, цветотип, образы для любого случая' },
+  { emoji: '✨', title: 'Красота и уход', desc: 'Уход за кожей 35+, макияж который молодит' },
+  { emoji: '💪', title: 'Здоровье и энергия', desc: 'Питание, движение, как выглядеть и чувствовать себя лучше' },
+  { emoji: '🧠', title: 'Уверенность', desc: 'Психология стиля, найди себя, истории трансформации' },
+  { emoji: '🛒', title: 'Шопинг без ошибок', desc: 'Как выбирать вещи, на что смотреть, где покупать' },
+  { emoji: '💼', title: 'Образы для жизни', desc: 'Работа, встречи, отдых — образ для каждого случая' },
+]
+
+const REVIEWS = [
+  { text: 'Я всегда думала что стиль — это не для меня. После первого урока поняла что просто не знала правил', author: 'Айгерим', age: 42, city: 'Алматы' },
+  { text: 'Наконец-то перестала покупать вещи которые висят в шкафу. Гардероб стал меньше, а образов больше', author: 'Дина', age: 38, city: 'Астана' },
+  { text: 'VIP тариф — лучшее что я сделала для себя. Стилист помогла собрать образы под мою жизнь', author: 'Салтанат', age: 45, city: 'Шымкент' },
+]
+
+const FAQ_ITEMS = [
+  { q: 'Подходит ли Академия если я никогда не занималась стилем?', a: 'Да, начинаем с нуля. Первые уроки для любого уровня.' },
+  { q: 'Когда открывается доступ?', a: 'В течение 24 часов после оплаты.' },
+  { q: 'Есть ли срок у доступа?', a: 'Доступ навсегда на выбранный тариф.' },
+  { q: 'Можно ли перейти на другой тариф?', a: 'Да, доплатив разницу. Напишите нам.' },
+  { q: 'Как проходят сессии на VIP?', a: 'Онлайн через Zoom или WhatsApp, в удобное для вас время.' },
+]
+
+function AccessModal({ open, onClose, tariff, user, onSuccess }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
@@ -49,10 +132,9 @@ function AccessModal({ open, onClose, user, onSuccess }) {
         user_id: user.id,
         user_name: user.user_metadata?.full_name || '',
         user_email: user.email,
-        user_phone: user.user_metadata?.phone || '',
-        tariff: 'basic',
-        tariff_name: 'Базовый',
-        tariff_price: 0,
+        tariff: tariff.key,
+        tariff_name: tariff.name,
+        tariff_price: tariff.price,
         status: 'pending',
       })
       if (insertError) throw insertError
@@ -86,7 +168,7 @@ function AccessModal({ open, onClose, user, onSuccess }) {
       >
         <div className="flex items-start justify-between gap-4 mb-5">
           <h3 className="text-lg font-medium text-[#1a1a18]">
-            {success ? 'Заявка отправлена!' : 'Запрос на доступ в Академию'}
+            {success ? 'Заявка отправлена!' : `Заявка на ${tariff?.name}`}
           </h3>
           <button
             type="button"
@@ -99,12 +181,12 @@ function AccessModal({ open, onClose, user, onSuccess }) {
         </div>
 
         {success ? (
-          <div className="text-center">
+          <div className="text-center py-4">
             <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
               <span className="text-3xl">✅</span>
             </div>
             <p className="text-sm text-[#888780] leading-relaxed">
-              Мы уведомим вас когда доступ будет открыт.
+              Заявка отправлена! Мы свяжемся с вами в ближайшее время.
             </p>
             <button
               type="button"
@@ -116,7 +198,7 @@ function AccessModal({ open, onClose, user, onSuccess }) {
           </div>
         ) : (
           <>
-            <div className="bg-[#f5f2ed] rounded-xl p-4 mb-5">
+            <div className="bg-[#f9f7f4] rounded-xl p-4 mb-5">
               <p className="text-xs text-[#888780] mb-3 font-medium">Ваши данные</p>
               <div className="flex flex-col gap-2 text-sm">
                 <div className="flex justify-between">
@@ -127,17 +209,15 @@ function AccessModal({ open, onClose, user, onSuccess }) {
                   <span className="text-[#888780]">Email</span>
                   <span className="font-medium text-[#1a1a18]">{user?.email}</span>
                 </div>
-                {user?.user_metadata?.phone && (
-                  <div className="flex justify-between">
-                    <span className="text-[#888780]">Телефон</span>
-                    <span className="font-medium text-[#1a1a18]">{user.user_metadata.phone}</span>
-                  </div>
-                )}
+                <div className="flex justify-between">
+                  <span className="text-[#888780]">Тариф</span>
+                  <span className="font-medium text-[#1a1a18]">{tariff?.name} — {tariff?.priceLabel}</span>
+                </div>
               </div>
             </div>
 
             <p className="text-sm text-[#888780] mb-5 leading-relaxed">
-              Мы рассмотрим заявку и откроем доступ в течение 24 часов.
+              Мы свяжемся с вами в течение 24 часов и выставим счёт.
             </p>
 
             {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
@@ -148,7 +228,7 @@ function AccessModal({ open, onClose, user, onSuccess }) {
               disabled={loading}
               className="w-full bg-[#D4537E] text-white py-3.5 rounded-xl text-sm font-medium disabled:opacity-60 hover:bg-[#c44370] transition-colors"
             >
-              {loading ? 'Отправляем...' : 'Подтвердить'}
+              {loading ? 'Отправляем...' : 'Отправить заявку'}
             </button>
           </>
         )}
@@ -160,8 +240,9 @@ function AccessModal({ open, onClose, user, onSuccess }) {
 function ContentCard({ item }) {
   const gradient = TYPE_GRADIENT[item.type] || TYPE_GRADIENT.link
   const label = TYPE_LABEL[item.type] || item.type
+  const Icon = TYPE_ICON[item.type] || ExternalLink
 
-  let btnClass = 'block w-full mt-3 py-2.5 rounded-xl text-xs font-medium text-center transition-colors'
+  let btnClass = 'w-full rounded-xl py-2.5 text-sm font-medium transition-colors'
   let btnLabel = 'Открыть →'
 
   if (item.type === 'video') {
@@ -180,39 +261,40 @@ function ContentCard({ item }) {
 
   return (
     <div className="border border-[#f0ede8] rounded-2xl overflow-hidden bg-white">
-      <div className="relative h-48 overflow-hidden">
+      <div className="relative h-44 overflow-hidden">
         {item.thumbnail_url ? (
           <img src={item.thumbnail_url} alt={item.title} className="w-full h-full object-cover" />
         ) : (
-          <div className="w-full h-full" style={{ background: gradient }} />
+          <div className="w-full h-full flex items-center justify-center" style={{ background: gradient }}>
+            <Icon size={32} className="text-white opacity-80" />
+          </div>
         )}
-        <span className="absolute top-3 left-3 bg-black/40 text-white rounded-full px-3 py-1 text-xs">
+        <span className="absolute top-3 left-3 bg-black/40 text-white text-xs rounded-full px-2 py-0.5">
           {label}
         </span>
         {item.topic && (
-          <span className="absolute top-3 right-3 bg-white/20 text-white rounded-full px-3 py-1 text-xs">
+          <span className="absolute top-3 right-3 bg-white/20 text-white text-xs rounded-full px-2 py-0.5">
             {item.topic}
           </span>
         )}
       </div>
 
       <div className="p-4">
-        <p className="font-medium text-[#1a1a18] text-sm">{item.title}</p>
+        <p className="font-medium text-sm text-[#1a1a18] mb-1">{item.title}</p>
         {item.description && (
-          <p className="text-sm text-[#888780] mt-1 line-clamp-2">{item.description}</p>
+          <p className="text-xs text-[#888780] line-clamp-2 mb-3">{item.description}</p>
         )}
         {item.duration_minutes > 0 && (
-          <p className="text-xs text-[#888780] mt-1.5">⏱ {item.duration_minutes} мин</p>
+          <p className="text-xs text-[#888780] mb-3">⏱ {item.duration_minutes} мин</p>
         )}
         {item.content_url && (
-          <a
-            href={item.content_url}
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            type="button"
+            onClick={() => window.open(item.content_url, '_blank')}
             className={btnClass}
           >
             {btnLabel}
-          </a>
+          </button>
         )}
       </div>
     </div>
@@ -227,6 +309,8 @@ export default function AcademyPage() {
   const [activeFilter, setActiveFilter] = useState('all')
   const [academyError, setAcademyError] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
+  const [selectedTariff, setSelectedTariff] = useState(null)
+  const [openFaq, setOpenFaq] = useState(null)
 
   useEffect(() => {
     if (user) {
@@ -254,9 +338,7 @@ export default function AcademyPage() {
       } else {
         setAccessStatus(data.status)
         setUserOrder(data)
-        if (data.status === 'active') {
-          loadContent(data.tariff)
-        }
+        if (data.status === 'active') loadContent(data.tariff)
       }
     } catch {
       setAcademyError('Не удалось загрузить информацию о доступе')
@@ -267,7 +349,7 @@ export default function AcademyPage() {
   async function loadContent(tariff) {
     const t = tariff || userOrder?.tariff
     const levels =
-      t === 'premium'
+      t === 'vip' || t === 'premium'
         ? ['start', 'basic', 'premium']
         : t === 'basic'
           ? ['start', 'basic']
@@ -287,11 +369,12 @@ export default function AcademyPage() {
     }
   }
 
-  function handleAccessClick() {
+  function handleTariffClick(tariff) {
     if (!user) {
       window.location.href = '/#access'
       return
     }
+    setSelectedTariff(tariff)
     setModalOpen(true)
   }
 
@@ -316,12 +399,12 @@ export default function AcademyPage() {
         <div className="w-20 h-20 rounded-full bg-[#FAEEDA] flex items-center justify-center mb-6 text-4xl">
           ⏳
         </div>
-        <h2 className="text-2xl font-medium mb-3">Заявка на рассмотрении</h2>
+        <h2 className="text-2xl font-medium text-[#1a1a18] mb-3">Заявка на рассмотрении</h2>
         <p className="text-[#888780] max-w-sm leading-relaxed mb-4">
-          Ваша заявка получена. Мы активируем доступ в течение 24 часов и отправим уведомление на email.
+          Мы свяжемся с вами в ближайшее время и выставим счёт для активации доступа.
         </p>
-        <div className="bg-[#f5f2ed] rounded-xl px-6 py-4 text-sm text-[#888780]">
-          Если есть вопросы — напишите нам в WhatsApp
+        <div className="bg-[#f9f7f4] rounded-xl px-6 py-4 text-sm text-[#888780]">
+          Есть вопросы? Напишите нам в WhatsApp
         </div>
       </div>
     )
@@ -345,26 +428,27 @@ export default function AcademyPage() {
           </div>
         )}
 
-        {/* Gradient header */}
-        <div
-          className="px-6 py-8"
-          style={{ background: 'linear-gradient(135deg, #D4537E 0%, #9B4F8E 50%, #5B4FCF 100%)' }}
-        >
-          <p className="text-white/60 text-xs mb-1">Академия стиля Capriccio</p>
-          <h2 className="text-2xl font-medium text-white">
-            Привет, {user?.user_metadata?.full_name?.split(' ')[0] || 'подруга'}! 👋
-          </h2>
-        </div>
-
         <div className="max-w-4xl mx-auto px-4 py-6">
+          {/* Gradient banner */}
+          <div
+            className="rounded-2xl p-6 mb-6 text-white"
+            style={{ background: 'linear-gradient(135deg, #D4537E 0%, #9B4F8E 100%)' }}
+          >
+            <p className="text-xs opacity-70 mb-1">Академия Capriccio</p>
+            <h2 className="text-2xl font-medium">
+              Привет, {user?.user_metadata?.full_name?.split(' ')[0] || 'подруга'}! 👋
+            </h2>
+            <p className="text-sm opacity-70 mt-1">{userOrder?.tariff_name || 'Академия'}</p>
+          </div>
+
           {/* Filter pills */}
-          <div className="flex gap-2 flex-wrap mb-6">
+          <div className="flex gap-2 overflow-x-auto pb-1 mb-6 [&::-webkit-scrollbar]:hidden">
             {FILTER_TABS.map((tab) => (
               <button
                 key={tab.key}
                 type="button"
                 onClick={() => setActiveFilter(tab.key)}
-                className={`h-9 px-4 rounded-full text-sm font-medium transition-colors ${
+                className={`flex-shrink-0 rounded-full px-4 py-2 text-sm transition-colors ${
                   activeFilter === tab.key
                     ? 'bg-[#1a1a18] text-white'
                     : 'border border-[#f0ede8] text-[#888780] hover:border-[#1a1a18] hover:text-[#1a1a18]'
@@ -375,9 +459,10 @@ export default function AcademyPage() {
             ))}
           </div>
 
-          {/* Cards */}
+          {/* Cards grid */}
           {filtered.length === 0 ? (
             <div className="text-center py-16 text-[#888780]">
+              <div className="text-4xl mb-3">📚</div>
               <p className="text-sm">Материалы скоро появятся</p>
             </div>
           ) : (
@@ -394,65 +479,205 @@ export default function AcademyPage() {
 
   // Landing (none / cancelled)
   return (
-    <div className="min-h-screen bg-white pb-24 md:pb-0">
-      {/* Hero */}
-      <section className="relative min-h-screen flex flex-col justify-center px-6 md:px-16 py-20 overflow-hidden">
-        <img src={HERO_IMAGE} className="absolute inset-0 w-full h-full object-cover" alt="" />
-        <div className="absolute inset-0 bg-[#1a1a18]/60" />
-        <div className="relative z-10 max-w-2xl">
-          <h1 className="text-white text-4xl md:text-6xl font-medium leading-tight">
-            Академия стиля Capriccio
-          </h1>
-          <p className="mt-4 text-white/70 text-base md:text-lg leading-relaxed max-w-xl">
-            Уроки, гайды и вдохновение для женщин которые хотят выглядеть лучше каждый день
-          </p>
-          <button
-            type="button"
-            onClick={handleAccessClick}
-            className="mt-8 inline-flex items-center justify-center rounded-xl bg-[#D4537E] text-white px-8 py-4 text-base font-medium hover:bg-[#c44370] transition-colors"
-          >
-            Получить доступ →
-          </button>
+    <div className="bg-white pb-24 md:pb-0">
+
+      {/* Block 1: Hero */}
+      <section className="max-w-7xl mx-auto px-6 md:px-16 py-16 md:py-24">
+        <div className="grid md:grid-cols-2 gap-12 items-center">
+          <div>
+            <span className="inline-block rounded-full bg-[#FBEAF0] text-[#D4537E] text-xs px-4 py-1.5 mb-6">
+              Академия стиля · Казахстан
+            </span>
+            <h1 className="text-5xl md:text-7xl font-medium text-[#1a1a18] leading-tight mb-6">
+              Стань лучшей версией себя
+            </h1>
+            <p className="text-lg text-[#888780] max-w-lg leading-relaxed mb-8">
+              Первая онлайн-школа стиля для женщин 35+ в Казахстане. Уроки, разборы и поддержка которые реально меняют то, как ты выглядишь и чувствуешь себя каждый день
+            </p>
+            <button
+              type="button"
+              onClick={() => handleTariffClick(TARIFFS[1])}
+              className="inline-flex items-center justify-center rounded-xl bg-[#D4537E] text-white px-8 py-4 text-base font-medium hover:bg-[#c44370] transition-colors"
+            >
+              Начать обучение →
+            </button>
+            <p className="mt-3 text-sm text-[#888780]">500+ участниц · Казахстан и СНГ</p>
+          </div>
+          <div className="rounded-3xl overflow-hidden aspect-[4/5] order-first md:order-last">
+            <img src={HERO_IMAGE} alt="Академия стиля" className="w-full h-full object-cover" />
+          </div>
         </div>
       </section>
 
-      {/* Directions */}
-      <section className="px-6 py-14 max-w-6xl mx-auto">
-        <h2 className="text-2xl font-medium text-[#1a1a18] mb-8">Всё для твоего преображения</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {DIRECTIONS.map((dir) => {
-            const Icon = dir.icon
-            return (
-              <div key={dir.title} className={`rounded-2xl p-5 md:p-6 ${dir.bg}`}>
-                <div className="w-10 h-10 rounded-xl bg-white/50 flex items-center justify-center mb-4">
-                  <Icon size={20} style={{ color: dir.iconColor }} />
-                </div>
-                <h3 className={`font-medium text-sm mb-2 ${dir.color}`}>{dir.title}</h3>
-                <p className={`hidden md:block text-xs leading-relaxed opacity-80 ${dir.color}`}>
-                  {dir.desc}
-                </p>
+      {/* Block 2: Pains */}
+      <section className="bg-[#f9f7f4] px-6 py-16">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-3xl md:text-4xl font-medium text-[#1a1a18] mb-10">Узнаёшь себя?</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {PAINS.map((p) => (
+              <div key={p.title} className="border border-[#f0ede8] rounded-2xl p-6 bg-white">
+                <div className="text-3xl mb-4">{p.emoji}</div>
+                <h3 className="font-medium text-[#1a1a18] text-sm mb-2">{p.title}</h3>
+                <p className="text-xs text-[#888780] leading-relaxed">{p.desc}</p>
               </div>
-            )
-          })}
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* CTA */}
+      {/* Block 3: What is Academy */}
+      <section className="px-6 py-16">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div>
+              <h2 className="text-3xl md:text-4xl font-medium text-[#1a1a18] mb-6">
+                Capriccio Academy — это система
+              </h2>
+              <p className="text-lg text-[#888780] leading-relaxed">
+                Не просто курсы. Это система которая помогает женщине 35+ выстроить свой стиль раз и навсегда. Без хаоса, без лишних трат, без комплексов
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                { num: '15+', label: 'уроков' },
+                { num: '6', label: 'тем' },
+                { num: '500+', label: 'участниц' },
+                { num: '3', label: 'страны' },
+              ].map((s) => (
+                <div key={s.label} className="bg-[#f9f7f4] rounded-2xl p-6 text-center">
+                  <p className="text-4xl font-medium text-[#1a1a18] mb-1">{s.num}</p>
+                  <p className="text-sm text-[#888780]">{s.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Block 4: Topics */}
+      <section className="bg-[#f9f7f4] px-6 py-16">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-3xl md:text-4xl font-medium text-[#1a1a18] mb-10">Что тебя ждёт</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {TOPICS.map((t) => (
+              <div key={t.title} className="border border-[#f0ede8] rounded-2xl p-5 bg-white">
+                <div className="text-2xl mb-3">{t.emoji}</div>
+                <h3 className="font-medium text-[#1a1a18] text-sm mb-1.5">{t.title}</h3>
+                <p className="text-xs text-[#888780] leading-relaxed">{t.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Block 5: Tariffs */}
+      <section className="px-6 py-16">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-3xl md:text-4xl font-medium text-[#1a1a18] text-center mb-12">
+            Выбери свой формат
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-start">
+            {TARIFFS.map((t) => (
+              <div
+                key={t.key}
+                className={`relative border rounded-2xl p-6 ${t.popular ? 'border-[#D4537E]' : 'border-[#f0ede8]'}`}
+              >
+                {t.popular && (
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#D4537E] text-white text-xs px-4 py-1 rounded-full font-medium whitespace-nowrap">
+                    🔥 Популярный
+                  </span>
+                )}
+                <div className="text-3xl mb-3">{t.emoji}</div>
+                <h3 className="font-medium text-lg text-[#1a1a18] mb-1">{t.name}</h3>
+                <div className="mb-1">
+                  <span className="text-2xl font-medium text-[#1a1a18]">{t.priceLabel}</span>
+                  {t.priceSuffix && <span className="text-sm text-[#888780]">{t.priceSuffix}</span>}
+                </div>
+                <p className="text-sm text-[#888780] mb-5">{t.desc}</p>
+                <ul className="flex flex-col gap-2 mb-6">
+                  {t.features.map((f) => (
+                    <li key={f} className="flex items-start gap-2 text-sm text-[#1a1a18]">
+                      <span className="text-[#D4537E] flex-shrink-0 mt-px">✓</span>
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  type="button"
+                  onClick={() => handleTariffClick(t)}
+                  className={t.btnClass}
+                >
+                  {t.btnLabel}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Block 6: Reviews */}
+      <section className="bg-[#f9f7f4] px-6 py-16">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-3xl md:text-4xl font-medium text-[#1a1a18] mb-10">Что говорят участницы</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {REVIEWS.map((r) => (
+              <div key={r.author} className="bg-white border border-[#f0ede8] rounded-2xl p-6">
+                <p className="text-sm text-[#1a1a18] leading-relaxed mb-4">«{r.text}»</p>
+                <p className="text-sm font-medium text-[#1a1a18]">{r.author}, {r.age} лет, {r.city}</p>
+                <p className="text-xs text-[#D4537E] mt-1">⭐⭐⭐⭐⭐</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Block 7: FAQ */}
+      <section className="px-6 py-16">
+        <div className="max-w-2xl mx-auto">
+          <h2 className="text-3xl md:text-4xl font-medium text-[#1a1a18] mb-10">Частые вопросы</h2>
+          <div className="divide-y divide-[#f0ede8]">
+            {FAQ_ITEMS.map((item, i) => (
+              <div key={i}>
+                <button
+                  type="button"
+                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                  className="w-full flex items-center justify-between gap-4 py-5 text-left"
+                >
+                  <span className="font-medium text-[#1a1a18] text-sm">{item.q}</span>
+                  <ChevronDown
+                    size={18}
+                    className={`flex-shrink-0 text-[#888780] transition-transform duration-200 ${openFaq === i ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                {openFaq === i && (
+                  <p className="pb-5 text-sm text-[#888780] leading-relaxed">{item.a}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Block 8: Final CTA */}
       <section className="bg-[#1a1a18] py-20 px-6 text-center">
-        <h2 className="text-3xl font-medium text-white mb-8">Готова начать?</h2>
+        <h2 className="text-3xl md:text-4xl font-medium text-white mb-4">Готова начать?</h2>
+        <p className="text-[#888780] mb-8 max-w-md mx-auto leading-relaxed">
+          Присоединяйся к 500+ женщинам которые уже изменили свой стиль
+        </p>
         <button
           type="button"
-          onClick={handleAccessClick}
+          onClick={() => handleTariffClick(TARIFFS[1])}
           className="inline-flex items-center justify-center rounded-xl bg-[#D4537E] text-white px-8 py-4 text-base font-medium hover:bg-[#c44370] transition-colors"
         >
-          Получить доступ →
+          Начать обучение →
         </button>
       </section>
 
-      {user && (
+      {user && selectedTariff && (
         <AccessModal
           open={modalOpen}
           onClose={() => setModalOpen(false)}
+          tariff={selectedTariff}
           user={user}
           onSuccess={handleModalSuccess}
         />

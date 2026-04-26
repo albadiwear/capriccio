@@ -119,21 +119,17 @@ const FAQ_ITEMS = [
   { q: 'Как проходят сессии на VIP?', a: 'Онлайн через Zoom или WhatsApp, в удобное для вас время.' },
 ]
 
-function AccessModal({ open, onClose, tariff, user, onSuccess }) {
+function AccessModal({ open, onClose, tariff, user, userProfile, onSuccess }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
-  const [userName, setUserName] = useState('')
-  const [userPhone, setUserPhone] = useState('')
 
   useEffect(() => {
     if (open) {
-      setUserName(user?.user_metadata?.full_name || '')
-      setUserPhone(user?.user_metadata?.phone || '')
       setSuccess(false)
       setError('')
     }
-  }, [open, user])
+  }, [open])
 
   async function handleSubmit() {
     setLoading(true)
@@ -141,9 +137,9 @@ function AccessModal({ open, onClose, tariff, user, onSuccess }) {
     try {
       const { error: insertError } = await supabase.from('academy_orders').insert({
         user_id: user.id,
-        user_name: userName,
-        user_email: user.email,
-        user_phone: userPhone,
+        user_name: userProfile?.name || '',
+        user_email: userProfile?.email || user.email,
+        user_phone: userProfile?.phone || '',
         tariff: tariff.key,
         tariff_name: tariff.name,
         tariff_price: tariff.price,
@@ -208,30 +204,25 @@ function AccessModal({ open, onClose, tariff, user, onSuccess }) {
           </div>
         ) : (
           <>
-            <div className="flex flex-col gap-3 mb-5">
-              <div>
-                <label className="text-xs text-[#888780] mb-1.5 block">Имя</label>
-                <input
-                  type="text"
-                  value={userName}
-                  onChange={(e) => setUserName(e.target.value)}
-                  className="w-full border border-[#f0ede8] rounded-xl px-4 py-3 text-sm outline-none focus:border-[#1a1a18]"
-                  placeholder="Ваше имя"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-[#888780] mb-1.5 block">Email</label>
-                <p className="px-4 py-3 text-sm text-[#1a1a18] bg-[#f9f7f4] rounded-xl">{user?.email}</p>
-              </div>
-              <div>
-                <label className="text-xs text-[#888780] mb-1.5 block">Телефон</label>
-                <input
-                  type="tel"
-                  value={userPhone}
-                  onChange={(e) => setUserPhone(e.target.value)}
-                  className="w-full border border-[#f0ede8] rounded-xl px-4 py-3 text-sm outline-none focus:border-[#1a1a18]"
-                  placeholder="+7 777 000 00 00"
-                />
+            <div className="bg-[#f9f7f4] rounded-xl p-4 mb-5">
+              <p className="text-xs text-[#888780] mb-3 font-medium">Ваши данные</p>
+              <div className="flex flex-col gap-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-[#888780]">Имя</span>
+                  <span className="font-medium text-[#1a1a18]">{userProfile?.name || '—'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#888780]">Email</span>
+                  <span className="font-medium text-[#1a1a18]">{userProfile?.email}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#888780]">Телефон</span>
+                  <span className="font-medium text-[#1a1a18]">{userProfile?.phone || '—'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#888780]">Тариф</span>
+                  <span className="font-medium text-[#1a1a18]">{tariff?.name} — {tariff?.priceLabel}</span>
+                </div>
               </div>
             </div>
 
@@ -244,7 +235,7 @@ function AccessModal({ open, onClose, tariff, user, onSuccess }) {
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={loading || !userName.trim()}
+              disabled={loading}
               className="w-full bg-[#D4537E] text-white py-3.5 rounded-xl text-sm font-medium disabled:opacity-60 hover:bg-[#c44370] transition-colors"
             >
               {loading ? 'Отправляем...' : 'Отправить заявку'}
@@ -330,14 +321,37 @@ export default function AcademyPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedTariff, setSelectedTariff] = useState(null)
   const [openFaq, setOpenFaq] = useState(null)
+  const [userProfile, setUserProfile] = useState(null)
 
   useEffect(() => {
     if (user) {
+      loadProfile()
       checkAccess()
     } else {
       setAccessStatus('none')
     }
   }, [user])
+
+  async function loadProfile() {
+    try {
+      const { data: profile } = await supabase
+        .from('users')
+        .select('full_name, phone')
+        .eq('id', user.id)
+        .maybeSingle()
+      setUserProfile({
+        name: profile?.full_name || user.user_metadata?.full_name || '',
+        phone: profile?.phone || user.user_metadata?.phone || '',
+        email: user.email,
+      })
+    } catch {
+      setUserProfile({
+        name: user.user_metadata?.full_name || '',
+        phone: user.user_metadata?.phone || '',
+        email: user.email,
+      })
+    }
+  }
 
   async function checkAccess() {
     setAcademyError('')
@@ -698,6 +712,7 @@ export default function AcademyPage() {
           onClose={() => setModalOpen(false)}
           tariff={selectedTariff}
           user={user}
+          userProfile={userProfile}
           onSuccess={handleModalSuccess}
         />
       )}

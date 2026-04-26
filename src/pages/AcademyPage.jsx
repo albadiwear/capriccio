@@ -123,6 +123,17 @@ function AccessModal({ open, onClose, tariff, user, onSuccess }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [userName, setUserName] = useState('')
+  const [userPhone, setUserPhone] = useState('')
+
+  useEffect(() => {
+    if (open) {
+      setUserName(user?.user_metadata?.full_name || '')
+      setUserPhone(user?.user_metadata?.phone || '')
+      setSuccess(false)
+      setError('')
+    }
+  }, [open, user])
 
   async function handleSubmit() {
     setLoading(true)
@@ -130,8 +141,9 @@ function AccessModal({ open, onClose, tariff, user, onSuccess }) {
     try {
       const { error: insertError } = await supabase.from('academy_orders').insert({
         user_id: user.id,
-        user_name: user.user_metadata?.full_name || '',
+        user_name: userName,
         user_email: user.email,
+        user_phone: userPhone,
         tariff: tariff.key,
         tariff_name: tariff.name,
         tariff_price: tariff.price,
@@ -149,8 +161,6 @@ function AccessModal({ open, onClose, tariff, user, onSuccess }) {
   function handleClose() {
     if (success) onSuccess()
     else onClose()
-    setSuccess(false)
-    setError('')
   }
 
   if (!open) return null
@@ -198,21 +208,30 @@ function AccessModal({ open, onClose, tariff, user, onSuccess }) {
           </div>
         ) : (
           <>
-            <div className="bg-[#f9f7f4] rounded-xl p-4 mb-5">
-              <p className="text-xs text-[#888780] mb-3 font-medium">Ваши данные</p>
-              <div className="flex flex-col gap-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-[#888780]">Имя</span>
-                  <span className="font-medium text-[#1a1a18]">{user?.user_metadata?.full_name || '—'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[#888780]">Email</span>
-                  <span className="font-medium text-[#1a1a18]">{user?.email}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[#888780]">Тариф</span>
-                  <span className="font-medium text-[#1a1a18]">{tariff?.name} — {tariff?.priceLabel}</span>
-                </div>
+            <div className="flex flex-col gap-3 mb-5">
+              <div>
+                <label className="text-xs text-[#888780] mb-1.5 block">Имя</label>
+                <input
+                  type="text"
+                  value={userName}
+                  onChange={(e) => setUserName(e.target.value)}
+                  className="w-full border border-[#f0ede8] rounded-xl px-4 py-3 text-sm outline-none focus:border-[#1a1a18]"
+                  placeholder="Ваше имя"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-[#888780] mb-1.5 block">Email</label>
+                <p className="px-4 py-3 text-sm text-[#1a1a18] bg-[#f9f7f4] rounded-xl">{user?.email}</p>
+              </div>
+              <div>
+                <label className="text-xs text-[#888780] mb-1.5 block">Телефон</label>
+                <input
+                  type="tel"
+                  value={userPhone}
+                  onChange={(e) => setUserPhone(e.target.value)}
+                  className="w-full border border-[#f0ede8] rounded-xl px-4 py-3 text-sm outline-none focus:border-[#1a1a18]"
+                  placeholder="+7 777 000 00 00"
+                />
               </div>
             </div>
 
@@ -225,7 +244,7 @@ function AccessModal({ open, onClose, tariff, user, onSuccess }) {
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={loading}
+              disabled={loading || !userName.trim()}
               className="w-full bg-[#D4537E] text-white py-3.5 rounded-xl text-sm font-medium disabled:opacity-60 hover:bg-[#c44370] transition-colors"
             >
               {loading ? 'Отправляем...' : 'Отправить заявку'}

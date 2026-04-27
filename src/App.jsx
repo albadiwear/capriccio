@@ -52,6 +52,7 @@ import NotFoundPage from './pages/NotFoundPage'
 
 function App() {
   const initialize = useAuthStore((state) => state.initialize)
+  const authLoading = useAuthStore((state) => state.loading)
 
   useEffect(() => {
     const unsubscribe = initialize()
@@ -70,6 +71,16 @@ function App() {
       localStorage.setItem('ref_expires', String(Date.now() + 30 * 24 * 60 * 60 * 1000))
     }
   }, [])
+
+  if (authLoading) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-[#D4537E]">
+        <div className="text-white text-xl sm:text-2xl font-semibold tracking-[0.35em]">
+          CAPRICCIO
+        </div>
+      </div>
+    )
+  }
 
   return (
     <Router>

@@ -87,63 +87,65 @@ function App() {
   }
 
   return (
-    <Router>
-      <ScrollToTop />
-      <Routes>
-        <Route path="/promo" element={<ProtectedRoute><PromoLanding /></ProtectedRoute>} />
-        <Route path="/onboarding" element={<ProtectedRoute><OnboardingPage /></ProtectedRoute>} />
+    <div className="h-[100dvh] overflow-hidden bg-white">
+      <Router>
+        <ScrollToTop />
+        <Routes>
+          <Route path="/promo" element={<ProtectedRoute><PromoLanding /></ProtectedRoute>} />
+          <Route path="/onboarding" element={<ProtectedRoute><OnboardingPage /></ProtectedRoute>} />
 
-        {/* Public layout */}
-        <Route path="/" element={<Layout />}>
-          <Route index element={user ? <Navigate to="/catalog" replace /> : <HomePage />} />
-          <Route path="catalog" element={<ProtectedRoute><CatalogPage /></ProtectedRoute>} />
-          <Route path="catalog/:category" element={<CatalogPage />} />
-          <Route path="product/:id" element={<ProtectedRoute><ProductPage /></ProtectedRoute>} />
-          <Route path="blog" element={<BlogPage />} />
-          <Route path="blog/:slug" element={<BlogPostPage />} />
-          <Route path="about" element={<ProtectedRoute><AboutPage /></ProtectedRoute>} />
-          <Route path="delivery" element={<ProtectedRoute><DeliveryPage /></ProtectedRoute>} />
-          <Route path="contacts" element={<ProtectedRoute><ContactsPage /></ProtectedRoute>} />
+          {/* Public layout */}
+          <Route path="/" element={<Layout />}>
+            <Route index element={user ? <Navigate to="/catalog" replace /> : <HomePage />} />
+            <Route path="catalog" element={<ProtectedRoute><CatalogPage /></ProtectedRoute>} />
+            <Route path="catalog/:category" element={<CatalogPage />} />
+            <Route path="product/:id" element={<ProtectedRoute><ProductPage /></ProtectedRoute>} />
+            <Route path="blog" element={<BlogPage />} />
+            <Route path="blog/:slug" element={<BlogPostPage />} />
+            <Route path="about" element={<ProtectedRoute><AboutPage /></ProtectedRoute>} />
+            <Route path="delivery" element={<ProtectedRoute><DeliveryPage /></ProtectedRoute>} />
+            <Route path="contacts" element={<ProtectedRoute><ContactsPage /></ProtectedRoute>} />
 
-          <Route path="login" element={<Navigate to="/" replace />} />
-          <Route path="register" element={<Navigate to="/" replace />} />
+            <Route path="login" element={<Navigate to="/" replace />} />
+            <Route path="register" element={<Navigate to="/" replace />} />
 
-          <Route path="account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
-          <Route path="account/orders" element={<ProtectedRoute><AccountOrdersPage /></ProtectedRoute>} />
-          <Route path="account/wishlist" element={<ProtectedRoute><WishlistPage /></ProtectedRoute>} />
-          <Route path="account/addresses" element={<ProtectedRoute><AccountAddressesPage /></ProtectedRoute>} />
-          <Route path="account/partner" element={<ProtectedRoute><PartnerPage /></ProtectedRoute>} />
-          <Route path="cart" element={<ProtectedRoute><CartPage /></ProtectedRoute>} />
-          <Route path="academy" element={<ProtectedRoute><AcademyPage /></ProtectedRoute>} />
-          <Route path="stylist" element={<ProtectedRoute><StylistPage /></ProtectedRoute>} />
-          <Route path="checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
-          <Route path="order-success/:id" element={<ProtectedRoute><OrderSuccessPage /></ProtectedRoute>} />
+            <Route path="account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
+            <Route path="account/orders" element={<ProtectedRoute><AccountOrdersPage /></ProtectedRoute>} />
+            <Route path="account/wishlist" element={<ProtectedRoute><WishlistPage /></ProtectedRoute>} />
+            <Route path="account/addresses" element={<ProtectedRoute><AccountAddressesPage /></ProtectedRoute>} />
+            <Route path="account/partner" element={<ProtectedRoute><PartnerPage /></ProtectedRoute>} />
+            <Route path="cart" element={<ProtectedRoute><CartPage /></ProtectedRoute>} />
+            <Route path="academy" element={<ProtectedRoute><AcademyPage /></ProtectedRoute>} />
+            <Route path="stylist" element={<ProtectedRoute><StylistPage /></ProtectedRoute>} />
+            <Route path="checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
+            <Route path="order-success/:id" element={<ProtectedRoute><OrderSuccessPage /></ProtectedRoute>} />
 
-          <Route path="*" element={<NotFoundPage />} />
-        </Route>
+            <Route path="*" element={<NotFoundPage />} />
+          </Route>
 
-        {/* Admin layout */}
-        <Route
-          path="/admin/*"
-          element={<ProtectedRoute managerOnly><AdminLayout /></ProtectedRoute>}
-        >
-          <Route index element={<AdminPage />} />
-          <Route path="products" element={<AdminProductsPage />} />
-          <Route path="leads" element={<AdminLeadsPage />} />
-          <Route path="team" element={<AdminTeamPage />} />
-          <Route path="chats" element={<AdminChatsPage />} />
-          <Route path="orders" element={<AdminOrdersPage />} />
-          <Route path="orders/:id" element={<AdminOrderDetailPage />} />
-          <Route path="customers" element={<AdminCustomersPage />} />
-          <Route path="partners" element={<AdminPartnersPage />} />
-          <Route path="blog" element={<AdminBlogPage />} />
-          <Route path="banners" element={<AdminBannersPage />} />
-          <Route path="reviews" element={<AdminReviewsPage />} />
-          <Route path="promo" element={<AdminPromoPage />} />
-          <Route path="academy" element={<AdminAcademyPage />} />
-        </Route>
-      </Routes>
-    </Router>
+          {/* Admin layout */}
+          <Route
+            path="/admin/*"
+            element={<ProtectedRoute managerOnly><AdminLayout /></ProtectedRoute>}
+          >
+            <Route index element={<AdminPage />} />
+            <Route path="products" element={<AdminProductsPage />} />
+            <Route path="leads" element={<AdminLeadsPage />} />
+            <Route path="team" element={<AdminTeamPage />} />
+            <Route path="chats" element={<AdminChatsPage />} />
+            <Route path="orders" element={<AdminOrdersPage />} />
+            <Route path="orders/:id" element={<AdminOrderDetailPage />} />
+            <Route path="customers" element={<AdminCustomersPage />} />
+            <Route path="partners" element={<AdminPartnersPage />} />
+            <Route path="blog" element={<AdminBlogPage />} />
+            <Route path="banners" element={<AdminBannersPage />} />
+            <Route path="reviews" element={<AdminReviewsPage />} />
+            <Route path="promo" element={<AdminPromoPage />} />
+            <Route path="academy" element={<AdminAcademyPage />} />
+          </Route>
+        </Routes>
+      </Router>
+    </div>
   )
 }
 

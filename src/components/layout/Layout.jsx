@@ -19,11 +19,11 @@ export default function Layout() {
   // Пока сессия загружается — показываем пустую шапку без меню
   if (loading && !isHome && !isAdmin) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="h-[100dvh] overflow-hidden flex flex-col bg-white">
         <div className="h-[52px] border-b border-[#f0ede8] bg-white flex items-center justify-center">
           <span className="text-sm font-medium tracking-widest text-[#1a1a18]">CAPRICCIO</span>
         </div>
-        <main className="flex-1">
+        <main className="flex-1 overflow-y-auto">
           <Outlet />
         </main>
       </div>
@@ -31,7 +31,7 @@ export default function Layout() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="h-[100dvh] overflow-hidden flex flex-col bg-white">
       {/* Старый хедер — только незалогиненным и не на главной/админке/блоге */}
       {!user && !isHome && !isAdmin && !isBlog && <Header />}
 
@@ -57,7 +57,9 @@ export default function Layout() {
         </>
       )}
 
-      <main className={`flex-1 ${user && !isHome && !isAdmin ? 'pb-20 md:pb-0' : ''}`}>
+      <main
+        className={`flex-1 overflow-y-auto ${user && !isHome && !isAdmin ? 'pb-20 md:pb-0' : ''}`}
+      >
         <Outlet />
       </main>
 
@@ -66,4 +68,3 @@ export default function Layout() {
     </div>
   )
 }
-

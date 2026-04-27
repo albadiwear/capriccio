@@ -218,7 +218,7 @@ export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
+    <div className="flex h-[100dvh] overflow-hidden bg-gray-50">
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex w-64 flex-shrink-0 flex-col bg-gray-900">
         <SidebarContent />

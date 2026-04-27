@@ -20,6 +20,21 @@ const STATUS_META = {
   cancelled: { label: 'Отменён',     color: '#EF4444', bg: '#FEE2E2' },
 }
 
+const STATUS_ALIASES = {
+  Новый: 'pending',
+  'Подтверждён': 'confirmed',
+  'В доставке': 'shipping',
+  'В пути': 'shipping',
+  Доставлен: 'delivered',
+  Отменён: 'cancelled',
+}
+
+function normalizeOrderStatus(status) {
+  if (!status) return status
+  if (STATUS_META[status]) return status
+  return STATUS_ALIASES[status] || status
+}
+
 function getDateFrom(period) {
   if (period === 'all') return null
   const now = new Date()
@@ -134,10 +149,14 @@ export default function AdminPage() {
           if (dateFrom) q = q.gte('created_at', dateFrom)
           return q
         })(),
-        supabase
-          .from('stylist_profiles')
-          .select('*', { count: 'exact', head: true })
-          .eq('onboarding_completed', true),
+        (() => {
+          let q = supabase
+            .from('stylist_profiles')
+            .select('*', { count: 'exact', head: true })
+            .eq('onboarding_completed', true)
+          if (dateFrom) q = q.gte('created_at', dateFrom)
+          return q
+        })(),
         supabase
           .from('orders')
           .select('id, order_number, total_amount, status, created_at, delivery_address, users(full_name, email)')
@@ -146,7 +165,7 @@ export default function AdminPage() {
       ])
 
       const orders = ordersRes.data || []
-      const delivered = orders.filter((o) => o.status === 'delivered')
+      const delivered = orders.filter((o) => normalizeOrderStatus(o.status) === 'delivered')
       const revenue = delivered.reduce((s, o) => s + Number(o.total_amount || 0), 0)
       const activeClients = new Set(orders.map((o) => o.user_id).filter(Boolean)).size
       const avgCheck = delivered.length > 0 ? Math.round(revenue / delivered.length) : 0
@@ -161,7 +180,10 @@ export default function AdminPage() {
       })
 
       const counts = {}
-      for (const o of orders) counts[o.status] = (counts[o.status] || 0) + 1
+      for (const o of orders) {
+        const key = normalizeOrderStatus(o.status)
+        counts[key] = (counts[key] || 0) + 1
+      }
       setStatusCounts(counts)
 
       const productMap = {}
@@ -375,13 +397,13 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {recentOrders.map((order) => {
+	                  {recentOrders.map((order) => {
                     const customerName =
                       order.users?.full_name ||
                       order.delivery_address?.full_name ||
                       '—'
-                    const meta = STATUS_META[order.status]
-                    return (
+	                    const meta = STATUS_META[normalizeOrderStatus(order.status)]
+	                    return (
                       <tr
                         key={order.id}
                         className="border-b border-[#f0ede8] last:border-0 hover:bg-[#fdf9f7] transition-colors"

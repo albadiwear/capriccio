@@ -427,19 +427,23 @@ export default function ProductPage() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 md:py-10">
-        <SkeletonProduct />
+      <div className="min-h-screen bg-white">
+        <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 md:py-10">
+          <SkeletonProduct />
+        </div>
       </div>
     )
   }
 
   if (!product) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-12 text-center text-gray-400 sm:px-6 md:py-20">
-        <p className="text-lg">Товар не найден</p>
-        <Link to="/catalog" className="mt-4 inline-block text-sm underline hover:text-gray-700">
-          Вернуться в каталог
-        </Link>
+      <div className="min-h-screen bg-white">
+        <div className="max-w-7xl mx-auto px-4 py-12 text-center text-gray-400 sm:px-6 md:py-20">
+          <p className="text-lg">Товар не найден</p>
+          <Link to="/catalog" className="mt-4 inline-block text-sm underline hover:text-gray-700">
+            Вернуться в каталог
+          </Link>
+        </div>
       </div>
     )
   }
@@ -780,7 +784,7 @@ export default function ProductPage() {
                 <button
                   onClick={handleAddToCart}
                   disabled={sizesForColor.length > 0 && !selectedSize}
-                  className="flex-1 h-12 text-sm font-medium rounded bg-[#D4537E] hover:bg-[#c44870] text-white transition-colors"
+                  className="flex-1 h-12 text-sm font-medium rounded bg-[#1a1a18] hover:bg-gray-800 text-white transition-colors"
                 >
                   Добавить в корзину
                 </button>
@@ -794,7 +798,7 @@ export default function ProductPage() {
                   </button>
                   <button
                     onClick={() => navigate('/checkout')}
-                    className="flex-1 h-12 text-sm font-medium rounded bg-[#D4537E] hover:bg-[#c44870] text-white transition-colors"
+                    className="flex-1 h-12 text-sm font-medium rounded bg-[#1a1a18] hover:bg-gray-800 text-white transition-colors"
                   >
                     Оформить заказ →
                   </button>
@@ -989,8 +993,8 @@ export default function ProductPage() {
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#f0ede8] px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] z-50">
         {!added ? (
           <button
-            onClick={() => sizesForColor.length > 0 ? setSizeSheetOpen(true) : handleAddToCart()}
-            className="w-full h-[52px] rounded-lg bg-[#D4537E] hover:bg-[#c44870] text-white text-sm font-medium transition-colors"
+            onClick={() => (sizesForColor.length > 0 ? setSizeSheetOpen(true) : handleAddToCart())}
+            className="w-full h-[52px] rounded-lg bg-[#1a1a18] hover:bg-gray-800 text-white text-sm font-medium transition-colors"
           >
             Добавить в корзину
           </button>
@@ -1001,7 +1005,7 @@ export default function ProductPage() {
             </button>
             <button
               onClick={() => navigate('/cart')}
-              className="flex-1 h-[52px] rounded-lg bg-[#D4537E] hover:bg-[#c44870] text-white text-sm font-medium transition-colors"
+              className="flex-1 h-[52px] rounded-lg bg-[#1a1a18] hover:bg-gray-800 text-white text-sm font-medium transition-colors"
             >
               Оформить заказ →
             </button>
@@ -1093,7 +1097,7 @@ export default function ProductPage() {
             <button
               onClick={handleSheetAddToCart}
               disabled={sizesForColor.length > 0 && !selectedSize}
-              className="w-full h-[52px] rounded-xl bg-[#D4537E] hover:bg-[#c44870] text-white text-sm font-medium disabled:opacity-40 transition-colors"
+              className="w-full h-[52px] rounded-xl bg-[#1a1a18] hover:bg-gray-800 text-white text-sm font-medium disabled:opacity-40 transition-colors"
             >
               В корзину
             </button>
@@ -1380,7 +1384,7 @@ export default function ProductPage() {
             )}
             <button
               onClick={() => { setScreenshotModalOpen(false); setShareModalOpen(true) }}
-              className="w-full h-12 rounded-xl bg-[#D4537E] hover:bg-[#c44870] text-white text-sm font-medium transition-colors"
+              className="w-full h-12 rounded-xl bg-[#1a1a18] hover:bg-gray-800 text-white text-sm font-medium transition-colors"
             >
               Поделиться →
             </button>

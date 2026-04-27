@@ -53,6 +53,7 @@ import NotFoundPage from './pages/NotFoundPage'
 function App() {
   const initialize = useAuthStore((state) => state.initialize)
   const authLoading = useAuthStore((state) => state.loading)
+  const user = useAuthStore((state) => state.user)
 
   useEffect(() => {
     const unsubscribe = initialize()
@@ -74,7 +75,10 @@ function App() {
 
   if (authLoading) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-[#D4537E]">
+      <div
+        className="fixed inset-0 flex items-center justify-center"
+        style={{ backgroundColor: '#D4537E' }}
+      >
         <div className="text-white text-xl sm:text-2xl font-semibold tracking-[0.35em]">
           CAPRICCIO
         </div>
@@ -91,7 +95,7 @@ function App() {
 
         {/* Public layout */}
         <Route path="/" element={<Layout />}>
-          <Route index element={<HomePage />} />
+          <Route index element={user ? <Navigate to="/catalog" replace /> : <HomePage />} />
           <Route path="catalog" element={<ProtectedRoute><CatalogPage /></ProtectedRoute>} />
           <Route path="catalog/:category" element={<CatalogPage />} />
           <Route path="product/:id" element={<ProtectedRoute><ProductPage /></ProtectedRoute>} />

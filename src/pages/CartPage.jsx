@@ -13,7 +13,7 @@ export default function CartPage() {
 
   if (items.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 px-4">
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-4 px-4">
         <p className="text-[#888780] text-lg">Корзина пуста</p>
         <Link
           to="/catalog"
@@ -26,7 +26,8 @@ export default function CartPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6">
+    <div className="min-h-screen bg-white">
+      <div className="max-w-2xl mx-auto px-4 py-6">
       <h1 className="text-2xl font-medium mb-6 text-[#1a1a18]">Корзина</h1>
 
       <div className="flex flex-col gap-3 mb-6">
@@ -120,6 +121,7 @@ export default function CartPage() {
         <Link to="/catalog" className="text-sm text-[#888780] underline hover:text-[#1a1a18]">
           Продолжить покупки
         </Link>
+      </div>
       </div>
     </div>
   )

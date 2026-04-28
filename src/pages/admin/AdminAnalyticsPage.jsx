@@ -48,6 +48,8 @@ export default function AdminAnalyticsPage() {
   const [events, setEvents] = useState([])
   const [topProducts, setTopProducts] = useState([])
   const [productsMap, setProductsMap] = useState({})
+  const [report, setReport] = useState('')
+  const [loadingReport, setLoadingReport] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -91,6 +93,134 @@ export default function AdminAnalyticsPage() {
 
     load()
   }, [period])
+
+  async function generateReport() {
+    setLoadingReport(true)
+    setReport('')
+    try {
+      const dateFrom = new Date()
+      dateFrom.setDate(dateFrom.getDate() - 30)
+
+      const { data: eventsData } = await supabase
+        .from('events')
+        .select('type, product_id, query, category, meta')
+        .gte('created_at', dateFrom.toISOString())
+
+      const { data: restockData } = await supabase
+        .from('notifications_queue')
+        .select('payload')
+        .eq('type', 'restock')
+        .eq('sent', false)
+
+      const viewCounts = {}
+      eventsData?.filter((e) => e.type === 'product_view').forEach((e) => {
+        if (e.product_id) {
+          viewCounts[e.product_id] = (viewCounts[e.product_id] || 0) + 1
+        }
+      })
+      const topProductIds = Object.entries(viewCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([id]) => id)
+
+      const { data: topProds } = topProductIds.length > 0
+        ? await supabase
+            .from('products')
+            .select('name, category, price')
+            .in('id', topProductIds)
+        : { data: [] }
+
+      const searchQueries = eventsData
+        ?.filter((e) => e.type === 'search' && e.query)
+        .map((e) => e.query)
+        .slice(0, 20)
+
+      const restockItems = restockData
+        ?.map((r) => r.payload?.product_name)
+        .filter(Boolean)
+        .slice(0, 10)
+
+      let wordstatData = ''
+      try {
+        const keywords = [
+          'женская одежда Казахстан',
+          'пуховик женский',
+          'трикотаж женский',
+          'кардиган женский',
+          'костюм женский',
+        ]
+        const wordstatResults = await Promise.all(
+          keywords.map(async (keyword) => {
+            const res = await fetch(
+              'https://searchapi.api.cloud.yandex.net/v2/wordstat/top?' +
+                new URLSearchParams({
+                  folderId: import.meta.env.VITE_YANDEX_FOLDER_ID,
+                  keywords: keyword,
+                  limit: '5',
+                }),
+              {
+                headers: {
+                  Authorization: `Api-Key ${import.meta.env.VITE_YANDEX_API_KEY}`,
+                  'Content-Type': 'application/json',
+                },
+              }
+            )
+            if (res.ok) {
+              const d = await res.json()
+              return `${keyword}: ${JSON.stringify(d)}`
+            }
+            return `${keyword}: нет данных`
+          })
+        )
+        wordstatData = wordstatResults.join('\n')
+      } catch (e) {
+        wordstatData = 'Яндекс Wordstat недоступен'
+      }
+
+      const prompt = `Ты аналитик закупок для интернет-магазина женской одежды Capriccio (Казахстан, аудитория женщины 35+, размеры 48-60, средний чек 18 000 ₸).
+
+Данные за последние 30 дней:
+
+ТОП ПРОСМАТРИВАЕМЫХ ТОВАРОВ:
+${topProds?.map((p) => `- ${p.name} (${p.category}, ${p.price} ₸)`).join('\n') || 'нет данных'}
+
+ПОИСКОВЫЕ ЗАПРОСЫ ПОКУПАТЕЛЕЙ:
+${searchQueries?.join(', ') || 'нет данных'}
+
+ЗАПРОСЫ НА ПОСТУПЛЕНИЕ (товары которых нет в наличии):
+${restockItems?.join(', ') || 'нет данных'}
+
+ДАННЫЕ ЯНДЕКС WORDSTAT:
+${wordstatData}
+
+На основе этих данных дай конкретные рекомендации:
+1. Какие категории товаров закупить в первую очередь
+2. Какие конкретные позиции добавить
+3. На какие размеры сделать акцент
+4. Какие тренды видны по Wordstat
+5. Общий вывод и приоритеты закупа
+
+Отвечай на русском, конкретно и по делу. Формат: заголовки и списки.`
+
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      })
+
+      const result = await response.json()
+      const text = result.content?.[0]?.text || 'Не удалось получить отчёт'
+      setReport(text)
+    } catch (e) {
+      setReport('Ошибка при генерации отчёта')
+    } finally {
+      setLoadingReport(false)
+    }
+  }
 
   const views = events.filter((e) => e.type === 'product_view').length
   const sessions = new Set(events.map((e) => e.session_id)).size
@@ -262,6 +392,35 @@ export default function AdminAnalyticsPage() {
             </table>
           </div>
         )}
+      </div>
+
+      {/* ИИ отчёт */}
+      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <div className="border-b border-gray-100 px-5 py-3">
+          <h2 className="text-sm font-semibold text-gray-900">ИИ отчёт перед закупом</h2>
+        </div>
+        <div className="px-5 py-5">
+          <p className="mb-4 text-sm text-gray-500">
+            Claude проанализирует поведение покупателей и даст рекомендации что закупать
+          </p>
+          <button
+            onClick={generateReport}
+            disabled={loadingReport}
+            className="rounded-xl bg-[#D4537E] px-5 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+          >
+            {loadingReport ? 'Анализируем...' : 'Сгенерировать отчёт'}
+          </button>
+          {loadingReport && (
+            <div className="mt-4 text-sm text-gray-500 animate-pulse">
+              Claude анализирует данные...
+            </div>
+          )}
+          {report && (
+            <div className="mt-4 rounded-xl border border-[#f0ede8] bg-white p-4 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+              {report}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

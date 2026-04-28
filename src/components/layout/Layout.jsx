@@ -23,7 +23,7 @@ export default function Layout() {
         <div className="h-[52px] border-b border-[#f0ede8] bg-white flex items-center justify-center">
           <span className="text-sm font-medium tracking-widest text-[#1a1a18]">CAPRICCIO</span>
         </div>
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto" data-scroll-container="app">
           <Outlet />
         </main>
       </div>
@@ -59,6 +59,7 @@ export default function Layout() {
 
       <main
         className={`flex-1 overflow-y-auto ${user && !isHome && !isAdmin ? 'pb-20 md:pb-0' : ''}`}
+        data-scroll-container="app"
       >
         <Outlet />
       </main>

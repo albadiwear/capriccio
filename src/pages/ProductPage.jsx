@@ -171,6 +171,13 @@ export default function ProductPage() {
   const imgMovedRef = useRef(false)
 
   useEffect(() => {
+    // Ensure product page always opens at the very top on mobile browsers.
+    const el = document.querySelector('[data-scroll-container="app"]')
+    if (el) el.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+  }, [id])
+
+  useEffect(() => {
     if (!id) return
     setLoading(true)
     setActiveImage(0)

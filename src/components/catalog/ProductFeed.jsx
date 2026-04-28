@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Heart, Share2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useCartStore } from '../../store/cartStore'
@@ -100,75 +101,79 @@ export default function ProductFeed({ products, wishlistIds, onToggleWishlist })
 
         return (
           <div key={product.id} className="border-b border-[#f0ede8] last:border-b-0">
-            <div className="flex items-center gap-3 px-4 py-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f0ede8] text-xs font-medium text-[#888780]">
-                CA
+            <Link to={`/product/${product.id}`} className="block">
+              <div className="flex items-center gap-3 px-4 py-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f0ede8] text-xs font-medium text-[#888780]">
+                  CA
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-[#1a1a18]">Capriccio</div>
+                  <div className="text-xs text-[#888780]">{product.category}</div>
+                </div>
               </div>
-              <div>
-                <div className="text-sm font-medium text-[#1a1a18]">Capriccio</div>
-                <div className="text-xs text-[#888780]">{product.category}</div>
-              </div>
-            </div>
 
-            <div className="relative w-full aspect-square">
-              <img
-                loading="lazy"
-                src={product.images?.[0]}
-                alt={product.name}
-                className="h-full w-full object-cover"
-              />
-              {product.is_hit && (
-                <span className="absolute left-3 top-3 rounded bg-[#1a1a18] px-2 py-0.5 text-[10px] text-white">
-                  hit
-                </span>
-              )}
-              {!product.is_hit && product.is_new && (
-                <span className="absolute left-3 top-3 rounded bg-[#f0ede8] px-2 py-0.5 text-[10px] text-[#1a1a18]">
-                  new
-                </span>
-              )}
-              {!product.is_hit && !product.is_new && oldPrice && (
-                <span className="absolute left-3 top-3 rounded bg-[#e8453c] px-2 py-0.5 text-[10px] text-white">
-                  -{Math.round((1 - (price || 0) / oldPrice) * 100)}%
-                </span>
-              )}
-            </div>
+              <div className="relative w-full aspect-square">
+                <img
+                  loading="lazy"
+                  src={product.images?.[0]}
+                  alt={product.name}
+                  className="h-full w-full object-cover"
+                />
+                {product.is_hit && (
+                  <span className="absolute left-3 top-3 rounded bg-[#1a1a18] px-2 py-0.5 text-[10px] text-white">
+                    hit
+                  </span>
+                )}
+                {!product.is_hit && product.is_new && (
+                  <span className="absolute left-3 top-3 rounded bg-[#f0ede8] px-2 py-0.5 text-[10px] text-[#1a1a18]">
+                    new
+                  </span>
+                )}
+                {!product.is_hit && !product.is_new && oldPrice && (
+                  <span className="absolute left-3 top-3 rounded bg-[#e8453c] px-2 py-0.5 text-[10px] text-white">
+                    -{Math.round((1 - (price || 0) / oldPrice) * 100)}%
+                  </span>
+                )}
+              </div>
+            </Link>
 
             <div className="flex items-center gap-4 px-4 py-2">
               <button
                 type="button"
-                onClick={() => onToggleWishlist?.(product.id)}
+                onClick={(e) => { e.stopPropagation(); onToggleWishlist?.(product.id) }}
                 aria-label="В избранное"
-                className="text-[#1a1a18]"
+                className="relative z-10 text-[#1a1a18]"
               >
                 <Heart size={22} className={wished ? 'fill-[#1a1a18]' : ''} />
               </button>
               <button
                 type="button"
-                onClick={() => handleShare(product.id)}
+                onClick={(e) => { e.stopPropagation(); handleShare(product.id) }}
                 aria-label="Поделиться"
-                className="text-[#1a1a18]"
+                className="relative z-10 text-[#1a1a18]"
               >
                 <Share2 size={22} />
               </button>
             </div>
 
             <div className="px-4 pb-4">
-              <div className="mb-1 flex items-baseline gap-2">
-                <span className="text-lg font-medium text-[#1a1a18]">
-                  {formatKzt(price)}
-                </span>
-                {oldPrice && (
-                  <span className="text-sm text-[#bbb] line-through">
-                    {formatKzt(oldPrice)}
+              <Link to={`/product/${product.id}`} className="block mb-3">
+                <div className="mb-1 flex items-baseline gap-2">
+                  <span className="text-lg font-medium text-[#1a1a18]">
+                    {formatKzt(price)}
                   </span>
-                )}
-              </div>
-              <div className="mb-1 text-sm text-[#1a1a18]">{product.name}</div>
-              <div className="mb-3 text-xs text-[#888780]">
-                Носят {reviewCount} женщин
-                {stock <= 3 && stock > 0 ? ` · Осталось ${stock} шт.` : ''}
-              </div>
+                  {oldPrice && (
+                    <span className="text-sm text-[#bbb] line-through">
+                      {formatKzt(oldPrice)}
+                    </span>
+                  )}
+                </div>
+                <div className="mb-1 text-sm text-[#1a1a18]">{product.name}</div>
+                <div className="text-xs text-[#888780]">
+                  Носят {reviewCount} женщин
+                  {stock <= 3 && stock > 0 ? ` · Осталось ${stock} шт.` : ''}
+                </div>
+              </Link>
 
               <div className="mb-3 flex flex-wrap gap-2">
                 {sizes.map((s) => (
@@ -176,11 +181,12 @@ export default function ProductFeed({ products, wishlistIds, onToggleWishlist })
                     key={s.size}
                     type="button"
                     disabled={s.stock === 0}
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation()
                       setSelectedSizes((p) => ({ ...p, [product.id]: s.size }))
                       setErrors((p) => ({ ...p, [product.id]: '' }))
                     }}
-                    className={`rounded-lg border px-3 py-1.5 text-xs ${
+                    className={`relative z-10 rounded-lg border px-3 py-1.5 text-xs ${
                       selectedSize === s.size
                         ? 'border-[#1a1a18] bg-[#1a1a18] text-white'
                         : s.stock === 0
@@ -201,8 +207,8 @@ export default function ProductFeed({ products, wishlistIds, onToggleWishlist })
 
               <button
                 type="button"
-                onClick={() => addToCart(product, selectedSize)}
-                className="w-full rounded-xl bg-[#1a1a18] py-3 text-sm font-medium text-white"
+                onClick={(e) => { e.stopPropagation(); addToCart(product, selectedSize) }}
+                className="relative z-10 w-full rounded-xl bg-[#1a1a18] py-3 text-sm font-medium text-white"
               >
                 В корзину
               </button>

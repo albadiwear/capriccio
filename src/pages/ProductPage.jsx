@@ -154,6 +154,8 @@ export default function ProductPage() {
   const [linkCopied, setLinkCopied] = useState(false)
   const [shareModalOpen, setShareModalOpen] = useState(false)
   const [screenshotModalOpen, setScreenshotModalOpen] = useState(false)
+  const [notifySheetOpen, setNotifySheetOpen] = useState(false)
+  const [notifyPhone, setNotifyPhone] = useState('')
   const [zoomed, setZoomed] = useState(false)
   const [panX, setPanX] = useState(0)
   const [panY, setPanY] = useState(0)
@@ -388,19 +390,35 @@ export default function ProductPage() {
     window.open(`https://wa.me/77000000000?text=${text}`, '_blank')
   }
 
-  async function handleNotifyMe() {
-    if (!authUser?.id) {
-      navigate('/login')
-      return
-    }
+  useEffect(() => {
+    if (!authUser?.id) return
+    supabase
+      .from('users')
+      .select('phone')
+      .eq('id', authUser.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        setNotifyPhone(data?.phone || authUser.user_metadata?.phone || '')
+      })
+  }, [authUser?.id])
+
+  async function saveNotifyRequest() {
     try {
       await supabase.from('notifications_queue').insert({
-        user_id: authUser.id,
+        user_id: authUser?.id ?? null,
         product_id: product.id,
         type: 'restock',
+        status: 'pending',
+        meta: {
+          phone: notifyPhone,
+          product_name: product.name,
+          product_image: product.images?.[0] ?? null,
+          product_price: product.sale_price || product.price,
+        },
       })
       setNotifySuccess(true)
     } catch (e) {}
+    setNotifySheetOpen(false)
   }
 
   function getYoutubeEmbedUrl(url) {
@@ -818,7 +836,7 @@ export default function ProductPage() {
               {isCompletelyOutOfStock ? (
                 <button
                   type="button"
-                  onClick={handleNotifyMe}
+                  onClick={() => setNotifySheetOpen(true)}
                   className="flex-1 h-12 text-sm font-medium rounded bg-white border-2 border-[#D4537E] text-[#D4537E] transition-colors hover:bg-[#FBEAF0]"
                 >
                   {notifySuccess ? '✓ Вы в списке ожидания' : 'Уведомить о поступлении'}
@@ -1037,7 +1055,7 @@ export default function ProductPage() {
         {isCompletelyOutOfStock ? (
           <button
             type="button"
-            onClick={handleNotifyMe}
+            onClick={() => setNotifySheetOpen(true)}
             className="w-full h-[52px] rounded-lg bg-white border-2 border-[#D4537E] text-[#D4537E] text-sm font-medium transition-colors hover:bg-[#FBEAF0]"
           >
             {notifySuccess ? '✓ Вы в списке ожидания' : 'Уведомить о поступлении'}
@@ -1152,6 +1170,67 @@ export default function ProductPage() {
             >
               В корзину
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Notify Bottom Sheet */}
+      {notifySheetOpen && (
+        <div className="fixed inset-0 z-[60] flex flex-col items-end md:items-center justify-end md:justify-center">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setNotifySheetOpen(false)}
+          />
+          <div
+            className="relative bg-white w-full md:max-w-sm rounded-t-2xl md:rounded-2xl px-4 pt-4 pb-[calc(24px+env(safe-area-inset-bottom))] md:pb-6"
+            onTouchStart={(e) => { touchStartY.current = e.touches[0].clientY }}
+            onTouchEnd={(e) => {
+              if (touchStartY.current !== null && e.changedTouches[0].clientY - touchStartY.current > 60) {
+                setNotifySheetOpen(false)
+              }
+              touchStartY.current = null
+            }}
+          >
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-gray-200 md:hidden" />
+
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-base font-semibold text-[#1a1a18]">Уведомим, когда появится</span>
+              <button onClick={() => setNotifySheetOpen(false)} className="text-gray-400 hover:text-gray-700">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-3 mb-5">
+              {images[0] && (
+                <img
+                  src={images[0]}
+                  alt={product.name}
+                  className="w-[60px] h-[60px] rounded-xl object-cover flex-shrink-0"
+                />
+              )}
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-[#1a1a18] line-clamp-2 leading-snug">{product.name}</p>
+                <p className="text-sm font-semibold text-[#1a1a18] mt-1">
+                  {(product.sale_price || product.price)?.toLocaleString('ru-RU')} ₸
+                </p>
+              </div>
+            </div>
+
+            <input
+              type="tel"
+              value={notifyPhone}
+              onChange={(e) => setNotifyPhone(e.target.value)}
+              placeholder="+7 777 000 00 00"
+              className="w-full h-11 rounded-lg border border-gray-200 px-4 text-sm focus:outline-none focus:border-gray-900 mb-4"
+            />
+
+            <button
+              onClick={saveNotifyRequest}
+              className="w-full h-[52px] rounded-xl bg-[#D4537E] hover:bg-[#c0456f] text-white text-sm font-medium transition-colors"
+            >
+              Сообщить мне
+            </button>
+            <p className="mt-3 text-center text-xs text-gray-400">Мы напишем вам когда товар появится</p>
           </div>
         </div>
       )}

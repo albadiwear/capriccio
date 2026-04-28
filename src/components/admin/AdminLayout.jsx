@@ -34,6 +34,7 @@ const CONTENT_ITEMS = [
   { label: 'Блог', to: '/admin/blog' },
   { label: 'Промокоды', to: '/admin/promo' },
   { label: 'Отзывы', to: '/admin/reviews' },
+  { label: 'Уведомления', to: '/admin/notifications' },
 ]
 
 function SidebarContent({ onClose, pendingCount, unreadChatsCount }) {

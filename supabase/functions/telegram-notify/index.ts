@@ -64,5 +64,22 @@ Deno.serve(async (req) => {
     )
   }
 
+  if (table === 'notifications_queue') {
+    const n = record
+    const productLink = `https://capriccio.vercel.app/product/${n.product_id}`
+    const phone = n.meta?.phone ?? '—'
+    const name = n.meta?.product_name ?? '—'
+    const price = n.meta?.product_price
+      ? Number(n.meta.product_price).toLocaleString('ru-RU') + ' ₸'
+      : '—'
+    await sendMessage(
+      `🔔 Запрос на поступление\n` +
+      `👗 Товар: ${name}\n` +
+      `💰 Цена: ${price}\n` +
+      `📞 Телефон: ${phone}\n` +
+      `🔗 ${productLink}`
+    )
+  }
+
   return new Response('ok')
 })

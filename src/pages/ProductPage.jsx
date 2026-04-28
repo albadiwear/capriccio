@@ -139,6 +139,7 @@ export default function ProductPage() {
   const [accordionOpen, setAccordionOpen] = useState(false)
   const [videoOpen, setVideoOpen] = useState(false)
   const [added, setAdded] = useState(false)
+  const [notifySuccess, setNotifySuccess] = useState(false)
   const [reviewForm, setReviewForm] = useState({ rating: 5, text: '', author_name: '' })
   const [submittingReview, setSubmittingReview] = useState(false)
   const [reviewSuccess, setReviewSuccess] = useState(false)
@@ -387,6 +388,21 @@ export default function ProductPage() {
     window.open(`https://wa.me/77000000000?text=${text}`, '_blank')
   }
 
+  async function handleNotifyMe() {
+    if (!authUser?.id) {
+      navigate('/login')
+      return
+    }
+    try {
+      await supabase.from('notifications_queue').insert({
+        user_id: authUser.id,
+        product_id: product.id,
+        type: 'restock',
+      })
+      setNotifySuccess(true)
+    } catch (e) {}
+  }
+
   function getYoutubeEmbedUrl(url) {
     if (!url) return null
     const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([^&?/]+)/)
@@ -465,6 +481,7 @@ export default function ProductPage() {
   const categoryLabel = CATEGORY_LABELS[product.category] || product.category
   const reviewCount = reviews.length
   const productStock = product.stock ?? variants.reduce((sum, v) => sum + (v.stock ?? 0), 0)
+  const isCompletelyOutOfStock = productStock === 0 && variants.length > 0
 
   const embedUrl = getYoutubeEmbedUrl(product.youtube_url)
   const inCart = cartItems.some((i) => {
@@ -693,6 +710,17 @@ export default function ProductPage() {
               )}
             </div>
 
+            {isCompletelyOutOfStock && (
+              <div className="mt-3 space-y-2">
+                <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
+                  Нет в наличии
+                </span>
+                {notifySuccess && (
+                  <p className="text-sm text-gray-600">✓ Уведомим вас, когда товар появится</p>
+                )}
+              </div>
+            )}
+
             {product.description && (
               <DescriptionBlock text={product.description} />
             )}
@@ -787,7 +815,15 @@ export default function ProductPage() {
 
             {/* Desktop add to cart */}
             <div className="hidden md:flex gap-2">
-              {!inCart ? (
+              {isCompletelyOutOfStock ? (
+                <button
+                  type="button"
+                  onClick={handleNotifyMe}
+                  className="flex-1 h-12 text-sm font-medium rounded bg-white border-2 border-[#D4537E] text-[#D4537E] transition-colors hover:bg-[#FBEAF0]"
+                >
+                  {notifySuccess ? '✓ Вы в списке ожидания' : 'Уведомить о поступлении'}
+                </button>
+              ) : !inCart ? (
                 <button
                   onClick={handleAddToCart}
                   disabled={sizesForColor.length > 0 && !selectedSize}
@@ -998,7 +1034,15 @@ export default function ProductPage() {
         )}
 
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#f0ede8] px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] z-50">
-        {!added ? (
+        {isCompletelyOutOfStock ? (
+          <button
+            type="button"
+            onClick={handleNotifyMe}
+            className="w-full h-[52px] rounded-lg bg-white border-2 border-[#D4537E] text-[#D4537E] text-sm font-medium transition-colors hover:bg-[#FBEAF0]"
+          >
+            {notifySuccess ? '✓ Вы в списке ожидания' : 'Уведомить о поступлении'}
+          </button>
+        ) : !added ? (
           <button
             onClick={() => (sizesForColor.length > 0 ? setSizeSheetOpen(true) : handleAddToCart())}
             className="w-full h-[52px] rounded-lg bg-[#1a1a18] hover:bg-gray-800 text-white text-sm font-medium transition-colors"

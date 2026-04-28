@@ -9,6 +9,7 @@ import {
   Handshake,
   GraduationCap,
   MessageCircle,
+  BarChart2,
   ChevronDown,
   ChevronRight,
   LogOut,
@@ -20,6 +21,7 @@ import { supabase } from '../../lib/supabase'
 
 const NAV_ITEMS = [
   { label: 'Дашборд', icon: LayoutDashboard, to: '/admin', adminOnly: true },
+  { label: 'Аналитика', icon: BarChart2, to: '/admin/analytics', adminOnly: true },
   { label: 'Товары', icon: Package, to: '/admin/products', adminOnly: true },
   { label: 'Команда', icon: Users2, to: '/admin/team', adminOnly: true },
   { label: 'Лиды', icon: Users, to: '/admin/leads' },

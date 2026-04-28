@@ -45,6 +45,7 @@ import AdminAcademyPage from './pages/admin/AdminAcademyPage'
 import AdminOrderDetailPage from './pages/AdminOrderDetailPage'
 import AdminTeamPage from './pages/admin/AdminTeamPage'
 import AdminNotificationsPage from './pages/admin/AdminNotificationsPage'
+import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage'
 
 // Other
 import OnboardingPage from './pages/OnboardingPage'
@@ -144,6 +145,7 @@ function App() {
             <Route path="promo" element={<AdminPromoPage />} />
             <Route path="academy" element={<AdminAcademyPage />} />
             <Route path="notifications" element={<AdminNotificationsPage />} />
+            <Route path="analytics" element={<AdminAnalyticsPage />} />
           </Route>
         </Routes>
       </Router>

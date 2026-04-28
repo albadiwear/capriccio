@@ -37,15 +37,15 @@ export default function AdminNotificationsPage() {
   async function markSent(id) {
     await supabase
       .from('notifications_queue')
-      .update({ status: 'sent' })
+      .update({ sent: true })
       .eq('id', id)
     setRows((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, status: 'sent' } : r))
+      prev.map((r) => (r.id === id ? { ...r, sent: true } : r))
     )
   }
 
   const total = rows.length
-  const pending = rows.filter((r) => r.status === 'pending').length
+  const pending = rows.filter((r) => !r.sent).length
 
   return (
     <div>
@@ -78,6 +78,7 @@ export default function AdminNotificationsPage() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {rows.map((r) => {
+                const p = r.payload || {}
                 const user = r.users
                 const customerName = user?.full_name || user?.email || 'Гость'
                 const customerEmail = user?.full_name && user?.email ? user.email : null
@@ -88,9 +89,9 @@ export default function AdminNotificationsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        {r.meta?.product_image ? (
+                        {p.product_image ? (
                           <img
-                            src={r.meta.product_image}
+                            src={p.product_image}
                             alt=""
                             className="h-12 w-12 flex-shrink-0 rounded-lg object-cover"
                           />
@@ -98,17 +99,17 @@ export default function AdminNotificationsPage() {
                           <div className="h-12 w-12 flex-shrink-0 rounded-lg bg-gray-100" />
                         )}
                         <Link
-                          to={`/product/${r.product_id}`}
+                          to={`/product/${p.product_id}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="max-w-[180px] font-medium text-gray-900 hover:text-[#D4537E] hover:underline line-clamp-2 leading-tight"
                         >
-                          {r.meta?.product_name || '—'}
+                          {p.product_name || '—'}
                         </Link>
                       </div>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-gray-700">
-                      {fmtPrice(r.meta?.product_price)}
+                      {fmtPrice(p.product_price)}
                     </td>
                     <td className="px-4 py-3">
                       <div className="font-medium text-gray-900">{customerName}</div>
@@ -117,10 +118,10 @@ export default function AdminNotificationsPage() {
                       )}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-gray-600">
-                      {r.meta?.phone || '—'}
+                      {p.phone || '—'}
                     </td>
                     <td className="px-4 py-3">
-                      {r.status === 'sent' ? (
+                      {r.sent ? (
                         <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700">
                           Отправлено
                         </span>
@@ -131,7 +132,7 @@ export default function AdminNotificationsPage() {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      {r.status === 'pending' && (
+                      {!r.sent && (
                         <button
                           onClick={() => markSent(r.id)}
                           className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:border-gray-900 hover:text-gray-900 transition-colors whitespace-nowrap"

@@ -406,11 +406,12 @@ export default function ProductPage() {
     try {
       await supabase.from('notifications_queue').insert({
         user_id: authUser?.id ?? null,
-        product_id: product.id,
         type: 'restock',
-        status: 'pending',
-        meta: {
+        channel: 'telegram',
+        sent: false,
+        payload: {
           phone: notifyPhone,
+          product_id: product.id,
           product_name: product.name,
           product_image: product.images?.[0] ?? null,
           product_price: product.sale_price || product.price,

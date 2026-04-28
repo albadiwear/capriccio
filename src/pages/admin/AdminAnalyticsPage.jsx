@@ -202,18 +202,10 @@ ${wordstatData}
 
 Отвечай на русском, конкретно и по делу. Формат: заголовки и списки.`
 
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          messages: [{ role: 'user', content: prompt }],
-        }),
+      const { data: fnData } = await supabase.functions.invoke('ai-report', {
+        body: { prompt },
       })
-
-      const result = await response.json()
-      const text = result.content?.[0]?.text || 'Не удалось получить отчёт'
+      const text = fnData?.text || 'Не удалось получить отчёт'
       setReport(text)
     } catch (e) {
       setReport('Ошибка при генерации отчёта')

@@ -7,6 +7,7 @@ import ProductFeed from '../components/catalog/ProductFeed'
 import Toast from '../components/ui/Toast'
 import ProductCard from '../components/catalog/ProductCard'
 import { saveRefCode } from '../utils/referral'
+import { trackEvent } from '../lib/analytics'
 
 const CATEGORY_MAP = {
   puhoviki: 'Пуховики',
@@ -401,6 +402,17 @@ export default function CatalogPage() {
   useEffect(() => {
     setActiveCategory(categoryName || 'Все')
   }, [categoryName])
+
+  useEffect(() => {
+    if (!activeCategory || activeCategory === 'Все') return
+    const timer = window.setTimeout(() => {
+      trackEvent('filter', {
+        category: activeCategory,
+        meta: { filter_type: 'category' },
+      })
+    }, 1000)
+    return () => window.clearTimeout(timer)
+  }, [activeCategory])
 
   useEffect(() => {
     localStorage.setItem('capriccio_catalog_view', view)

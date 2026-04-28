@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Search, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { trackEvent } from '../../lib/analytics'
 
 const POPULAR_QUERIES = ['Пуховик', 'Костюм 35+', 'Образ на встречу', 'Трикотаж', 'Скидки']
 const HISTORY_KEY = 'capriccio_search_history'
@@ -63,9 +64,14 @@ export default function SearchOverlay({ open, onClose }) {
       setLoading(false)
     }, 300)
 
+    const trackTimer = window.setTimeout(() => {
+      if (!cancelled) trackEvent('search', { query: normalized })
+    }, 1000)
+
     return () => {
       cancelled = true
       window.clearTimeout(timer)
+      window.clearTimeout(trackTimer)
     }
   }, [normalized, open])
 

@@ -21,6 +21,7 @@ import { useCartStore } from '../store/cartStore'
 import { useWishlistStore } from '../store/wishlistStore'
 import { useAuthStore } from '../store/authStore'
 import Toast from '../components/ui/Toast'
+import { trackEvent } from '../lib/analytics'
 
 const CATEGORY_LABELS = {
   puhoviki: 'Пуховики',
@@ -135,6 +136,7 @@ export default function ProductPage() {
       return
     }
     toggleWishlist({ userId: authUser.id, productId: product.id })
+    trackEvent('wishlist_toggle', { product_id: product.id })
   }
   const [accordionOpen, setAccordionOpen] = useState(false)
   const [videoOpen, setVideoOpen] = useState(false)
@@ -195,6 +197,12 @@ export default function ProductPage() {
       setReviews(revs || [])
 
       if (prod) {
+        trackEvent('product_view', {
+          product_id: prod.id,
+          category: prod.category,
+          meta: { name: prod.name, price: prod.price },
+        })
+
         const firstColor = getUniqueColors(prod.product_variants || [])[0]
         setSelectedColor(firstColor?.color || null)
 
@@ -249,6 +257,10 @@ export default function ProductPage() {
       color: selectedColor,
       size: selectedSize,
       quantity,
+    })
+    trackEvent('add_to_cart', {
+      product_id: product.id,
+      meta: { size: selectedSize, color: selectedColor },
     })
     setAdded(true)
     setTimeout(() => setAdded(false), 3000)

@@ -54,7 +54,7 @@ export default function SearchOverlay({ open, onClose }) {
       const { data } = await supabase
         .from('products')
         .select('id, name, price, sale_price, images, category')
-        .ilike('name', `%${normalized}%`)
+        .or(`name.ilike.%${normalized}%,description.ilike.%${normalized}%,category.ilike.%${normalized}%`)
         .eq('is_active', true)
         .limit(5)
 

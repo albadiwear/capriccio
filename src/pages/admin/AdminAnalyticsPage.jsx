@@ -202,11 +202,16 @@ ${wordstatData}
 
 Отвечай на русском, конкретно и по делу. Формат: заголовки и списки.`
 
-      const { data: fnData } = await supabase.functions.invoke('ai-report', {
-        body: { prompt },
+      const { data: fnData, error: fnError } = await supabase.functions.invoke('ai-report', {
+        body: JSON.stringify({ prompt }),
+        headers: { 'Content-Type': 'application/json' },
       })
-      const text = fnData?.text || 'Не удалось получить отчёт'
-      setReport(text)
+
+      if (fnError) {
+        setReport('Ошибка: ' + fnError.message)
+      } else {
+        setReport(fnData?.text || 'Нет ответа от Claude')
+      }
     } catch (e) {
       setReport('Ошибка при генерации отчёта')
     } finally {

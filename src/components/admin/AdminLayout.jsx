@@ -225,14 +225,24 @@ export default function AdminLayout() {
       </aside>
 
       {/* Mobile sidebar */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
-          <aside className="absolute left-0 top-0 h-full w-64 bg-gray-900 flex flex-col">
-            <SidebarContent onClose={() => setSidebarOpen(false)} />
-          </aside>
-        </div>
-      )}
+      <div
+        className={`fixed inset-0 z-[100] lg:hidden transition-opacity ${
+          sidebarOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
+        }`}
+        aria-hidden={!sidebarOpen}
+      >
+        <div
+          className="absolute inset-0 bg-black/50"
+          onClick={() => setSidebarOpen(false)}
+        />
+        <aside
+          className={`absolute left-0 top-0 h-[100dvh] w-64 bg-gray-900 flex flex-col transform transition-transform duration-200 ${
+            sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+        >
+          <SidebarContent onClose={() => setSidebarOpen(false)} />
+        </aside>
+      </div>
 
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">

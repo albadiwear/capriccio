@@ -36,23 +36,19 @@ const CONTENT_ITEMS = [
   { label: 'Отзывы', to: '/admin/reviews' },
 ]
 
-function SidebarContent({ onClose }) {
+function SidebarContent({ onClose, pendingCount, unreadChatsCount }) {
   const location = useLocation()
   const navigate = useNavigate()
   const signOut = useAuthStore((state) => state.signOut)
   const user = useAuthStore((state) => state.user)
   const isContentRoute = CONTENT_ITEMS.some((item) => location.pathname === item.to)
   const [contentOpen, setContentOpen] = useState(isContentRoute)
-  const [pendingCount, setPendingCount] = useState(0)
-  const [unreadChatsCount, setUnreadChatsCount] = useState(0)
   const adminEmail = import.meta.env.VITE_ADMIN_EMAIL
   const [userRole, setUserRole] = useState(null)
   const effectiveRole = userRole ?? (adminEmail && user?.email === adminEmail ? 'admin' : null)
 
   useEffect(() => {
-    if (isContentRoute) {
-      setContentOpen(true)
-    }
+    if (isContentRoute) setContentOpen(true)
   }, [isContentRoute])
 
   useEffect(() => {
@@ -64,54 +60,6 @@ function SidebarContent({ onClose }) {
       .single()
       .then(({ data }) => setUserRole(data?.role ?? null))
   }, [user?.id])
-
-  useEffect(() => {
-    async function loadPending() {
-      const { count } = await supabase
-        .from('academy_orders')
-        .select('id', { count: 'exact', head: true })
-        .eq('status', 'pending')
-      setPendingCount(count || 0)
-    }
-    loadPending()
-  }, [])
-
-  useEffect(() => {
-    async function loadUnreadChats() {
-      const { data: chatRows } = await supabase
-        .from('stylist_chats')
-        .select('id, last_read_at')
-        .order('updated_at', { ascending: false })
-        .limit(200)
-
-      if (!chatRows || chatRows.length === 0) {
-        setUnreadChatsCount(0)
-        return
-      }
-
-      let total = 0
-      for (const chat of chatRows) {
-        const { count } = await supabase
-          .from('stylist_messages')
-          .select('id', { count: 'exact', head: true })
-          .eq('chat_id', chat.id)
-          .neq('role', 'manager')
-          .gt('created_at', chat.last_read_at || '2000-01-01')
-        total += count || 0
-      }
-      setUnreadChatsCount(total)
-    }
-
-    loadUnreadChats()
-
-    const channel = supabase
-      .channel('admin-sidebar-realtime')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'stylist_messages' }, () => loadUnreadChats())
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'stylist_chats' }, () => loadUnreadChats())
-      .subscribe()
-
-    return () => supabase.removeChannel(channel)
-  }, [])
 
   async function handleLogout() {
     await signOut()
@@ -216,12 +164,66 @@ function SidebarContent({ onClose }) {
 
 export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [pendingCount, setPendingCount] = useState(0)
+  const [unreadChatsCount, setUnreadChatsCount] = useState(0)
+
+  useEffect(() => {
+    async function loadPending() {
+      const { count } = await supabase
+        .from('academy_orders')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'pending')
+      setPendingCount(count || 0)
+    }
+    loadPending()
+  }, [])
+
+  useEffect(() => {
+    async function loadUnreadChats() {
+      try {
+        const { data: chatRows } = await supabase
+          .from('stylist_chats')
+          .select('id, last_read_at')
+          .order('updated_at', { ascending: false })
+          .limit(200)
+
+        if (!chatRows || chatRows.length === 0) {
+          setUnreadChatsCount(0)
+          return
+        }
+
+        let total = 0
+        for (const chat of chatRows) {
+          const { count } = await supabase
+            .from('stylist_messages')
+            .select('id', { count: 'exact', head: true })
+            .eq('chat_id', chat.id)
+            .neq('role', 'manager')
+            .gt('created_at', chat.last_read_at || '2000-01-01')
+          total += count || 0
+        }
+        setUnreadChatsCount(total)
+      } catch {}
+    }
+
+    loadUnreadChats()
+
+    try {
+      const channel = supabase
+        .channel('admin-sidebar-realtime')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'stylist_messages' }, () => loadUnreadChats())
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'stylist_chats' }, () => loadUnreadChats())
+        .subscribe()
+
+      return () => { supabase.removeChannel(channel) }
+    } catch {}
+  }, [])
 
   return (
     <div className="flex h-[100dvh] overflow-hidden bg-gray-50">
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex w-64 flex-shrink-0 flex-col bg-gray-900">
-        <SidebarContent />
+        <SidebarContent pendingCount={pendingCount} unreadChatsCount={unreadChatsCount} />
       </aside>
 
       {/* Mobile sidebar */}
@@ -240,7 +242,7 @@ export default function AdminLayout() {
             sidebarOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
-          <SidebarContent onClose={() => setSidebarOpen(false)} />
+          <SidebarContent onClose={() => setSidebarOpen(false)} pendingCount={pendingCount} unreadChatsCount={unreadChatsCount} />
         </aside>
       </div>
 

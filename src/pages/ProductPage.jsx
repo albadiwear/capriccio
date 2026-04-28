@@ -521,7 +521,7 @@ export default function ProductPage() {
   ].filter((item, idx, arr) => arr.findIndex((x) => x.id === item.id) === idx)
 
   return (
-    <div className="min-h-screen bg-white pb-24">
+    <div className="min-h-screen bg-white pb-24 overflow-x-hidden">
       <div className="max-w-7xl mx-auto md:px-6 md:py-8">
         <nav className="hidden md:flex items-center gap-2 text-sm text-gray-500 mb-8 flex-wrap">
           <Link to="/" className="hover:text-gray-900 transition-colors">Главная</Link>
@@ -542,15 +542,15 @@ export default function ProductPage() {
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-12">
           <div>
             {/* Mobile gallery: swipe + double-tap zoom */}
-            <div className="md:hidden">
-              <div
-                ref={imgContainerRef}
-                className="relative w-full overflow-hidden select-none"
-                style={{ height: '75vh', touchAction: zoomed ? 'none' : 'pan-y' }}
-                onTouchStart={handleImgTouchStart}
-                onTouchMove={handleImgTouchMove}
-                onTouchEnd={handleImgTouchEnd}
-              >
+	            <div className="md:hidden">
+	              <div
+	                ref={imgContainerRef}
+	                className="relative w-full overflow-hidden select-none"
+	                style={{ height: '65vh', touchAction: zoomed ? 'none' : 'pan-y' }}
+	                onTouchStart={handleImgTouchStart}
+	                onTouchMove={handleImgTouchMove}
+	                onTouchEnd={handleImgTouchEnd}
+	              >
                 <img
                   src={images[activeImage]}
                   alt={product.name}
@@ -946,27 +946,29 @@ export default function ProductPage() {
           </div>
         </div>
 
-        {allRelated.length > 0 && (
-          <div className="mt-8 pt-6 border-t border-[#f0ede8]">
-            <h3 className="text-base font-semibold text-[#1a1a18] mb-4">Вам может понравиться</h3>
-            <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 -mx-4 px-4">
-              {allRelated.map((item) => (
-                <Link key={item.id} to={`/product/${item.id}`} className="flex-shrink-0 w-[150px]">
-                  <div className="w-[150px] h-[200px] rounded-xl overflow-hidden bg-[#f0ede8] mb-2">
-                    <img src={item.images?.[0]} alt={item.name} className="w-full h-full object-cover" />
-                  </div>
-                  <p className="text-xs text-[#1a1a18] leading-tight mb-1 line-clamp-2">{item.name}</p>
-                  <p className="text-xs font-medium text-[#1a1a18]">{Number(item.price).toLocaleString('ru-RU')} ₸</p>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <section className="mt-8 pt-6 border-t border-[#f0ede8]">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <h2 className="text-base font-semibold text-[#1a1a18]">Отзывы</h2>
+		        {allRelated.length > 0 && (
+		          <div className="mt-8 pt-6 border-t border-[#f0ede8]">
+              <div className="px-4 md:px-0">
+		              <h3 className="text-base font-semibold text-[#1a1a18] mb-4">Вам может понравиться</h3>
+		              <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 -mx-4 px-4">
+		                {allRelated.map((item) => (
+		                  <Link key={item.id} to={`/product/${item.id}`} className="flex-shrink-0 w-[150px]">
+		                    <div className="w-[150px] h-[200px] rounded-xl overflow-hidden bg-[#f0ede8] mb-2">
+		                      <img src={item.images?.[0]} alt={item.name} className="w-full h-full object-cover" />
+		                    </div>
+	                    <p className="text-xs text-[#1a1a18] leading-tight mb-1 line-clamp-2">{item.name}</p>
+	                    <p className="text-xs font-medium text-[#1a1a18]">{Number(item.price).toLocaleString('ru-RU')} ₸</p>
+	                  </Link>
+	                ))}
+	              </div>
+              </div>
+	          </div>
+	        )}
+	
+	        <section className="mt-8 pt-6 border-t border-[#f0ede8] px-4 md:px-0">
+	          <div className="flex items-center justify-between mb-4">
+	            <div className="flex items-center gap-3">
+	              <h2 className="text-base font-semibold text-[#1a1a18]">Отзывы</h2>
               {reviewCount > 0 && (
                 <div className="flex items-center gap-1">
                   {[1,2,3,4,5].map((n) => (

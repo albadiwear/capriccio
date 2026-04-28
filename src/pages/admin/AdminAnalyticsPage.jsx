@@ -198,20 +198,30 @@ ${wordstatData}
 2. Какие конкретные позиции добавить
 3. На какие размеры сделать акцент
 4. Какие тренды видны по Wordstat
-5. Общий вывод и приоритеты закупа
+      5. Общий вывод и приоритеты закупа
 
-Отвечай на русском, конкретно и по делу. Формат: заголовки и списки.`
+	Отвечай на русском, конкретно и по делу. Формат: заголовки и списки.`
 
-      const { data: fnData, error: fnError } = await supabase.functions.invoke('ai-report', {
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+      const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/ai-report`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          apikey: SUPABASE_ANON_KEY,
+        },
         body: JSON.stringify({ prompt }),
-        headers: { 'Content-Type': 'application/json' },
       })
 
-      if (fnError) {
-        setReport('Ошибка: ' + fnError.message)
-      } else {
-        setReport(fnData?.text || 'Нет ответа от Claude')
+      if (!res.ok) {
+        setReport('Ошибка: ' + res.status)
+        return
       }
+
+      const result = await res.json()
+      setReport(result?.text || 'Нет ответа от Claude')
     } catch (e) {
       setReport('Ошибка при генерации отчёта')
     } finally {

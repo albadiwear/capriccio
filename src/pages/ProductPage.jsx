@@ -88,7 +88,7 @@ function SkeletonProduct() {
 
 function DescriptionBlock({ text }) {
   const [expanded, setExpanded] = useState(false)
-  const isLong = text.length > 200
+  const isLong = text.length > 100
 
   return (
     <div>
@@ -522,8 +522,8 @@ export default function ProductPage() {
 
   return (
     <div className="min-h-screen bg-white pb-24">
-      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6">
-        <nav className="flex items-center gap-2 text-sm text-gray-500 mb-8 flex-wrap">
+      <div className="max-w-7xl mx-auto md:px-6 md:py-8">
+        <nav className="hidden md:flex items-center gap-2 text-sm text-gray-500 mb-8 flex-wrap">
           <Link to="/" className="hover:text-gray-900 transition-colors">Главная</Link>
           <span>/</span>
           <Link to="/catalog" className="hover:text-gray-900 transition-colors">Каталог</Link>
@@ -545,7 +545,7 @@ export default function ProductPage() {
             <div className="md:hidden">
               <div
                 ref={imgContainerRef}
-                className="relative overflow-hidden rounded-2xl aspect-[3/4] select-none"
+                className="relative overflow-hidden min-h-[85vh] select-none"
                 style={{ touchAction: zoomed ? 'none' : 'pan-y' }}
                 onTouchStart={handleImgTouchStart}
                 onTouchMove={handleImgTouchMove}
@@ -627,7 +627,7 @@ export default function ProductPage() {
               </div>
               {/* Mobile thumbnails */}
               {images.length > 1 && (
-                <div className="flex gap-2 mt-2 overflow-x-auto pb-1 scrollbar-hide">
+                <div className="flex gap-2 mt-2 overflow-x-auto pb-1 scrollbar-hide px-4">
                   {images.map((img, i) => (
                     <button
                       key={i}
@@ -679,12 +679,12 @@ export default function ProductPage() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-3 md:gap-5 px-4 md:px-0">
             <div>
               {product.brand && (
                 <p className="text-sm text-gray-500 uppercase tracking-widest mb-1">{product.brand}</p>
               )}
-              <h1 className="text-2xl font-bold leading-tight text-gray-900 md:text-3xl">{product.name}</h1>
+              <h1 className="text-xl font-bold leading-tight text-gray-900 md:text-3xl">{product.name}</h1>
               <div className="mt-2 flex items-center gap-3 flex-wrap">
                 <button
                   type="button"
@@ -712,10 +712,10 @@ export default function ProductPage() {
             <div className="flex items-baseline gap-3">
               {product.sale_price ? (
                 <>
-                  <span className="text-3xl font-bold text-red-600">
+                  <span className="text-2xl md:text-3xl font-bold text-red-600">
                     {product.sale_price.toLocaleString('ru-RU')} ₸
                   </span>
-                  <span className="text-xl text-gray-400 line-through">
+                  <span className="text-lg md:text-xl text-gray-400 line-through">
                     {product.price?.toLocaleString('ru-RU')} ₸
                   </span>
                   <span className="text-sm bg-red-50 text-red-600 px-2 py-0.5 rounded font-medium">
@@ -723,7 +723,7 @@ export default function ProductPage() {
                   </span>
                 </>
               ) : (
-                <span className="text-3xl font-bold text-gray-900">
+                <span className="text-2xl md:text-3xl font-bold text-gray-900">
                   {product.price?.toLocaleString('ru-RU')} ₸
                 </span>
               )}

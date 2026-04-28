@@ -545,8 +545,8 @@ export default function ProductPage() {
             <div className="md:hidden">
               <div
                 ref={imgContainerRef}
-                className="relative overflow-hidden min-h-[85vh] select-none"
-                style={{ touchAction: zoomed ? 'none' : 'pan-y' }}
+                className="relative w-full overflow-hidden select-none"
+                style={{ height: '75vh', touchAction: zoomed ? 'none' : 'pan-y' }}
                 onTouchStart={handleImgTouchStart}
                 onTouchMove={handleImgTouchMove}
                 onTouchEnd={handleImgTouchEnd}
@@ -554,8 +554,12 @@ export default function ProductPage() {
                 <img
                   src={images[activeImage]}
                   alt={product.name}
-                  className="w-full h-full object-cover"
+                  draggable={false}
                   style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    objectPosition: 'top',
                     transform: `translate(${panX}px, ${panY}px) scale(${zoomed ? 2 : 1})`,
                     transformOrigin: `${zoomOriginX}% ${zoomOriginY}%`,
                     transition: isPanning ? 'none' : 'transform 0.25s ease',
@@ -563,7 +567,6 @@ export default function ProductPage() {
                     WebkitUserSelect: 'none',
                     pointerEvents: 'none',
                   }}
-                  draggable={false}
                 />
                 {/* Back button — top left */}
                 <button
@@ -627,7 +630,7 @@ export default function ProductPage() {
               </div>
               {/* Mobile thumbnails */}
               {images.length > 1 && (
-                <div className="flex gap-2 mt-2 overflow-x-auto pb-1 scrollbar-hide px-4">
+                <div className="flex gap-2 mt-3 px-4 overflow-x-auto pb-1 scrollbar-hide">
                   {images.map((img, i) => (
                     <button
                       key={i}
@@ -679,13 +682,13 @@ export default function ProductPage() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 md:gap-5 px-4 md:px-0">
+          <div className="flex flex-col gap-3 md:gap-5 px-4 md:px-0 mt-4 md:mt-0">
             <div>
               {product.brand && (
-                <p className="text-sm text-gray-500 uppercase tracking-widest mb-1">{product.brand}</p>
+                <p className="text-xs md:text-sm text-gray-500 uppercase tracking-widest mb-1">{product.brand}</p>
               )}
-              <h1 className="text-xl font-bold leading-tight text-gray-900 md:text-3xl">{product.name}</h1>
-              <div className="mt-2 flex items-center gap-3 flex-wrap">
+              <h1 className="text-lg font-bold leading-tight text-gray-900 md:text-3xl">{product.name}</h1>
+              <div className="mt-2 flex items-center gap-2 md:gap-3 flex-wrap">
                 <button
                   type="button"
                   onClick={() => setReviewModalOpen(true)}
@@ -869,7 +872,7 @@ export default function ProductPage() {
             </div>
 
             {/* WhatsApp + Heart + Share в одну строку */}
-            <div className="flex gap-2">
+            <div className="flex gap-2 mt-2 md:mt-0">
               <button
                 onClick={handleWhatsApp}
                 className="flex flex-1 h-11 items-center justify-center gap-2 rounded text-sm font-medium bg-[#25D366] hover:bg-[#20bd5a] text-white transition-colors"

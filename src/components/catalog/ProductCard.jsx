@@ -101,6 +101,14 @@ export default function ProductCard({ product, wished, onToggleWishlist, onAdded
           <p className="text-[10px] text-[#aaa] uppercase tracking-wide mb-0.5 truncate">
             {product.category}
           </p>
+          <div className="hidden md:flex items-center gap-1 mb-1">
+            {[1,2,3,4,5].map((n) => (
+              <svg key={n} className="w-2.5 h-2.5 fill-amber-400 text-amber-400" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+              </svg>
+            ))}
+            <span className="text-[9px] text-gray-400 ml-0.5">{product.reviews_count ?? 0}</span>
+          </div>
           <p className="text-xs text-[#1a1a18] leading-tight mb-1.5 line-clamp-2 min-h-[2rem]">
             {product.name}
           </p>
@@ -111,27 +119,29 @@ export default function ProductCard({ product, wished, onToggleWishlist, onAdded
                   {Number(oldPrice).toLocaleString('ru-RU')} ₸
                 </span>
               )}
-              <span className="text-sm font-medium text-[#1a1a18]">
+              <span className="text-sm font-medium text-[#1a1a18] md:text-base md:font-bold">
                 {Number(price).toLocaleString('ru-RU')} ₸
               </span>
             </div>
           </div>
 
-          <div
-            className={`
-              overflow-hidden transition-[max-height,opacity] duration-200
-              md:max-h-0 md:opacity-0 md:group-hover:max-h-20 md:group-hover:opacity-100
-              ${tapped ? 'max-h-20 opacity-100' : 'max-h-0 opacity-0 md:max-h-0 md:opacity-0'}
-            `}
-          >
+          <div className="hidden md:block mt-1">
             <button
               type="button"
               onClick={handleAdd}
-              className={`
-                w-full bg-[#1a1a18] text-white rounded-lg py-2.5 text-xs font-medium
-                flex items-center justify-center gap-1.5
-                ${tapped ? 'pointer-events-auto' : 'pointer-events-none md:pointer-events-auto'}
-              `}
+              className="w-full bg-[#1a1a18] text-white rounded-lg py-2.5 text-xs font-medium flex items-center justify-center gap-1.5 hover:bg-gray-800 transition-colors"
+              aria-label="В корзину"
+            >
+              <ShoppingBag size={13} className="text-white" />
+              В корзину
+            </button>
+          </div>
+
+          <div className={`md:hidden overflow-hidden transition-[max-height,opacity] duration-200 ${tapped ? 'max-h-20 opacity-100' : 'max-h-0 opacity-0'}`}>
+            <button
+              type="button"
+              onClick={handleAdd}
+              className="w-full bg-[#1a1a18] text-white rounded-lg py-2.5 text-xs font-medium flex items-center justify-center gap-1.5 pointer-events-auto"
               aria-label="В корзину"
             >
               <ShoppingBag size={13} className="text-white" />

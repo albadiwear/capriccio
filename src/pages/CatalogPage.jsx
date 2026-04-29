@@ -828,7 +828,7 @@ export default function CatalogPage() {
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-2 gap-[2px] px-0">
+            <div className="grid grid-cols-2 gap-[2px] px-0 md:grid-cols-3 md:gap-4">
               {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
             </div>
           ) : filtered.length === 0 ? (
@@ -845,7 +845,7 @@ export default function CatalogPage() {
               onToggleWishlist={handleToggleWishlist}
             />
           ) : (
-            <div className="grid grid-cols-2 gap-[2px] px-0">
+            <div className="grid grid-cols-2 gap-[2px] px-0 md:grid-cols-3 md:gap-4 md:px-0">
               {filtered.map((p, idx) => (
                 <ProductCard
                   key={p.id}

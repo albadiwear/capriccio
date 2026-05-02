@@ -274,6 +274,7 @@ export default function CatalogPage() {
   const [activeCategory, setActiveCategory] = useState(categoryName || 'Все')
   const [desktopDropdown, setDesktopDropdown] = useState(null) // 'price' | 'size' | 'season' | null
   const desktopFiltersRef = useRef(null)
+  const activeCategoryRef = useRef(activeCategory)
   const [drawerFilters, setDrawerFilters] = useState(DEFAULT_FILTERS)
   const [added, setAdded] = useState(false)
 
@@ -294,13 +295,14 @@ export default function CatalogPage() {
           .select('*, product_variants(*)')
           .eq('is_active', true)
 
-        if (activeCategory !== 'Все') {
-          if (activeCategory === 'Скидки') {
+        const cat = activeCategoryRef.current
+        if (cat !== 'Все') {
+          if (cat === 'Скидки') {
             query = query.not('sale_price', 'is', null)
-          } else if (activeCategory === 'Новинки') {
+          } else if (cat === 'Новинки') {
             query = query.eq('is_new', true)
           } else {
-            query = query.ilike('category', `%${activeCategory}%`)
+            query = query.ilike('category', `%${cat}%`)
           }
         }
 
@@ -402,6 +404,10 @@ export default function CatalogPage() {
   useEffect(() => {
     setActiveCategory(categoryName || 'Все')
   }, [categoryName])
+
+  useEffect(() => {
+    activeCategoryRef.current = activeCategory
+  }, [activeCategory])
 
   useEffect(() => {
     if (!activeCategory || activeCategory === 'Все') return

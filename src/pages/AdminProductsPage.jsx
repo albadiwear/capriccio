@@ -92,7 +92,11 @@ export default function AdminProductsPage() {
       .order(sortField, { ascending: sortAsc })
       .range(from, to)
 
-    if (search) query = query.ilike('name', `%${search}%`)
+    if (search) {
+      query = query.or(
+        `name.ilike.%${search}%,billz_id.ilike.%${search}%`
+      )
+    }
     if (filterCat) query = query.ilike('category', filterCat)
     if (statusFilter === 'active') query = query.eq('is_active', true)
     if (statusFilter === 'hidden') query = query.eq('is_active', false)
@@ -535,7 +539,7 @@ export default function AdminProductsPage() {
       <div className="flex flex-col sm:flex-row gap-3 mb-5">
         <input
           type="text"
-          placeholder="Поиск по названию..."
+          placeholder="Поиск по названию или артикулу..."
           value={search}
           onChange={(e) => { setSearch(e.target.value); setSelected(new Set()); setPage(0) }}
           className="flex-1 border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-gray-900"
@@ -625,6 +629,11 @@ export default function AdminProductsPage() {
                   <td className="px-4 py-3">
                     <p className="font-medium text-gray-900 line-clamp-1">{p.name}</p>
                     {p.brand && <p className="text-xs text-gray-400">{p.brand}</p>}
+                    {p.billz_id && (
+                      <p className="text-xs text-gray-400">
+                        Арт: {p.billz_id}
+                      </p>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-gray-600">
                     {CATEGORIES.find(c => c.value === p.category)?.label || p.category}

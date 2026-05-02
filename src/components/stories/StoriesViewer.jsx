@@ -72,7 +72,13 @@ export default function StoriesViewer({ stories, initialIndex, onClose }) {
               <button
                 onClick={() => {
                   onClose()
-                  navigate(story.link_url)
+                  if (!story.link_url) return
+                  try {
+                    const url = new URL(story.link_url)
+                    navigate(url.pathname)
+                  } catch {
+                    navigate(story.link_url)
+                  }
                 }}
                 className="w-full h-10 rounded-xl bg-white text-[#1a1a18] text-sm font-medium"
               >

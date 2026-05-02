@@ -312,7 +312,6 @@ export default function CatalogPage() {
 
         // Sorting: always newest first on mobile flow
         query = query.order('created_at', { ascending: false })
-        query = query.range(0, PAGE_SIZE - 1)
 
         const { data, error } = await query
         if (error) throw error

@@ -300,7 +300,7 @@ export default function CatalogPage() {
           } else if (activeCategory === 'Новинки') {
             query = query.eq('is_new', true)
           } else {
-            query = query.ilike('category', activeCategory)
+            query = query.ilike('category', `%${activeCategory}%`)
           }
         }
 
@@ -346,7 +346,7 @@ export default function CatalogPage() {
       } else if (activeCategory === 'Новинки') {
         query = query.eq('is_new', true)
       } else {
-        query = query.ilike('category', activeCategory)
+        query = query.ilike('category', `%${activeCategory}%`)
       }
     }
 

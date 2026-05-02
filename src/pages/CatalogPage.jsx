@@ -454,7 +454,7 @@ export default function CatalogPage() {
           if (!p.sale_price) return false
         } else if (activeCategory === 'Новинки') {
           if (!p.is_new) return false
-        } else if (p.category?.toLowerCase() !== activeCategory.toLowerCase()) {
+        } else if (!p.category?.toLowerCase().includes(activeCategory.toLowerCase())) {
           return false
         }
       } else if (categoryName && p.category?.toLowerCase() !== categoryName.toLowerCase()) {

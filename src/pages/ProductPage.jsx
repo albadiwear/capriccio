@@ -230,6 +230,8 @@ export default function ProductPage() {
   }, [id])
 
   function getUniqueColors(variants) {
+    const hasColors = variants.some(v => v.color && v.color.trim())
+    if (!hasColors) return []
     const seen = new Set()
     return variants.filter((v) => {
       if (!v.color || seen.has(v.color)) return false
@@ -239,6 +241,7 @@ export default function ProductPage() {
   }
 
   function getSizesForColor(variants, color) {
+    if (!color) return variants
     return variants.filter((v) => v.color === color)
   }
 
@@ -508,7 +511,10 @@ export default function ProductPage() {
 
   const variants = product.product_variants || []
   const uniqueColors = getUniqueColors(variants)
-  const sizesForColor = selectedColor ? getSizesForColor(variants, selectedColor) : []
+  const hasColors = uniqueColors.length > 0
+  const sizesForColor = hasColors
+    ? (selectedColor ? getSizesForColor(variants, selectedColor) : [])
+    : variants
   const categoryLabel = CATEGORY_LABELS[product.category] || product.category
   const reviewCount = reviews.length
   const productStock = product.stock ?? variants.reduce((sum, v) => sum + (v.stock ?? 0), 0)

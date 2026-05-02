@@ -8,6 +8,7 @@ import Toast from '../components/ui/Toast'
 import ProductCard from '../components/catalog/ProductCard'
 import { saveRefCode } from '../utils/referral'
 import { trackEvent } from '../lib/analytics'
+import StoriesRow from '../components/stories/StoriesRow'
 
 const CATEGORY_MAP = {
   puhoviki: 'Пуховики',
@@ -560,6 +561,7 @@ export default function CatalogPage() {
   return (
     <div className="min-h-screen bg-white">
       <div className="mx-auto max-w-7xl px-2 py-5 sm:px-6">
+        <StoriesRow />
         <div className="scrollbar-hide flex gap-2 overflow-x-auto px-2 py-1.5 md:px-8 md:pb-3 md:pt-5">
           {['Все', 'Пуховики', 'Костюмы', 'Платья', 'Трикотаж', 'Обувь', 'Шапки', 'Сумки', 'Аксессуары', 'Скидки', 'Новинки'].map((catLabel) => (
             <button

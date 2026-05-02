@@ -86,17 +86,42 @@ export default function AdminProductsPage() {
     const from = currentPage * PAGE_SIZE
     const to = from + PAGE_SIZE - 1
 
+    if (search) {
+      const [byName, byArticle] = await Promise.all([
+        supabase
+          .from('products')
+          .select('id, name, brand, billz_id, category, price, sale_price, is_active, images, product_variants(stock)')
+          .ilike('name', `%${search}%`)
+          .order(sortField, { ascending: sortAsc })
+          .range(0, 99),
+        supabase
+          .from('products')
+          .select('id, name, brand, billz_id, category, price, sale_price, is_active, images, product_variants(stock)')
+          .ilike('billz_id', `%${search}%`)
+          .order(sortField, { ascending: sortAsc })
+          .range(0, 99),
+      ])
+
+      const combined = [
+        ...(byName.data || []),
+        ...(byArticle.data || []),
+      ]
+      const unique = combined.filter(
+        (p, i, arr) => arr.findIndex(x => x.id === p.id) === i
+      )
+
+      setProducts(unique)
+      setTotalCount(unique.length)
+      setLoading(false)
+      return
+    }
+
     let query = supabase
       .from('products')
       .select('id, name, brand, billz_id, category, price, sale_price, is_active, images, product_variants(stock)', { count: 'exact' })
       .order(sortField, { ascending: sortAsc })
       .range(from, to)
 
-    if (search) {
-      query = query.or(
-        `name.ilike.%${search}%,billz_id.ilike.%${search}%`
-      )
-    }
     if (filterCat) query = query.ilike('category', filterCat)
     if (statusFilter === 'active') query = query.eq('is_active', true)
     if (statusFilter === 'hidden') query = query.eq('is_active', false)

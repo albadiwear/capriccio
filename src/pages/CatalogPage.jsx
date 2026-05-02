@@ -285,42 +285,52 @@ export default function CatalogPage() {
     if (ref) saveRefCode(ref)
   }, [])
 
-  async function loadProducts(category) {
-    setLoading(true)
-    setHasMore(false)
-    try {
-      let query = supabase
-        .from('products')
-        .select('*, product_variants(*)')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false })
-
-      if (category && category !== 'Все') {
-        if (category === 'Скидки') {
-          query = query.not('sale_price', 'is', null)
-        } else if (category === 'Новинки') {
-          query = query.eq('is_new', true)
-        } else {
-          query = query.eq('category', category)
-        }
-      }
-
-      if (filters.onSale) query = query.not('sale_price', 'is', null)
-      if (filters.priceMin) query = query.gte('price', filters.priceMin)
-      if (filters.priceMax < MAX_PRICE) query = query.lte('price', filters.priceMax)
-
-      const { data, error } = await query
-      if (error) throw error
-      setProducts(data || [])
-    } catch (e) {
-      setProducts([])
-    } finally {
-      setLoading(false)
-    }
-  }
-
   useEffect(() => {
-    loadProducts(activeCategory)
+    const loadProducts = async () => {
+      setLoading(true)
+      setHasMore(false)
+      try {
+        let query = supabase
+          .from('products')
+          .select('*, product_variants(*)')
+          .eq('is_active', true)
+
+        const cat = activeCategoryRef.current
+        if (cat !== 'Все') {
+          if (cat === 'Скидки') {
+            query = query.not('sale_price', 'is', null)
+          } else if (cat === 'Новинки') {
+            query = query.eq('is_new', true)
+          } else {
+            query = query.ilike('category', `%${cat}%`)
+          }
+        }
+
+        if (filters.onSale) query = query.not('sale_price', 'is', null)
+        if (filters.priceMin) query = query.gte('price', filters.priceMin)
+        if (filters.priceMax) query = query.lte('price', filters.priceMax)
+        if (filters.seasons?.length > 0) query = query.in('season', filters.seasons)
+        if (filters.sizes?.length > 0) query = query.eq('product_variants.size', filters.sizes[0])
+
+        // Sorting: always newest first on mobile flow
+        query = query.order('created_at', { ascending: false })
+
+        const { data, error } = await query
+        if (error) throw error
+
+        setProducts(data || [])
+        setHasMore((data || []).length === PAGE_SIZE)
+      } catch (e) {
+        console.error('CatalogPage.loadProducts error:', e)
+        setProducts([])
+        setHasMore(false)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    const timer = window.setTimeout(loadProducts, 300)
+    return () => window.clearTimeout(timer)
   }, [activeCategory, filters])
 
   async function loadMore() {
@@ -562,10 +572,7 @@ export default function CatalogPage() {
             <button
               key={catLabel}
               type="button"
-              onClick={() => {
-                setActiveCategory(catLabel)
-                loadProducts(catLabel)
-              }}
+              onClick={() => setActiveCategory(catLabel)}
               className={`flex-shrink-0 rounded-full border px-3 py-2 text-sm transition-colors md:px-5 md:py-2 md:text-sm ${
                 activeCategory === catLabel
                   ? 'border-[#1a1a18] bg-[#1a1a18] text-white'

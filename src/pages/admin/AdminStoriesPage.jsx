@@ -48,6 +48,7 @@ export default function AdminStoriesPage() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   async function load() {
     setLoading(true)
@@ -64,6 +65,7 @@ export default function AdminStoriesPage() {
   function openCreate() {
     setEditing(null)
     setForm(EMPTY_FORM)
+    setError('')
     setModalOpen(true)
   }
 
@@ -77,6 +79,7 @@ export default function AdminStoriesPage() {
       is_active: story.is_active ?? true,
       image_url: story.image_url || '',
     })
+    setError('')
     setModalOpen(true)
   }
 
@@ -85,8 +88,10 @@ export default function AdminStoriesPage() {
     if (!file) return
     setUploading(true)
     const path = `${Date.now()}-${file.name}`
-    const { error } = await supabase.storage.from('stories').upload(path, file)
-    if (!error) {
+    const { error: uploadError } = await supabase.storage.from('stories').upload(path, file)
+    if (uploadError) {
+      setError('Ошибка загрузки фото. Попробуйте ещё раз.')
+    } else {
       const { data: { publicUrl } } = supabase.storage.from('stories').getPublicUrl(path)
       setForm((f) => ({ ...f, image_url: publicUrl }))
     }
@@ -95,7 +100,10 @@ export default function AdminStoriesPage() {
   }
 
   async function handleSave() {
-    if (!form.image_url) return alert('Загрузите фото')
+    if (!form.image_url) {
+      setError('Загрузите фото')
+      return
+    }
     setSaving(true)
     const payload = {
       title: form.title,
@@ -312,6 +320,9 @@ export default function AdminStoriesPage() {
               <span className="text-sm text-gray-700">Активна</span>
             </label>
 
+            {error && (
+              <p className="text-sm text-red-500 mb-2">{error}</p>
+            )}
             <div className="flex justify-end gap-3 pt-2">
               <button
                 onClick={() => setModalOpen(false)}

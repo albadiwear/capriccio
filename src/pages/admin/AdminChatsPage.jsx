@@ -229,6 +229,21 @@ export default function AdminChatsPage() {
       console.error('INSERT ERROR', error)
       return
     }
+    if (selectedChat.source === 'telegram') {
+      const imageUrl = Array.isArray(product.images) ? product.images[0] : product.images
+      const productUrl = `https://capriccio.vercel.app/product/${product.id}`
+      const caption = `${product.name}\n💰 ${Number(product.price).toLocaleString('ru-RU')} ₸\n🔗 ${productUrl}`
+      
+      await fetch('/api/telegram-send-photo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: selectedChat.id,
+          photo: imageUrl,
+          caption,
+        }),
+      })
+    }
 
     const { data: inserted } = await supabase
       .from('stylist_messages')

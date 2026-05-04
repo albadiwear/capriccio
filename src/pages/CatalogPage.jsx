@@ -307,8 +307,8 @@ export default function CatalogPage() {
         }
 
         if (filters.onSale) query = query.not('sale_price', 'is', null)
-        if (filters.priceMin) query = query.gte('price', filters.priceMin)
-        if (filters.priceMax) query = query.lte('price', filters.priceMax)
+        if (filters.priceMin > 0) query = query.gte('price', filters.priceMin)
+        if (filters.priceMax < MAX_PRICE) query = query.lte('price', filters.priceMax)
         if (filters.seasons?.length > 0) query = query.in('season', filters.seasons)
         if (filters.sizes?.length > 0) query = query.eq('product_variants.size', filters.sizes[0])
 

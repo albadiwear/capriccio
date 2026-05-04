@@ -3,6 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { Send, Bot, User, Search, MessageCircle, PanelRightClose, PanelRightOpen, Paperclip, X, Zap, ShoppingBag, ExternalLink } from 'lucide-react'
 
+const TELEGRAM_ICON = () => (
+  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-[#229ED9]">
+    <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L8.32 13.617l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.828.942z"/>
+  </svg>
+)
+
 export default function AdminChatsPage() {
   const navigate = useNavigate()
   const [chats, setChats] = useState([])
@@ -165,6 +171,13 @@ export default function AdminChatsPage() {
       content: input.trim() || '',
       image_url,
     })
+    if (selectedChat.source === 'telegram' && input.trim()) {
+      await fetch('/api/telegram-send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: selectedChat.id, text: input.trim() }),
+      })
+    }
     await supabase.from('stylist_chats').update({ updated_at: new Date().toISOString() }).eq('id', selectedChat.id)
     setInput('')
     setSending(false)
@@ -297,6 +310,11 @@ export default function AdminChatsPage() {
                   <div className="w-9 h-9 rounded-full bg-pink-100 flex items-center justify-center text-sm font-medium text-pink-700">
                     {(chat.users?.full_name || chat.users?.email || '?').charAt(0).toUpperCase()}
                   </div>
+                  {chat.source === 'telegram' && (
+                    <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-white flex items-center justify-center">
+                      <TELEGRAM_ICON />
+                    </span>
+                  )}
                   {chat.handoff_requested && (
                     <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-red-500 border-2 border-white animate-pulse" />
                   )}
@@ -307,7 +325,7 @@ export default function AdminChatsPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium text-gray-900 truncate">
-                      {chat.users?.full_name || chat.users?.email || 'Аноним'}
+                      {chat.users?.full_name || chat.users?.email || chat.title || 'Аноним'}
                     </p>
                     <span className="text-xs text-gray-400 flex-shrink-0 ml-1">
                       {new Date(chat.updated_at || chat.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
@@ -336,9 +354,14 @@ export default function AdminChatsPage() {
               </div>
               <div>
                 <p className="font-medium text-gray-900 text-sm">
-                  {selectedChat.users?.full_name || selectedChat.users?.email || 'Аноним'}
+                  {selectedChat.users?.full_name || selectedChat.users?.email || selectedChat.title || 'Аноним'}
                 </p>
                 <p className="text-xs text-gray-500">{selectedChat.users?.phone || selectedChat.title}</p>
+                {selectedChat.source === 'telegram' && (
+                  <span className="flex items-center gap-1 text-xs text-[#229ED9]">
+                    <TELEGRAM_ICON /> Telegram
+                  </span>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-2">

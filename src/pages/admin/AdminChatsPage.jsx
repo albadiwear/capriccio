@@ -198,22 +198,26 @@ export default function AdminChatsPage() {
 
   async function searchProducts(query) {
     setProductSearch(query)
+    if (!query.trim()) {
+      setProductResults([])
+      return
+    }
     const { data } = await supabase
       .from('products')
-      .select('id, name, price, images')
+      .select('id, name, price, images, category')
       .eq('is_active', true)
+      .ilike('name', `%${query}%`)
       .order('created_at', { ascending: false })
-      .limit(30)
-      .ilike('name', query.trim() ? `%${query}%` : '%')
+      .limit(20)
     setProductResults(data || [])
   }
 
   async function sendProduct(product) {
-    if (!selectedChat) {
-      return
-    }
+    if (!selectedChat) return
     const imageUrl = Array.isArray(product.images) ? product.images[0] : product.images
-    const payload = {
+    const productUrl = `https://capriccio.vercel.app/product/${product.id}`
+
+    await supabase.from('stylist_messages').insert({
       chat_id: selectedChat.id,
       role: 'manager',
       content: '',
@@ -222,18 +226,15 @@ export default function AdminChatsPage() {
         name: product.name,
         price: product.price,
         image: imageUrl,
-      }
-    }
-    const { data, error } = await supabase.from('stylist_messages').insert(payload)
-    if (error) {
-      console.error('INSERT ERROR', error)
-      return
-    }
+      },
+    })
+
+    await supabase.from('stylist_chats')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', selectedChat.id)
+
     if (selectedChat.source === 'telegram') {
-      const imageUrl = Array.isArray(product.images) ? product.images[0] : product.images
-      const productUrl = `https://capriccio.vercel.app/product/${product.id}`
       const caption = `${product.name}\n💰 ${Number(product.price).toLocaleString('ru-RU')} ₸\n🔗 ${productUrl}`
-      
       await fetch('/api/telegram-send-photo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -245,19 +246,6 @@ export default function AdminChatsPage() {
       })
     }
 
-    const { data: inserted } = await supabase
-      .from('stylist_messages')
-      .select('*')
-      .eq('chat_id', selectedChat.id)
-      .eq('role', 'manager')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single()
-
-    if (inserted) {
-      setMessages(prev => [...prev, inserted])
-    }
-    await supabase.from('stylist_chats').update({ updated_at: new Date().toISOString() }).eq('id', selectedChat.id)
     setShowProductPicker(false)
     setProductSearch('')
     setProductResults([])
@@ -638,8 +626,9 @@ export default function AdminChatsPage() {
                   <button
                     key={cat}
                     onClick={() => {
-                      setProductSearch(cat === 'Все' ? '' : cat)
-                      searchProducts(cat === 'Все' ? '' : cat)
+                      const q = cat === 'Все' ? '' : cat
+                      setProductSearch(q)
+                      searchProducts(q)
                     }}
                     className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
                       (cat === 'Все' && !productSearch) || productSearch === cat

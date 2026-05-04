@@ -62,12 +62,12 @@ export default function ProductCard({ product, wished, onToggleWishlist, onAdded
             className="w-full h-full object-cover md:group-hover:scale-105 transition-transform duration-500"
           />
 
-          {product.is_hit && (
+          {product.badges?.includes('hit') && (
             <span className="absolute top-2 left-2 bg-[#1a1a18] text-white text-[9px] font-medium px-1.5 py-0.5 rounded-full z-10">
               hit
             </span>
           )}
-          {product.is_new && !product.is_hit && !oldPrice && (
+          {product.badges?.includes('new') && !product.badges?.includes('hit') && !oldPrice && (
             <span className="absolute top-2 left-2 bg-white/90 text-[#1a1a18] text-[9px] font-medium px-1.5 py-0.5 rounded-full z-10">
               new
             </span>

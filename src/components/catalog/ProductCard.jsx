@@ -62,21 +62,29 @@ export default function ProductCard({ product, wished, onToggleWishlist, onAdded
             className="w-full h-full object-cover md:group-hover:scale-105 transition-transform duration-500"
           />
 
-          {product.badges?.includes('hit') && (
-            <span className="absolute top-2 left-2 bg-[#1a1a18] text-white text-[9px] font-medium px-1.5 py-0.5 rounded-full z-10">
-              hit
-            </span>
-          )}
-          {product.badges?.includes('new') && !product.badges?.includes('hit') && !oldPrice && (
-            <span className="absolute top-2 left-2 bg-white/90 text-[#1a1a18] text-[9px] font-medium px-1.5 py-0.5 rounded-full z-10">
-              new
-            </span>
-          )}
-          {oldPrice && (
-            <span className="absolute top-2 left-2 bg-[#e8453c] text-white text-[9px] font-medium px-1.5 py-0.5 rounded-full z-10">
-              -{Math.round((1 - (price || 0) / oldPrice) * 100)}%
-            </span>
-          )}
+          {/* Бейджи — показываем все выбранные */}
+          <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
+            {product.badges?.includes('hit') && (
+              <span className="bg-[#1a1a18] text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
+                HIT
+              </span>
+            )}
+            {product.badges?.includes('new') && (
+              <span className="bg-[#4CAF50] text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
+                NEW
+              </span>
+            )}
+            {product.badges?.includes('sale') && (
+              <span className="bg-[#e8453c] text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
+                SALE
+              </span>
+            )}
+            {oldPrice && !product.badges?.includes('sale') && (
+              <span className="bg-[#e8453c] text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
+                -{Math.round((1 - (price || 0) / oldPrice) * 100)}%
+              </span>
+            )}
+          </div>
           {stock <= 3 && stock > 0 && (
             <span className="absolute top-2 right-10 bg-[#e8453c] text-white text-[9px] px-1.5 py-0.5 rounded-full z-10">
               Осталось {stock}

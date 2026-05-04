@@ -104,7 +104,11 @@ export default function AdminChatsPage() {
       .in('id', userIds)
     const usersMap = {}
     usersData?.forEach(u => { usersMap[u.id] = u })
-    setChats(unique.map(c => ({ ...c, users: usersMap[c.user_id] || null })))
+    setChats(unique.map(c => ({ 
+      ...c, 
+      users: usersMap[c.user_id] || null,
+      avatar_url: c.avatar_url || usersMap[c.user_id]?.avatar_url || null
+    })))
 
     const counts = {}
     for (const chat of unique) {
@@ -317,8 +321,11 @@ export default function AdminChatsPage() {
             >
               <div className="flex items-center gap-2.5">
                 <div className="relative flex-shrink-0">
-                  <div className="w-9 h-9 rounded-full bg-pink-100 flex items-center justify-center text-sm font-medium text-pink-700">
-                    {(chat.users?.full_name || chat.users?.email || '?').charAt(0).toUpperCase()}
+                  <div className="w-9 h-9 rounded-full bg-pink-100 flex items-center justify-center text-sm font-medium text-pink-700 overflow-hidden flex-shrink-0">
+                    {chat.avatar_url 
+                      ? <img src={chat.avatar_url} alt="" className="w-full h-full object-cover" />
+                      : <span>{(chat.users?.full_name || chat.title || '?').charAt(0).toUpperCase()}</span>
+                    }
                   </div>
                   {chat.source === 'telegram' && (
                     <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-white flex items-center justify-center">
@@ -359,8 +366,11 @@ export default function AdminChatsPage() {
         <div className="flex-1 flex flex-col min-w-0">
           <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between bg-white">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-pink-100 flex items-center justify-center text-sm font-medium text-pink-700">
-                {(selectedChat.users?.full_name || selectedChat.users?.email || '?').charAt(0).toUpperCase()}
+              <div className="w-9 h-9 rounded-full bg-pink-100 flex items-center justify-center text-sm font-medium text-pink-700 overflow-hidden">
+                {selectedChat.avatar_url
+                  ? <img src={selectedChat.avatar_url} alt="" className="w-full h-full object-cover" />
+                  : <span>{(selectedChat.users?.full_name || selectedChat.title || '?').charAt(0).toUpperCase()}</span>
+                }
               </div>
               <div>
                 <p className="font-medium text-gray-900 text-sm">

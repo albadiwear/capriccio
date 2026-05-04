@@ -60,6 +60,35 @@ export default async function handler(req, res) {
         .single()
       chat = newChat
 
+      // Получаем фото профиля из Telegram
+      try {
+        const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
+        const photosRes = await fetch(
+          `https://api.telegram.org/bot${BOT_TOKEN}/getUserProfilePhotos?user_id=${tgChatId}&limit=1`
+        )
+        const photosData = await photosRes.json()
+        const fileId = photosData?.result?.photos?.[0]?.[0]?.file_id
+        
+        if (fileId) {
+          const fileRes = await fetch(
+            `https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${fileId}`
+          )
+          const fileData = await fileRes.json()
+          const filePath = fileData?.result?.file_path
+          
+          if (filePath) {
+            const avatarUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${filePath}`
+            await supabase
+              .from('stylist_chats')
+              .update({ avatar_url: avatarUrl })
+              .eq('id', chat.id)
+            chat.avatar_url = avatarUrl
+          }
+        }
+      } catch (e) {
+        console.error('Avatar fetch error:', e)
+      }
+
       // Создать лид
       await supabase.from('leads').insert({
         name: fromName,

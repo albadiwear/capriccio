@@ -196,19 +196,26 @@ export default function AdminChatsPage() {
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
-  async function searchProducts(query) {
+  async function searchProducts(query, category = '') {
     setProductSearch(query)
-    if (!query.trim()) {
-      setProductResults([])
-      return
-    }
-    const { data } = await supabase
+
+    let q = supabase
       .from('products')
       .select('id, name, price, images, category')
       .eq('is_active', true)
-      .ilike('name', `%${query}%`)
       .order('created_at', { ascending: false })
       .limit(20)
+
+    if (category && category !== 'Все') {
+      q = q.ilike('category', `%${category}%`)
+    } else if (query.trim()) {
+      q = q.ilike('name', `%${query}%`)
+    } else {
+      setProductResults([])
+      return
+    }
+
+    const { data } = await q
     setProductResults(data || [])
   }
 
@@ -617,7 +624,7 @@ export default function AdminChatsPage() {
                 autoFocus
                 type="text"
                 value={productSearch}
-                onChange={e => searchProducts(e.target.value)}
+                onChange={e => searchProducts(e.target.value, '')}
                 placeholder="Поиск по названию или артикулу..."
                 className="w-full bg-gray-50 rounded-xl px-4 py-2.5 text-sm outline-none border border-gray-200 focus:border-gray-900 mb-3"
               />
@@ -628,7 +635,7 @@ export default function AdminChatsPage() {
                     onClick={() => {
                       const q = cat === 'Все' ? '' : cat
                       setProductSearch(q)
-                      searchProducts(q)
+                      searchProducts(q, cat)
                     }}
                     className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
                       (cat === 'Все' && !productSearch) || productSearch === cat

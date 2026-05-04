@@ -74,6 +74,7 @@ export default function AdminProductsPage() {
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadedImages, setUploadedImages] = useState([])
+  const [dragIndex, setDragIndex] = useState(null)
   const [page, setPage] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
   const [sortField, setSortField] = useState('created_at')
@@ -787,8 +788,27 @@ export default function AdminProductsPage() {
                   {uploadedImages.length > 0 && (
                     <div className="flex gap-2 flex-wrap mt-2">
                       {uploadedImages.map((url, i) => (
-                        <div key={i} className="relative">
+                        <div
+                          key={i}
+                          draggable
+                          onDragStart={() => setDragIndex(i)}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={() => {
+                            if (dragIndex === null || dragIndex === i) return
+                            const newImages = [...uploadedImages]
+                            const [moved] = newImages.splice(dragIndex, 1)
+                            newImages.splice(i, 0, moved)
+                            setUploadedImages(newImages)
+                            setDragIndex(null)
+                          }}
+                          className="relative cursor-grab active:cursor-grabbing"
+                        >
                           <img src={url} alt="" className="w-16 h-20 object-cover rounded" />
+                          {i === 0 && (
+                            <span className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[9px] text-center py-0.5 rounded-b">
+                              Главное
+                            </span>
+                          )}
                           <button
                             onClick={() => setUploadedImages(p => p.filter((_, j) => j !== i))}
                             className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center text-xs"

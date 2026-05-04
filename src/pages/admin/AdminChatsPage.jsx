@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
-import { Send, Bot, User, Search, MessageCircle, PanelRightClose, PanelRightOpen, Paperclip, X, Zap, ShoppingBag, ExternalLink } from 'lucide-react'
+import { Send, Bot, User, Search, MessageCircle, PanelRightClose, PanelRightOpen, Paperclip, X, Zap, ShoppingBag, ExternalLink, Link } from 'lucide-react'
 
 const TELEGRAM_ICON = () => (
   <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-[#229ED9]">
@@ -27,6 +27,7 @@ export default function AdminChatsPage() {
   const fileInputRef = useRef(null)
   const [showTemplates, setShowTemplates] = useState(false)
   const [showProductPicker, setShowProductPicker] = useState(false)
+  const [showLinkPicker, setShowLinkPicker] = useState(false)
   const [productSearch, setProductSearch] = useState('')
   const [productResults, setProductResults] = useState([])
 
@@ -151,10 +152,11 @@ export default function AdminChatsPage() {
     setChats(prev => prev.map(c => c.id === selectedChat.id ? { ...c, mode: 'ai' } : c))
   }
 
-  async function sendMessage() {
-    if ((!input.trim() && !imageFile) || !selectedChat) return
-    setSending(true)
-    
+  async function sendMessage(customText = null) {
+    const messageText = customText || input.trim()
+    if ((!messageText && !imageFile) || !selectedChat) return
+    if (!customText) setSending(true)
+
     let image_url = null
     if (imageFile) {
       const ext = imageFile.name.split('.').pop()
@@ -168,23 +170,25 @@ export default function AdminChatsPage() {
       }
       clearImage()
     }
-  
+
     await supabase.from('stylist_messages').insert({
       chat_id: selectedChat.id,
       role: 'manager',
-      content: input.trim() || '',
+      content: messageText || '',
       image_url,
     })
-    if (selectedChat.source === 'telegram' && input.trim()) {
+    if (selectedChat.source === 'telegram' && messageText) {
       await fetch('/api/telegram-send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: selectedChat.id, text: input.trim() }),
+        body: JSON.stringify({ chat_id: selectedChat.id, text: messageText }),
       })
     }
     await supabase.from('stylist_chats').update({ updated_at: new Date().toISOString() }).eq('id', selectedChat.id)
-    setInput('')
-    setSending(false)
+    if (!customText) {
+      setInput('')
+      setSending(false)
+    }
   }
 
   function handleImageSelect(e) {
@@ -509,10 +513,16 @@ export default function AdminChatsPage() {
                   <Zap size={16} />
                 </button>
                 <button
-                  onClick={() => setShowProductPicker(true)}
+                  onClick={() => { setShowLinkPicker(false); setShowProductPicker(true) }}
                   className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 flex-shrink-0"
                 >
                   <ShoppingBag size={16} />
+                </button>
+                <button
+                  onClick={() => { setShowLinkPicker(true); setShowProductPicker(true) }}
+                  className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 flex-shrink-0"
+                >
+                  <Link size={16} />
                 </button>
                 <input
                   type="text"
@@ -619,14 +629,16 @@ export default function AdminChatsPage() {
       )}
 
       {showProductPicker && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setShowProductPicker(false)}>
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => { setShowProductPicker(false); setShowLinkPicker(false) }}>
           <div className="bg-white rounded-2xl w-[680px] max-h-[70vh] flex flex-col" onClick={e => e.stopPropagation()}>
 
             {/* Шапка */}
             <div className="px-5 pt-5 pb-4 border-b border-gray-100">
               <div className="flex items-center justify-between mb-4">
-                <p className="font-semibold text-gray-900 text-base">Выбрать товар</p>
-                <button onClick={() => setShowProductPicker(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100">
+                <p className="font-semibold text-gray-900 text-base">
+                  {showLinkPicker ? 'Вставить ссылку на товар' : 'Выбрать товар'}
+                </p>
+                <button onClick={() => { setShowProductPicker(false); setShowLinkPicker(false) }} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100">
                   <X size={16} className="text-gray-500" />
                 </button>
               </div>
@@ -673,7 +685,19 @@ export default function AdminChatsPage() {
                   return (
                     <div
                       key={product.id}
-                      onClick={() => sendProduct(product)}
+                      onClick={() => {
+                        if (showLinkPicker) {
+                          const productUrl = `https://capriccio.vercel.app/product/${product.id}`
+                          const linkText = `${product.name} — ${Number(product.price).toLocaleString('ru-RU')} ₸\n${productUrl}`
+                          setInput(linkText)
+                          setShowLinkPicker(false)
+                          setShowProductPicker(false)
+                          setProductSearch('')
+                          setProductResults([])
+                        } else {
+                          sendProduct(product)
+                        }
+                      }}
                       className="cursor-pointer rounded-xl border border-gray-100 overflow-hidden hover:border-[#D4537E] hover:shadow-sm transition-all group"
                     >
                       <div className="relative">
@@ -682,7 +706,9 @@ export default function AdminChatsPage() {
                           : <div className="w-full h-36 bg-gray-100 flex items-center justify-center"><ShoppingBag size={24} className="text-gray-300" /></div>
                         }
                         <div className="absolute inset-0 bg-[#D4537E]/0 group-hover:bg-[#D4537E]/10 transition-colors flex items-center justify-center">
-                          <span className="opacity-0 group-hover:opacity-100 bg-[#D4537E] text-white text-xs px-3 py-1.5 rounded-full font-medium transition-opacity">Отправить</span>
+                          <span className="opacity-0 group-hover:opacity-100 bg-[#D4537E] text-white text-xs px-3 py-1.5 rounded-full font-medium transition-opacity">
+                            {showLinkPicker ? 'Вставить ссылку' : 'Отправить'}
+                          </span>
                         </div>
                       </div>
                       <div className="p-2.5">

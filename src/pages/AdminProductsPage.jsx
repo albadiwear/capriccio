@@ -76,16 +76,16 @@ export default function AdminProductsPage() {
   const [uploadedImages, setUploadedImages] = useState([])
   const [dragIndex, setDragIndex] = useState(null)
   const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(50)
   const [totalCount, setTotalCount] = useState(0)
   const [sortField, setSortField] = useState('created_at')
   const [sortAsc, setSortAsc] = useState(false)
   const [statusFilter, setStatusFilter] = useState('')
-  const PAGE_SIZE = 50
 
   async function load(currentPage = 0) {
     setLoading(true)
-    const from = currentPage * PAGE_SIZE
-    const to = from + PAGE_SIZE - 1
+    const from = currentPage * pageSize
+    const to = from + pageSize - 1
 
     if (search) {
       const [byName, byArticle] = await Promise.all([
@@ -136,7 +136,7 @@ export default function AdminProductsPage() {
   useEffect(() => {
     const timer = window.setTimeout(() => load(page), 300)
     return () => window.clearTimeout(timer)
-  }, [page, search, filterCat, sortField, sortAsc, statusFilter])
+  }, [page, search, filterCat, sortField, sortAsc, statusFilter, pageSize])
 
   function openCreate() {
     setEditing(null)
@@ -587,6 +587,15 @@ export default function AdminProductsPage() {
           <option value="active">Активные</option>
           <option value="hidden">Скрытые</option>
         </select>
+        <select
+          value={pageSize}
+          onChange={(e) => { setPageSize(Number(e.target.value)); setPage(0) }}
+          className="border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-gray-900"
+        >
+          <option value={10}>10 / стр</option>
+          <option value={20}>20 / стр</option>
+          <option value={50}>50 / стр</option>
+        </select>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
@@ -717,7 +726,7 @@ export default function AdminProductsPage() {
             <p className="text-sm text-gray-500">
               Всего: <span className="font-medium text-gray-900">{totalCount}</span> товаров
               {' · '}Страница <span className="font-medium text-gray-900">{page + 1}</span> из{' '}
-              <span className="font-medium text-gray-900">{Math.max(1, Math.ceil(totalCount / PAGE_SIZE))}</span>
+              <span className="font-medium text-gray-900">{Math.max(1, Math.ceil(totalCount / pageSize))}</span>
             </p>
             <div className="flex gap-2">
               <button
@@ -729,7 +738,7 @@ export default function AdminProductsPage() {
               </button>
               <button
                 onClick={() => setPage((p) => p + 1)}
-                disabled={page + 1 >= Math.max(1, Math.ceil(totalCount / PAGE_SIZE))}
+                disabled={page + 1 >= Math.max(1, Math.ceil(totalCount / pageSize))}
                 className="px-3 py-1.5 text-sm border border-gray-200 rounded hover:border-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Вперёд →

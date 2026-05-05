@@ -155,11 +155,12 @@ export default function AdminCRMPage() {
     const [{ data: users }, { data: chats }] = await Promise.all([
       supabase
         .from('users')
-        .select('id, full_name, email, phone, lead_status, user_metadata, created_at, orders(id, total_amount, status)')
+        .select('id, full_name, email, phone, avatar_url, lead_status, created_at, orders(id, total_amount, status)')
         .order('created_at', { ascending: false }),
       supabase
         .from('stylist_chats')
-        .select('id, user_id, source, last_message, updated_at'),
+        .select('id, user_id, source, last_message, updated_at, avatar_url')
+        .not('user_id', 'is', null),
     ])
 
     const chatByUser = {}

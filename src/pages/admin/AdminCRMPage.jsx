@@ -152,26 +152,44 @@ export default function AdminCRMPage() {
 
   async function load() {
     setLoading(true)
-    const [{ data: users }, { data: chats }] = await Promise.all([
-      supabase
-        .from('users')
-        .select('id, full_name, email, phone, avatar_url, lead_status, created_at, orders(id, total_amount, status)')
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('stylist_chats')
-        .select('id, user_id, source, last_message, updated_at, avatar_url')
-        .not('user_id', 'is', null),
-    ])
+    try {
+      const [{ data: users }, { data: chats }, { data: orders }] = await Promise.all([
+        supabase
+          .from('users')
+          .select('id, full_name, email, phone, avatar_url, lead_status, created_at')
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('stylist_chats')
+          .select('id, user_id, source, last_message, updated_at, avatar_url')
+          .not('user_id', 'is', null),
+        supabase
+          .from('orders')
+          .select('id, user_id, total_amount, status'),
+      ])
 
-    const chatByUser = {}
-    for (const chat of chats || []) {
-      if (chat.user_id) chatByUser[chat.user_id] = chat
+      const chatByUser = {}
+      for (const chat of chats || []) {
+        if (chat.user_id) chatByUser[chat.user_id] = chat
+      }
+
+      const ordersByUser = {}
+      for (const order of orders || []) {
+        if (!ordersByUser[order.user_id]) ordersByUser[order.user_id] = []
+        ordersByUser[order.user_id].push(order)
+      }
+
+      setLeads(
+        (users || []).map(u => ({
+          ...u,
+          chat: chatByUser[u.id] || null,
+          orders: ordersByUser[u.id] || [],
+        }))
+      )
+    } catch (e) {
+      console.error('CRM load error:', e)
+    } finally {
+      setLoading(false)
     }
-
-    setLeads(
-      (users || []).map(u => ({ ...u, chat: chatByUser[u.id] || null }))
-    )
-    setLoading(false)
   }
 
   async function moveCard(leadId, stageKey) {

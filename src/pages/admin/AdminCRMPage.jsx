@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
-import { Search, LayoutGrid, List, MessageCircle, ShoppingBag } from 'lucide-react'
+import { Search, LayoutGrid, List, MessageCircle, ShoppingBag, Plus, X } from 'lucide-react'
 
 const STAGES = [
   { id: 'new',       label: 'Новый лид',     color: '#9ca3af', bg: '#f9fafb' },
@@ -34,13 +34,22 @@ const SOURCE_CONFIG = {
   web:       { color: '#6b7280', label: 'Сайт',      bg: '#f3f4f6', text: '#6b7280' },
 }
 
-const SOURCE_FILTERS = [
-  { id: 'all',       label: 'Все' },
-  { id: 'telegram',  label: 'Telegram' },
-  { id: 'whatsapp',  label: 'WhatsApp' },
-  { id: 'instagram', label: 'Instagram' },
-  { id: 'web',       label: 'Сайт' },
+const SOURCE_FILTER_OPTIONS = [
+  { id: 'all',       label: 'Все',       color: '#6b7280' },
+  { id: 'telegram',  label: 'Telegram',  color: '#229ED9' },
+  { id: 'whatsapp',  label: 'WhatsApp',  color: '#25D366' },
+  { id: 'instagram', label: 'Instagram', color: '#E1306C' },
+  { id: 'web',       label: 'Сайт',      color: '#9ca3af' },
 ]
+
+const ORDER_FILTER_OPTIONS = [
+  { id: 'all_orders',   label: 'Все' },
+  { id: 'with_orders',  label: 'Есть заказы' },
+  { id: 'no_orders',    label: 'Нет заказов' },
+  { id: 'has_chat',     label: 'Есть чат' },
+]
+
+const CUSTOM_STAGE_COLORS = ['#ec4899', '#f97316', '#84cc16', '#14b8a6', '#a855f7']
 
 function getStage(lead) {
   const hasOrders = (lead.orders || []).length > 0
@@ -85,7 +94,6 @@ function LeadCard({ lead, onClick }) {
       <div className="h-0.5 w-full" style={{ backgroundColor: cfg.color }} />
 
       <div className="p-3">
-        {/* Аватар + имя + телефон + дата */}
         <div className="flex items-start gap-2.5 mb-2">
           <div
             className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white overflow-hidden"
@@ -108,12 +116,10 @@ function LeadCard({ lead, onClick }) {
           </div>
         </div>
 
-        {/* Последнее сообщение */}
         {lastMsg && (
           <p className="text-[10px] text-gray-400 italic line-clamp-1 mb-2">{lastMsg}</p>
         )}
 
-        {/* Тег источника + бейдж заказов */}
         <div className="flex items-center gap-1 flex-wrap">
           <span
             className="text-[9px] font-medium px-1.5 py-0.5 rounded-full"
@@ -145,12 +151,18 @@ export default function AdminCRMPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [sourceFilter, setSourceFilter] = useState('all')
+  const [orderFilter, setOrderFilter] = useState('all_orders')
   const [draggingId, setDraggingId] = useState(null)
   const [overStage, setOverStage] = useState(null)
   const [editingStage, setEditingStage] = useState(null)
   const [stageLabels, setStageLabels] = useState(
     Object.fromEntries(STAGES.map(s => [s.id, s.label]))
   )
+  const [showAddStage, setShowAddStage] = useState(false)
+  const [newStageName, setNewStageName] = useState('')
+  const [customStages, setCustomStages] = useState([])
+
+  const allStages = useMemo(() => [...STAGES, ...customStages], [customStages])
 
   useEffect(() => {
     load()
@@ -205,6 +217,16 @@ export default function AdminCRMPage() {
     await supabase.from('users').update({ lead_status: newLabel }).eq('id', leadId)
   }
 
+  function handleAddStage() {
+    if (!newStageName.trim()) return
+    const id = 'custom_' + Date.now()
+    const color = CUSTOM_STAGE_COLORS[customStages.length % CUSTOM_STAGE_COLORS.length]
+    setCustomStages(prev => [...prev, { id, label: newStageName.trim(), color, bg: '#fafafa' }])
+    setStageLabels(prev => ({ ...prev, [id]: newStageName.trim() }))
+    setNewStageName('')
+    setShowAddStage(false)
+  }
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     return leads.filter(l => {
@@ -213,20 +235,27 @@ export default function AdminCRMPage() {
         l.email?.toLowerCase().includes(q) ||
         l.phone?.includes(q)
       const matchesSource = sourceFilter === 'all' || (l.chat?.source || 'web') === sourceFilter
-      return matchesSearch && matchesSource
+      const ordersCount = (l.orders || []).length
+      const matchesOrder =
+        orderFilter === 'all_orders' ? true :
+        orderFilter === 'with_orders' ? ordersCount > 0 :
+        orderFilter === 'no_orders' ? ordersCount === 0 :
+        orderFilter === 'has_chat' ? !!l.chat :
+        true
+      return matchesSearch && matchesSource && matchesOrder
     })
-  }, [leads, search, sourceFilter])
+  }, [leads, search, sourceFilter, orderFilter])
 
   const stageLeads = useMemo(() => {
     const groups = {}
-    STAGES.forEach(stage => { groups[stage.id] = [] })
+    allStages.forEach(stage => { groups[stage.id] = [] })
     filtered.forEach(lead => {
       const stage = getStage(lead)
       if (groups[stage]) groups[stage].push(lead)
       else groups.new.push(lead)
     })
     return groups
-  }, [filtered])
+  }, [filtered, allStages])
 
   function handleCardClick(lead) {
     navigate(`/admin/crm/${lead.id}`)
@@ -262,43 +291,82 @@ export default function AdminCRMPage() {
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       {/* Шапка */}
-      <div className="flex-shrink-0 px-4 py-2.5 bg-white border-b border-gray-200">
-        <div className="flex items-center gap-3 mb-2">
+      <div className="flex-shrink-0 bg-white border-b border-gray-100">
+        {/* Верхняя строка */}
+        <div className="flex items-center gap-3 px-4 py-3">
           <LayoutGrid size={17} className="text-[#1a1a18]" />
           <h1 className="text-sm font-bold text-[#1a1a18]">CRM</h1>
-          <span className="text-xs text-gray-400">{filtered.length} лидов</span>
+          <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{filtered.length}</span>
 
-          <div className="relative ml-3">
-            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <div className="relative ml-2 flex-1 max-w-xs">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             <input
-              className="pl-7 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-gray-50 focus:outline-none focus:border-[#1a1a18] w-48"
-              placeholder="Поиск..."
+              className="w-full pl-8 pr-3 py-2 text-xs border border-gray-200 rounded-lg bg-gray-50 focus:outline-none focus:border-[#1a1a18] focus:bg-white transition-colors"
+              placeholder="Поиск по имени, телефону, email..."
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <X size={12} />
+              </button>
+            )}
           </div>
 
           <button
             type="button"
-            onClick={() => navigate('/admin/leads')}
-            className="ml-auto flex items-center gap-1.5 text-xs text-gray-500 hover:text-[#1a1a18] transition-colors"
+            onClick={() => setShowAddStage(true)}
+            className="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#1a1a18] text-white text-xs font-medium hover:bg-gray-800"
           >
-            <List size={14} />
+            <Plus size={13} />
+            Этап
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate('/admin/leads')}
+            className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-[#1a1a18] border border-gray-200 rounded-lg px-3 py-2"
+          >
+            <List size={13} />
             Список
           </button>
         </div>
 
-        {/* Фильтры по источнику */}
-        <div className="flex gap-1">
-          {SOURCE_FILTERS.map(f => (
+        {/* Фильтры */}
+        <div className="flex items-center gap-2 px-4 pb-3 overflow-x-auto scrollbar-hide">
+          <span className="text-[10px] text-gray-400 flex-shrink-0">Источник:</span>
+          {SOURCE_FILTER_OPTIONS.map(f => (
             <button
               key={f.id}
               type="button"
               onClick={() => setSourceFilter(f.id)}
-              className={`px-2.5 py-1 rounded-full text-[10px] font-medium transition-colors ${
+              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[10px] font-medium transition-colors border ${
                 sourceFilter === f.id
-                  ? 'bg-[#1a1a18] text-white'
-                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                  ? 'text-white border-transparent'
+                  : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+              }`}
+              style={sourceFilter === f.id ? { backgroundColor: f.color, borderColor: f.color } : {}}
+            >
+              {f.label}
+            </button>
+          ))}
+
+          <div className="w-px h-4 bg-gray-200 mx-1 flex-shrink-0" />
+
+          <span className="text-[10px] text-gray-400 flex-shrink-0">Статус:</span>
+          {ORDER_FILTER_OPTIONS.map(f => (
+            <button
+              key={f.id}
+              type="button"
+              onClick={() => setOrderFilter(f.id)}
+              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[10px] font-medium transition-colors border ${
+                orderFilter === f.id
+                  ? 'bg-[#1a1a18] text-white border-[#1a1a18]'
+                  : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
               }`}
             >
               {f.label}
@@ -315,9 +383,9 @@ export default function AdminCRMPage() {
         <div className="flex-1 overflow-x-auto overflow-y-hidden">
           <div
             className="flex gap-3 h-full px-4 py-3"
-            style={{ minWidth: `${STAGES.length * 256 + 32}px` }}
+            style={{ minWidth: `${allStages.length * 256 + 32}px` }}
           >
-            {STAGES.map(stage => {
+            {allStages.map(stage => {
               const cards = stageLeads[stage.id] || []
               const stageTotal = cards.reduce(
                 (s, l) => s + (l.orders || []).reduce((ss, o) => ss + Number(o.total_amount || 0), 0),
@@ -334,14 +402,13 @@ export default function AdminCRMPage() {
                   onDragLeave={handleDragLeave}
                   onDrop={e => handleDrop(e, stage.id)}
                 >
-                  {/* Заголовок колонки */}
                   <div className="rounded-xl overflow-hidden mb-2" style={{ backgroundColor: stage.bg }}>
                     <div className="h-1 w-full" style={{ backgroundColor: stage.color }} />
                     <div className="flex items-center justify-between px-3 py-2.5">
                       {editingStage === stage.id ? (
                         <input
                           autoFocus
-                          value={stageLabels[stage.id]}
+                          value={stageLabels[stage.id] ?? stage.label}
                           onChange={e => setStageLabels(prev => ({ ...prev, [stage.id]: e.target.value }))}
                           onBlur={() => setEditingStage(null)}
                           onKeyDown={e => e.key === 'Enter' && setEditingStage(null)}
@@ -353,7 +420,7 @@ export default function AdminCRMPage() {
                           onDoubleClick={() => setEditingStage(stage.id)}
                           title="Двойной клик для редактирования"
                         >
-                          {stageLabels[stage.id]}
+                          {stageLabels[stage.id] ?? stage.label}
                         </span>
                       )}
                       <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -372,7 +439,6 @@ export default function AdminCRMPage() {
                     </div>
                   </div>
 
-                  {/* Карточки */}
                   <div className="flex-1 overflow-y-auto space-y-2 min-h-0 pb-2">
                     {cards.map(lead => (
                       <div
@@ -394,6 +460,41 @@ export default function AdminCRMPage() {
                 </div>
               )
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Модалка создания этапа */}
+      {showAddStage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl p-6 w-80 shadow-xl">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">Новый этап воронки</h3>
+            <input
+              autoFocus
+              type="text"
+              value={newStageName}
+              onChange={e => setNewStageName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAddStage()}
+              placeholder="Название этапа..."
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#1a1a18] mb-4"
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => { setShowAddStage(false); setNewStageName('') }}
+                className="flex-1 py-2 text-sm border border-gray-200 rounded-lg text-gray-600 hover:border-gray-400"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={handleAddStage}
+                disabled={!newStageName.trim()}
+                className="flex-1 py-2 text-sm bg-[#1a1a18] text-white rounded-lg disabled:opacity-40"
+              >
+                Создать
+              </button>
+            </div>
           </div>
         </div>
       )}

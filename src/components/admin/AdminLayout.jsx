@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
+  LayoutGrid,
   Package,
   ShoppingBag,
   Users,
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
   { label: 'Товары', icon: Package, to: '/admin/products', adminOnly: true },
   { label: 'Команда', icon: Users2, to: '/admin/team', adminOnly: true },
   { label: 'Лиды', icon: Users, to: '/admin/leads' },
+  { label: 'CRM', icon: LayoutGrid, to: '/admin/crm' },
   { label: 'Заказы', icon: ShoppingBag, to: '/admin/orders' },
   { label: 'Партнёры', icon: Handshake, to: '/admin/partners', adminOnly: true },
   { label: 'Академия', icon: GraduationCap, to: '/admin/academy', badgeKey: 'academy', adminOnly: true },

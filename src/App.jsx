@@ -47,6 +47,7 @@ import AdminTeamPage from './pages/admin/AdminTeamPage'
 import AdminNotificationsPage from './pages/admin/AdminNotificationsPage'
 import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage'
 import AdminStoriesPage from './pages/admin/AdminStoriesPage'
+import AdminCRMPage from './pages/admin/AdminCRMPage'
 
 // Other
 import OnboardingPage from './pages/OnboardingPage'
@@ -148,6 +149,7 @@ function App() {
             <Route path="notifications" element={<AdminNotificationsPage />} />
             <Route path="analytics" element={<AdminAnalyticsPage />} />
             <Route path="stories" element={<AdminStoriesPage />} />
+            <Route path="crm" element={<AdminCRMPage />} />
           </Route>
         </Routes>
       </Router>

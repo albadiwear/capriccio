@@ -4,13 +4,13 @@ import { supabase } from '../../lib/supabase'
 import { Search, LayoutGrid, List, MessageCircle, ShoppingBag } from 'lucide-react'
 
 const STAGES = [
-  { key: 'new',       label: 'Новый',     color: '#9ca3af' },
-  { key: 'contacted', label: 'Написали',  color: '#3b82f6' },
-  { key: 'selection', label: 'Подбор',    color: '#8b5cf6' },
-  { key: 'decision',  label: 'Думает',    color: '#f59e0b' },
-  { key: 'paid',      label: 'Оплачено',  color: '#10b981' },
-  { key: 'delivery',  label: 'Доставка',  color: '#06b6d4' },
-  { key: 'delivered', label: 'Получено',  color: '#1a1a18' },
+  { id: 'new',       label: 'Новый',     color: '#9ca3af' },
+  { id: 'contacted', label: 'Написали',  color: '#3b82f6' },
+  { id: 'selection', label: 'Подбор',    color: '#8b5cf6' },
+  { id: 'decision',  label: 'Думает',    color: '#f59e0b' },
+  { id: 'paid',      label: 'Оплачено',  color: '#10b981' },
+  { id: 'delivery',  label: 'Доставка',  color: '#06b6d4' },
+  { id: 'delivered', label: 'Получено',  color: '#1a1a18' },
 ]
 
 const STAGE_LABEL_TO_KEY = {
@@ -27,14 +27,36 @@ const STAGE_KEY_TO_LABEL = Object.fromEntries(
   Object.entries(STAGE_LABEL_TO_KEY).map(([k, v]) => [v, k])
 )
 
-function getLeadStage(lead) {
-  const explicit = STAGE_LABEL_TO_KEY[lead.lead_status]
-  if (explicit) return explicit
-
+function getStage(lead) {
   const hasOrders = (lead.orders || []).length > 0
   if (hasOrders) return 'paid'
 
-  return 'new'
+  const status = lead.lead_status
+  if (!status) return 'new'
+
+  const MAP = {
+    'new': 'new',
+    'Новый': 'new',
+    'contacted': 'contacted',
+    'Написали': 'contacted',
+    'selection': 'selection',
+    'Подбор': 'selection',
+    'Подбор образа': 'selection',
+    'Думает': 'decision',
+    'decision': 'decision',
+    'Принято решение': 'decision',
+    'paid': 'paid',
+    'Оплачено': 'paid',
+    'Купил': 'paid',
+    'delivery': 'delivery',
+    'Доставка': 'delivery',
+    'Передан в доставку': 'delivery',
+    'delivered': 'delivered',
+    'Получено': 'delivered',
+    'Доставлено': 'delivered',
+  }
+
+  return MAP[status] || 'new'
 }
 
 function getInitials(name) {
@@ -170,14 +192,19 @@ export default function AdminCRMPage() {
     )
   }, [leads, search])
 
-  const grouped = useMemo(() => {
-    const map = Object.fromEntries(STAGES.map(s => [s.key, []]))
-    for (const lead of filtered) {
-      const stage = getLeadStage(lead)
-      if (map[stage]) map[stage].push(lead)
-      else map['new'].push(lead)
-    }
-    return map
+  const stageLeads = useMemo(() => {
+    const groups = {}
+    STAGES.forEach(stage => {
+      groups[stage.id] = []
+    })
+
+    filtered.forEach(lead => {
+      const stage = getStage(lead)
+      if (groups[stage]) groups[stage].push(lead)
+      else groups.new.push(lead)
+    })
+
+    return groups
   }, [filtered])
 
   function handleCardClick(lead) {
@@ -249,16 +276,16 @@ export default function AdminCRMPage() {
             style={{ minWidth: `${STAGES.length * 232 + 32}px` }}
           >
             {STAGES.map(stage => {
-              const cards = grouped[stage.key] || []
-              const isOver = overStage === stage.key
+              const cards = stageLeads[stage.id] || []
+              const isOver = overStage === stage.id
 
               return (
                 <div
-                  key={stage.key}
+                  key={stage.id}
                   className={`flex flex-col flex-shrink-0 w-[220px] rounded-xl transition-colors ${isOver ? 'bg-gray-200' : 'bg-gray-100'}`}
-                  onDragOver={e => handleDragOver(e, stage.key)}
+                  onDragOver={e => handleDragOver(e, stage.id)}
                   onDragLeave={handleDragLeave}
-                  onDrop={e => handleDrop(e, stage.key)}
+                  onDrop={e => handleDrop(e, stage.id)}
                 >
                   <div className="flex items-center gap-2 px-3 py-2.5 flex-shrink-0">
                     <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: stage.color }} />

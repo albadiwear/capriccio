@@ -124,6 +124,16 @@ export default function AdminCRMDetailPage() {
 
   useEffect(() => { load() }, [id])
 
+  useEffect(() => {
+    if (channelTab === 'web') {
+      setSelectedChat(webChat || null)
+    } else if (channelTab === 'telegram') {
+      setSelectedChat(telegramChat || null)
+    } else {
+      setSelectedChat(null)
+    }
+  }, [channelTab, webChat, telegramChat])
+
   async function load() {
     setLoading(true)
     try {
@@ -479,30 +489,7 @@ export default function AdminCRMDetailPage() {
     { id: 'wishlist', label: 'Избранное', count: wishlist.length },
   ]
 
-  const TabsBlock = selectedChat ? (
-    <div className="bg-white rounded-2xl border border-[#f0ede8] flex flex-col h-full overflow-hidden">
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-[#f0ede8] flex-shrink-0">
-        <button
-          type="button"
-          onClick={() => setSelectedChat(null)}
-          className="flex items-center gap-1.5 text-xs text-[#888780] hover:text-[#1a1a18] transition-colors"
-        >
-          <ArrowLeft size={14} />
-          Все чаты
-        </button>
-        <div className="w-px h-4 bg-[#f0ede8]" />
-        <span className="text-xs font-medium text-[#1a1a18] truncate">
-          {selectedChat.title || 'Чат'}
-        </span>
-        <span className="ml-auto text-xs text-[#888780]">
-          {selectedChat.source === 'telegram' ? 'Telegram' : 'Сайт'}
-        </span>
-      </div>
-      <div className="flex-1 min-h-0">
-        <ChatDialog selectedChat={selectedChat} compact={true} />
-      </div>
-    </div>
-  ) : (
+  const TabsBlock = (
     <div className="bg-white rounded-2xl border border-[#f0ede8] flex flex-col min-h-0 h-full">
       <div className="flex border-b border-[#f0ede8] px-4 pt-1 flex-shrink-0">
         {TABS.map(t => (
@@ -527,106 +514,44 @@ export default function AdminCRMDetailPage() {
       <div className="flex-1 overflow-y-auto p-4">
         {/* Чаты */}
         {tab === 'chats' && (
-          selectedChat ? (
-            <div className="flex flex-col h-full -m-4">
-              <div className="flex items-center gap-3 px-4 py-3 border-b border-[#f0ede8] flex-shrink-0 bg-white">
-                <button type="button" onClick={() => setSelectedChat(null)}
-                  className="flex items-center gap-1.5 text-xs text-[#888780] hover:text-[#1a1a18] transition-colors">
-                  <ArrowLeft size={14} />
-                  Назад
+          <div className="flex flex-col h-full -m-4">
+            <div className="flex gap-2 px-4 py-3 border-b border-[#f0ede8] flex-shrink-0">
+              {[
+                { id: 'web', label: '🌐 Сайт' },
+                { id: 'telegram', label: '✈️ Telegram' },
+                { id: 'whatsapp', label: '💬 WhatsApp' },
+                { id: 'instagram', label: '📷 Instagram' },
+              ].map(ch => (
+                <button
+                  key={ch.id}
+                  type="button"
+                  onClick={() => setChannelTab(ch.id)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
+                    channelTab === ch.id
+                      ? 'bg-[#1a1a18] text-white border-[#1a1a18]'
+                      : 'bg-white text-[#888780] border-[#f0ede8] hover:border-[#1a1a18]'
+                  }`}
+                >
+                  {ch.label}
                 </button>
-                <div className="w-px h-4 bg-[#f0ede8]" />
-                <span className="text-xs font-medium text-[#1a1a18]">
-                  {channelTab === 'web' ? '🌐 Сайт' : '✈️ Telegram'}
-                </span>
-              </div>
-              <div className="flex-1 min-h-0">
+              ))}
+            </div>
+            <div className="flex-1 min-h-0">
+              {selectedChat ? (
                 <ChatDialog selectedChat={selectedChat} compact={true} />
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="flex gap-2">
-                {[
-                  { id: 'web', label: '🌐 Сайт' },
-                  { id: 'telegram', label: '✈️ Telegram' },
-                  { id: 'whatsapp', label: '💬 WhatsApp' },
-                  { id: 'instagram', label: '📷 Instagram' },
-                ].map(ch => (
-                  <button
-                    key={ch.id}
-                    type="button"
-                    onClick={() => setChannelTab(ch.id)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
-                      channelTab === ch.id
-                        ? 'bg-[#1a1a18] text-white border-[#1a1a18]'
-                        : 'bg-white text-[#888780] border-[#f0ede8] hover:border-[#1a1a18]'
-                    }`}
-                  >
-                    {ch.label}
-                  </button>
-                ))}
-              </div>
-
-              {channelTab === 'web' && (
-                webChat ? (
-                  <button type="button" onClick={() => setSelectedChat(webChat)}
-                    className="w-full flex items-center gap-3 p-4 rounded-xl border border-[#f0ede8] hover:border-[#D4537E]/40 hover:bg-[#fdf9f8] transition-all text-left">
-                    <div className="w-10 h-10 rounded-full bg-[#f0ede8] flex items-center justify-center flex-shrink-0">
-                      <MessageCircle size={18} className="text-[#888780]" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-[#1a1a18]">Чат с сайта</p>
-                      <p className="text-[11px] text-[#888780] truncate mt-0.5">{webChat.last_message || webChat.title || '—'}</p>
-                    </div>
-                    <span className="text-[10px] text-[#888780]">{formatDate(webChat.updated_at)}</span>
-                  </button>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-12 text-[#888780]">
-                    <MessageCircle size={32} className="mb-2 opacity-30" />
-                    <p className="text-sm">Нет чата с сайта</p>
-                  </div>
-                )
-              )}
-
-              {channelTab === 'telegram' && (
-                telegramChat ? (
-                  <button type="button" onClick={() => setSelectedChat(telegramChat)}
-                    className="w-full flex items-center gap-3 p-4 rounded-xl border border-[#f0ede8] hover:border-[#D4537E]/40 hover:bg-[#fdf9f8] transition-all text-left">
-                    <div className="w-10 h-10 rounded-full bg-[#E8F4FC] flex items-center justify-center flex-shrink-0">
-                      <Send size={18} className="text-[#229ED9]" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-[#1a1a18]">Telegram</p>
-                      <p className="text-[11px] text-[#888780] truncate mt-0.5">{telegramChat.last_message || telegramChat.title || '—'}</p>
-                    </div>
-                    <span className="text-[10px] text-[#888780]">{formatDate(telegramChat.updated_at)}</span>
-                  </button>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-12 text-[#888780]">
-                    <Send size={32} className="mb-2 opacity-30" />
-                    <p className="text-sm">Нет чата в Telegram</p>
-                  </div>
-                )
-              )}
-
-              {channelTab === 'whatsapp' && (
-                <div className="flex flex-col items-center justify-center py-12 text-[#888780]">
-                  <MessageCircle size={32} className="mb-2 opacity-30" />
-                  <p className="text-sm">WhatsApp не подключён</p>
-                  <p className="text-xs mt-1 text-[#888780]">Будет доступно после подключения API</p>
-                </div>
-              )}
-
-              {channelTab === 'instagram' && (
-                <div className="flex flex-col items-center justify-center py-12 text-[#888780]">
-                  <MessageCircle size={32} className="mb-2 opacity-30" />
-                  <p className="text-sm">Instagram не подключён</p>
-                  <p className="text-xs mt-1 text-[#888780]">Будет доступно после подключения API</p>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-[#888780]">
+                  {channelTab === 'whatsapp' && <p className="text-sm">WhatsApp не подключён</p>}
+                  {channelTab === 'instagram' && <p className="text-sm">Instagram не подключён</p>}
+                  {channelTab === 'web' && <p className="text-sm">Нет чата с сайта</p>}
+                  {channelTab === 'telegram' && <p className="text-sm">Нет чата в Telegram</p>}
+                  {(channelTab === 'whatsapp' || channelTab === 'instagram') && (
+                    <p className="text-xs mt-1">Будет доступно после подключения API</p>
+                  )}
                 </div>
               )}
             </div>
-          )
+          </div>
         )}
 
         {/* Заказы */}

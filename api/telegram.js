@@ -35,7 +35,6 @@ export default async function handler(req, res) {
 
     const tgChatId = String(message.chat.id)
     const text = message.text || ''
-    const contact = message.contact || null
     const fromName = [message.from?.first_name, message.from?.last_name]
       .filter(Boolean).join(' ') || 'Telegram пользователь'
     const username = message.from?.username || null
@@ -92,19 +91,7 @@ export default async function handler(req, res) {
 
     // Привязка user_id по номеру телефона
     if (!chat.user_id) {
-      const { data: lastMsg } = await supabase
-        .from('stylist_messages')
-        .select('content, role')
-        .eq('chat_id', chat.id)
-        .eq('role', 'assistant')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      const waitingForPhone =
-        lastMsg?.content?.includes('номер телефона') ||
-        lastMsg?.content?.includes('поделитесь номером')
-
+      const contact = message.contact || null
       if (contact?.phone_number) {
         const cleanPhone = contact.phone_number.replace(/\D/g, '')
         const { data: foundUser } = await supabase
@@ -114,94 +101,35 @@ export default async function handler(req, res) {
           .maybeSingle()
 
         if (foundUser) {
-          await supabase
-            .from('stylist_chats')
-            .update({ user_id: foundUser.id })
-            .eq('id', chat.id)
-          chat.user_id = foundUser.id
-
-          const successText = 'Отлично! Нашла ваш профиль 🌸 Теперь могу подбирать образы именно для вас! Чем могу помочь?'
+          await supabase.from('stylist_chats').update({ user_id: foundUser.id }).eq('id', chat.id)
+          const successText = 'Отлично! Нашла ваш профиль 🌸 Чем могу помочь?'
           await supabase.from('stylist_messages').insert({
-            chat_id: chat.id,
-            role: 'assistant',
-            content: successText,
+            chat_id: chat.id, role: 'assistant', content: successText,
             created_at: new Date().toISOString(),
           })
-          await sendTelegram(tgChatId, successText, {
-            remove_keyboard: true,
-          })
-          return res.status(200).json({ ok: true })
+          await sendTelegram(tgChatId, successText, { remove_keyboard: true })
         } else {
-          const notFoundText = 'Не нашла аккаунт с таким номером 😔 Зарегистрируйтесь на capriccio.vercel.app и напишите мне снова!'
+          const notFoundText = 'Не нашла аккаунт с таким номером 😔 Зарегистрируйтесь на capriccio.vercel.app'
           await supabase.from('stylist_messages').insert({
-            chat_id: chat.id,
-            role: 'assistant',
-            content: notFoundText,
+            chat_id: chat.id, role: 'assistant', content: notFoundText,
             created_at: new Date().toISOString(),
           })
           await sendTelegram(tgChatId, notFoundText, { remove_keyboard: true })
-          return res.status(200).json({ ok: true })
         }
-      }
-
-      if (waitingForPhone && text) {
-        const cleanPhone = text.replace(/\D/g, '')
-
-        if (cleanPhone.length >= 10) {
-          const { data: foundUser } = await supabase
-            .from('users')
-            .select('id')
-            .ilike('phone', `%${cleanPhone.slice(-10)}%`)
-            .maybeSingle()
-
-          if (foundUser) {
-            await supabase
-              .from('stylist_chats')
-              .update({ user_id: foundUser.id })
-              .eq('id', chat.id)
-            chat.user_id = foundUser.id
-
-            const confirmText = 'Отлично! Я нашла ваш профиль 🌸 Теперь я знаю ваши предпочтения и смогу подбирать образы именно для вас!'
-            await supabase.from('stylist_messages').insert({
-              chat_id: chat.id,
-              role: 'assistant',
-              content: confirmText,
-              created_at: new Date().toISOString(),
-            })
-            await sendTelegram(tgChatId, confirmText)
-            return res.status(200).json({ ok: true })
-          } else {
-            const notFoundText = 'К сожалению, не нашла аккаунт с таким номером. Попробуйте зарегистрироваться на сайте capriccio.vercel.app или напишите номер ещё раз.'
-            await supabase.from('stylist_messages').insert({
-              chat_id: chat.id,
-              role: 'assistant',
-              content: notFoundText,
-              created_at: new Date().toISOString(),
-            })
-            await sendTelegram(tgChatId, notFoundText)
-            return res.status(200).json({ ok: true })
-          }
-        }
-      }
-
-      if (!waitingForPhone) {
-        const welcomeText = `Привет! 👋 Я Амина, стилист Capriccio.\n\nЧтобы я могла учитывать ваши предпочтения — поделитесь номером телефона, на который зарегистрированы на нашем сайте.`
-        await supabase.from('stylist_messages').insert({
-          chat_id: chat.id,
-          role: 'assistant',
-          content: welcomeText,
-          created_at: new Date().toISOString(),
-        })
-        await sendTelegram(tgChatId, welcomeText, {
-          keyboard: [[{
-            text: '📱 Поделиться номером телефона',
-            request_contact: true,
-          }]],
-          resize_keyboard: true,
-          one_time_keyboard: true,
-        })
         return res.status(200).json({ ok: true })
       }
+
+      const welcomeText = `Привет! 👋 Я Амина, стилист Capriccio.\n\nПоделитесь номером телефона, чтобы я могла учитывать ваши предпочтения.`
+      await supabase.from('stylist_messages').insert({
+        chat_id: chat.id, role: 'assistant', content: welcomeText,
+        created_at: new Date().toISOString(),
+      })
+      await sendTelegram(tgChatId, welcomeText, {
+        keyboard: [[{ text: '📱 Поделиться номером телефона', request_contact: true }]],
+        resize_keyboard: true,
+        one_time_keyboard: true,
+      })
+      return res.status(200).json({ ok: true })
     }
 
     // Сохранить сообщение пользователя

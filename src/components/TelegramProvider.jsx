@@ -1,51 +1,55 @@
 import { useEffect, useState } from 'react'
 import { useAuthStore } from '../store/authStore'
-import { authWithTelegram } from '../lib/telegramAuth'
 
 export default function TelegramProvider({ children }) {
   const { setUser } = useAuthStore()
-  const [debugInfo, setDebugInfo] = useState(null)
+  const [debug, setDebug] = useState('init...')
 
   useEffect(() => {
-    const tg = window.Telegram?.WebApp
-    if (!tg) return
+    async function init() {
+      try {
+        const tg = window.Telegram?.WebApp
+        setDebug('tg: ' + (tg ? 'yes' : 'no'))
 
-    tg.ready()
-    tg.expand()
+        if (!tg) return
+        tg.ready()
+        tg.expand()
 
-    setTimeout(() => {
-      const initData = tg.initData
-      const tgUser = tg.initDataUnsafe?.user
+        const user = tg.initDataUnsafe?.user
+        setDebug('user: ' + JSON.stringify(user))
 
-      setDebugInfo({
-        hasInitData: !!initData,
-        initDataLength: initData?.length || 0,
-        hasUser: !!tgUser,
-        userId: tgUser?.id || null,
-        userName: tgUser?.first_name || null,
-      })
+        if (!user?.id) return
 
-      if (!tgUser?.id) return
+        const res = await fetch('/api/telegram-auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            telegram_id: user.id,
+            full_name: [user.first_name, user.last_name].filter(Boolean).join(' '),
+            username: user.username || null,
+            phone: user.phone_number || null,
+          }),
+        })
+        const data = await res.json()
+        setDebug('api: ' + JSON.stringify(data).slice(0, 100))
+        if (data.user) setUser(data.user)
+      } catch(e) {
+        setDebug('error: ' + e.message)
+      }
+    }
 
-      authWithTelegram().then(user => {
-        if (user) setUser(user)
-      })
-    }, 500)
+    init()
   }, [])
 
   return (
     <>
-      {debugInfo && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0,
-          background: 'red', color: 'white', padding: '8px',
-          fontSize: '12px', zIndex: 99999
-        }}>
-          initData: {debugInfo.hasInitData ? `yes(${debugInfo.initDataLength})` : 'NO'} |
-          user: {debugInfo.hasUser ? `yes(${debugInfo.userId})` : 'NO'} |
-          name: {debugInfo.userName || 'none'}
-        </div>
-      )}
+      <div style={{
+        position: 'fixed', top: 0, left: 0, right: 0,
+        background: 'blue', color: 'white', padding: '8px',
+        fontSize: '11px', zIndex: 99999, wordBreak: 'break-all'
+      }}>
+        {debug}
+      </div>
       {children}
     </>
   )

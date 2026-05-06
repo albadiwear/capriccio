@@ -46,6 +46,61 @@ function formatDateTime(iso) {
   return new Date(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
+function EditableField({ label, value, onSave, type = 'text', options = null }) {
+  const [editing, setEditing] = useState(false)
+  const [val, setVal] = useState(value || '')
+
+  useEffect(() => { setVal(value || '') }, [value])
+
+  async function handleSave() {
+    setEditing(false)
+    if (val === (value || '')) return
+    await onSave(val)
+  }
+
+  return (
+    <div className="flex justify-between items-center py-1.5 border-b border-[#f0ede8] last:border-0 group">
+      <span className="text-xs text-[#888780] flex-shrink-0">{label}</span>
+      {editing ? (
+        options ? (
+          <select
+            autoFocus
+            value={val}
+            onChange={e => setVal(e.target.value)}
+            onBlur={handleSave}
+            className="text-xs text-[#1a1a18] border border-[#D4537E] rounded-lg px-2 py-0.5 outline-none max-w-[55%]"
+          >
+            {options.map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
+        ) : (
+          <input
+            autoFocus
+            type={type}
+            value={val}
+            onChange={e => setVal(e.target.value)}
+            onBlur={handleSave}
+            onKeyDown={e => {
+              if (e.key === 'Enter') handleSave()
+              if (e.key === 'Escape') {
+                setVal(value || '')
+                setEditing(false)
+              }
+            }}
+            className="text-xs text-[#1a1a18] border border-[#D4537E] rounded-lg px-2 py-0.5 outline-none text-right max-w-[55%]"
+          />
+        )
+      ) : (
+        <span
+          onClick={() => setEditing(true)}
+          className="text-xs font-medium text-[#1a1a18] text-right max-w-[55%] cursor-pointer hover:text-[#D4537E] transition-colors group-hover:underline decoration-dotted"
+        >
+          {value || <span className="text-[#888780]">—</span>}
+        </span>
+      )}
+    </div>
+  )
+}
+
 export default function AdminCRMDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -111,6 +166,28 @@ export default function AdminCRMDetailPage() {
     setSavingStatus(false)
   }
 
+  async function saveUserField(field, value) {
+    setUser(prev => ({ ...prev, [field]: value }))
+    await supabase.from('users').update({ [field]: value }).eq('id', id)
+  }
+
+  async function saveProfileField(field, value) {
+    const nextValue = Number.isNaN(value) ? null : value
+    const nextProfile = profile ? { ...profile, [field]: nextValue } : { user_id: id, [field]: nextValue }
+    setProfile(nextProfile)
+
+    if (profile?.id) {
+      await supabase.from('stylist_profiles').update({ [field]: nextValue }).eq('id', profile.id)
+    } else {
+      const { data } = await supabase
+        .from('stylist_profiles')
+        .insert({ user_id: id, [field]: nextValue })
+        .select()
+        .single()
+      if (data) setProfile(data)
+    }
+  }
+
   async function handleAddNote() {
     if (!noteText.trim()) return
     setSavingNote(true)
@@ -158,15 +235,6 @@ export default function AdminCRMDetailPage() {
     web:       { label: 'Сайт',      bg: '#f3f4f6', text: '#4b5563' },
   }
 
-  function profileVal(val, suffix = '') {
-    if (Array.isArray(val)) return val.length ? val.join(', ') : '—'
-    return val ? `${val}${suffix}` : '—'
-  }
-
-  const budgetStr = profile?.budget_min && profile?.budget_max
-    ? `${Number(profile.budget_min).toLocaleString('ru-RU')} — ${Number(profile.budget_max).toLocaleString('ru-RU')} ₸`
-    : '—'
-
   // ── Profile block (shared) ─────────────────────────────────────────────────
   const ProfileBlock = (
     <div className="space-y-3">
@@ -199,6 +267,10 @@ export default function AdminCRMDetailPage() {
         </div>
 
         <div>
+          <EditableField label="Имя" value={user.full_name} onSave={v => saveUserField('full_name', v)} />
+          <EditableField label="Телефон" value={user.phone} onSave={v => saveUserField('phone', v)} />
+          <EditableField label="Email" value={user.email} onSave={v => saveUserField('email', v)} />
+          <EditableField label="Город" value={user.city} onSave={v => saveUserField('city', v)} />
           <div className="flex items-center justify-between py-1.5 border-b border-[#f0ede8]">
             <span className="text-xs text-[#888780]">Статус</span>
             <div className="relative">
@@ -223,28 +295,18 @@ export default function AdminCRMDetailPage() {
       {/* Секция 2: Параметры */}
       <div className="bg-white rounded-2xl p-4 border border-[#f0ede8]">
         <p className="text-[10px] font-bold text-[#888780] uppercase tracking-wider mb-2">Параметры</p>
-        {!profile ? (
-          <p className="text-xs text-[#888780] py-1">Анкета не заполнена</p>
-        ) : (
-          <div>
-            {[
-              { label: 'Возраст',        val: profileVal(profile.age, ' лет') },
-              { label: 'Размер одежды',  val: profileVal(profile.clothing_size) },
-              { label: 'Размер обуви',   val: profileVal(profile.shoe_size) },
-              { label: 'Рост',           val: profileVal(profile.height, ' см') },
-              { label: 'Бюджет',         val: budgetStr },
-              { label: 'Стиль',          val: profileVal(profile.style_preferences) },
-              { label: 'Цветотип',       val: profileVal(profile.color_type) },
-              { label: 'Телосложение',   val: profileVal(profile.body_type) },
-              { label: 'Любимые цвета', val: profileVal(profile.favorite_colors) },
-            ].map(({ label, val }) => (
-              <div key={label} className="flex items-start justify-between py-1.5 border-b border-[#f0ede8] last:border-0">
-                <span className="text-xs text-[#888780] flex-shrink-0">{label}</span>
-                <span className="text-xs font-medium text-[#1a1a18] text-right max-w-[55%] ml-2">{val}</span>
-              </div>
-            ))}
-          </div>
-        )}
+        <div>
+          <EditableField label="Возраст" value={profile?.age ? profile.age + ' лет' : ''} onSave={v => saveProfileField('age', parseInt(v))} type="number" />
+          <EditableField label="Размер одежды" value={profile?.clothing_size} onSave={v => saveProfileField('clothing_size', v)} options={['XS', 'S', 'M', 'L', 'XL', 'XXL', '42', '44', '46', '48', '50', '52', '54', '56', '58', '60']} />
+          <EditableField label="Размер обуви" value={profile?.shoe_size} onSave={v => saveProfileField('shoe_size', parseInt(v))} type="number" />
+          <EditableField label="Рост" value={profile?.height ? profile.height + ' см' : ''} onSave={v => saveProfileField('height', parseInt(v))} type="number" />
+          <EditableField label="Бюджет мин" value={profile?.budget_min ? profile.budget_min.toLocaleString('ru-RU') + ' ₸' : ''} onSave={v => saveProfileField('budget_min', parseInt(v.replace(/\D/g, '')))} />
+          <EditableField label="Бюджет макс" value={profile?.budget_max ? profile.budget_max.toLocaleString('ru-RU') + ' ₸' : ''} onSave={v => saveProfileField('budget_max', parseInt(v.replace(/\D/g, '')))} />
+          <EditableField label="Стиль" value={Array.isArray(profile?.style_preferences) ? profile.style_preferences.join(', ') : profile?.style_preferences} onSave={v => saveProfileField('style_preferences', v)} />
+          <EditableField label="Цветотип" value={profile?.color_type} onSave={v => saveProfileField('color_type', v)} options={['spring', 'summer', 'autumn', 'winter']} />
+          <EditableField label="Телосложение" value={profile?.body_type} onSave={v => saveProfileField('body_type', v)} options={['hourglass', 'pear', 'apple', 'rectangle', 'inverted_triangle']} />
+          <EditableField label="Любимые цвета" value={Array.isArray(profile?.favorite_colors) ? profile.favorite_colors.join(', ') : profile?.favorite_colors} onSave={v => saveProfileField('favorite_colors', v)} />
+        </div>
       </div>
 
       {/* Секция 3: Итоги */}

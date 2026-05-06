@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import ChatDialog from '../../components/admin/ChatDialog'
 import {
   ArrowLeft, MessageCircle, Send, Phone, Camera,
   ShoppingBag, Heart, ChevronRight, Plus, User, X,
@@ -31,11 +32,6 @@ const SOURCE_ICON = {
   web:       <MessageCircle size={14} className="text-gray-400" />,
 }
 
-function getInitials(name) {
-  if (!name) return '?'
-  return name.split(' ').filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase()
-}
-
 function formatDate(iso) {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -48,10 +44,8 @@ function formatDateTime(iso) {
 
 function EditableField({ label, value, onSave, type = 'text', options = null }) {
   const [editing, setEditing] = useState(false)
-  const [val, setVal] = useState(value || '')
+  const [val, setVal] = useState(() => value || '')
   const compact = !label
-
-  useEffect(() => { setVal(value || '') }, [value])
 
   async function handleSave() {
     setEditing(false)
@@ -117,12 +111,12 @@ export default function AdminCRMDetailPage() {
 
   const [tab, setTab] = useState('chats')
   const [mobileSection, setMobileSection] = useState('info')
+  const [openChatId, setOpenChatId] = useState(null)
 
   const [noteText, setNoteText] = useState('')
   const [addingField, setAddingField] = useState(false)
   const [newFieldLabel, setNewFieldLabel] = useState('')
   const [newFieldValue, setNewFieldValue] = useState('')
-  const [savingNote, setSavingNote] = useState(false)
   const [savingStatus, setSavingStatus] = useState(false)
 
   useEffect(() => { load() }, [id])
@@ -197,7 +191,6 @@ export default function AdminCRMDetailPage() {
 
   async function handleAddNote() {
     if (!noteText.trim()) return
-    setSavingNote(true)
     try {
       const { data } = await supabase
         .from('lead_notes')
@@ -206,8 +199,8 @@ export default function AdminCRMDetailPage() {
         .single()
       if (data) setNotes(prev => [data, ...prev])
       setNoteText('')
-    } finally {
-      setSavingNote(false)
+    } catch (error) {
+      void error
     }
   }
 
@@ -223,7 +216,9 @@ export default function AdminCRMDetailPage() {
       setNewFieldLabel('')
       setNewFieldValue('')
       setAddingField(false)
-    } catch {}
+    } catch (error) {
+      void error
+    }
   }
 
   async function handleDeleteCustomField(fieldId) {
@@ -299,10 +294,10 @@ export default function AdminCRMDetailPage() {
         </div>
 
         <div>
-          <EditableField label="Имя" value={user.full_name} onSave={v => saveUserField('full_name', v)} />
-          <EditableField label="Телефон" value={user.phone} onSave={v => saveUserField('phone', v)} />
-          <EditableField label="Email" value={user.email} onSave={v => saveUserField('email', v)} />
-          <EditableField label="Город" value={user.city} onSave={v => saveUserField('city', v)} />
+          <EditableField key={`full_name-${user.full_name || ''}`} label="Имя" value={user.full_name} onSave={v => saveUserField('full_name', v)} />
+          <EditableField key={`phone-${user.phone || ''}`} label="Телефон" value={user.phone} onSave={v => saveUserField('phone', v)} />
+          <EditableField key={`email-${user.email || ''}`} label="Email" value={user.email} onSave={v => saveUserField('email', v)} />
+          <EditableField key={`city-${user.city || ''}`} label="Город" value={user.city} onSave={v => saveUserField('city', v)} />
           <div className="flex items-center justify-between py-1.5 border-b border-[#f0ede8]">
             <span className="text-xs text-[#888780]">Статус</span>
             <div className="relative">
@@ -328,16 +323,16 @@ export default function AdminCRMDetailPage() {
       <div className="bg-white rounded-2xl p-4 border border-[#f0ede8]">
         <p className="text-[10px] font-bold text-[#888780] uppercase tracking-wider mb-2">Параметры</p>
         <div>
-          <EditableField label="Возраст" value={profile?.age ? profile.age + ' лет' : ''} onSave={v => saveProfileField('age', parseInt(v))} type="number" />
-          <EditableField label="Размер одежды" value={profile?.clothing_size} onSave={v => saveProfileField('clothing_size', v)} options={['XS', 'S', 'M', 'L', 'XL', 'XXL', '42', '44', '46', '48', '50', '52', '54', '56', '58', '60']} />
-          <EditableField label="Размер обуви" value={profile?.shoe_size} onSave={v => saveProfileField('shoe_size', parseInt(v))} type="number" />
-          <EditableField label="Рост" value={profile?.height ? profile.height + ' см' : ''} onSave={v => saveProfileField('height', parseInt(v))} type="number" />
-          <EditableField label="Бюджет мин" value={profile?.budget_min ? profile.budget_min.toLocaleString('ru-RU') + ' ₸' : ''} onSave={v => saveProfileField('budget_min', parseInt(v.replace(/\D/g, '')))} />
-          <EditableField label="Бюджет макс" value={profile?.budget_max ? profile.budget_max.toLocaleString('ru-RU') + ' ₸' : ''} onSave={v => saveProfileField('budget_max', parseInt(v.replace(/\D/g, '')))} />
-          <EditableField label="Стиль" value={Array.isArray(profile?.style_preferences) ? profile.style_preferences.join(', ') : profile?.style_preferences} onSave={v => saveProfileField('style_preferences', v)} />
-          <EditableField label="Цветотип" value={profile?.color_type} onSave={v => saveProfileField('color_type', v)} options={['spring', 'summer', 'autumn', 'winter']} />
-          <EditableField label="Телосложение" value={profile?.body_type} onSave={v => saveProfileField('body_type', v)} options={['hourglass', 'pear', 'apple', 'rectangle', 'inverted_triangle']} />
-          <EditableField label="Любимые цвета" value={Array.isArray(profile?.favorite_colors) ? profile.favorite_colors.join(', ') : profile?.favorite_colors} onSave={v => saveProfileField('favorite_colors', v)} />
+          <EditableField key={`age-${profile?.age || ''}`} label="Возраст" value={profile?.age ? profile.age + ' лет' : ''} onSave={v => saveProfileField('age', parseInt(v))} type="number" />
+          <EditableField key={`clothing_size-${profile?.clothing_size || ''}`} label="Размер одежды" value={profile?.clothing_size} onSave={v => saveProfileField('clothing_size', v)} options={['XS', 'S', 'M', 'L', 'XL', 'XXL', '42', '44', '46', '48', '50', '52', '54', '56', '58', '60']} />
+          <EditableField key={`shoe_size-${profile?.shoe_size || ''}`} label="Размер обуви" value={profile?.shoe_size} onSave={v => saveProfileField('shoe_size', parseInt(v))} type="number" />
+          <EditableField key={`height-${profile?.height || ''}`} label="Рост" value={profile?.height ? profile.height + ' см' : ''} onSave={v => saveProfileField('height', parseInt(v))} type="number" />
+          <EditableField key={`budget_min-${profile?.budget_min || ''}`} label="Бюджет мин" value={profile?.budget_min ? profile.budget_min.toLocaleString('ru-RU') + ' ₸' : ''} onSave={v => saveProfileField('budget_min', parseInt(v.replace(/\D/g, '')))} />
+          <EditableField key={`budget_max-${profile?.budget_max || ''}`} label="Бюджет макс" value={profile?.budget_max ? profile.budget_max.toLocaleString('ru-RU') + ' ₸' : ''} onSave={v => saveProfileField('budget_max', parseInt(v.replace(/\D/g, '')))} />
+          <EditableField key={`style_preferences-${Array.isArray(profile?.style_preferences) ? profile.style_preferences.join(',') : profile?.style_preferences || ''}`} label="Стиль" value={Array.isArray(profile?.style_preferences) ? profile.style_preferences.join(', ') : profile?.style_preferences} onSave={v => saveProfileField('style_preferences', v)} />
+          <EditableField key={`color_type-${profile?.color_type || ''}`} label="Цветотип" value={profile?.color_type} onSave={v => saveProfileField('color_type', v)} options={['spring', 'summer', 'autumn', 'winter']} />
+          <EditableField key={`body_type-${profile?.body_type || ''}`} label="Телосложение" value={profile?.body_type} onSave={v => saveProfileField('body_type', v)} options={['hourglass', 'pear', 'apple', 'rectangle', 'inverted_triangle']} />
+          <EditableField key={`favorite_colors-${Array.isArray(profile?.favorite_colors) ? profile.favorite_colors.join(',') : profile?.favorite_colors || ''}`} label="Любимые цвета" value={Array.isArray(profile?.favorite_colors) ? profile.favorite_colors.join(', ') : profile?.favorite_colors} onSave={v => saveProfileField('favorite_colors', v)} />
         </div>
       </div>
 
@@ -362,6 +357,7 @@ export default function AdminCRMDetailPage() {
             <span className="text-xs text-[#888780]">{field.label}</span>
             <div className="flex items-center gap-2">
               <EditableField
+                key={`${field.id}-${field.value || ''}`}
                 label=""
                 value={field.value}
                 onSave={v => handleSaveCustomField(field.id, v)}
@@ -511,29 +507,35 @@ export default function AdminCRMDetailPage() {
               </div>
             )}
             {chats.map(chat => (
-              <button
-                key={chat.id}
-                type="button"
-                onClick={() => navigate(`/admin/chats?chat_id=${chat.id}`)}
-                className="w-full flex items-center gap-3 p-3 rounded-xl border border-[#f0ede8] hover:border-[#D4537E]/40 hover:bg-[#fdf9f8] transition-all text-left"
-              >
-                <div className="w-9 h-9 rounded-full bg-[#f0ede8] flex items-center justify-center flex-shrink-0 overflow-hidden">
-                  {chat.avatar_url
-                    ? <img src={chat.avatar_url} alt="" className="w-full h-full object-cover rounded-full" />
-                    : (SOURCE_ICON[chat.source] || SOURCE_ICON.web)
-                  }
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 mb-0.5">
-                    {SOURCE_ICON[chat.source] || SOURCE_ICON.web}
-                    <span className="text-xs font-semibold text-[#1a1a18] capitalize">{chat.source || 'web'}</span>
+              <div key={chat.id}>
+                <button
+                  type="button"
+                  onClick={() => setOpenChatId(openChatId === chat.id ? null : chat.id)}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl border border-[#f0ede8] hover:border-[#D4537E]/40 hover:bg-[#fdf9f8] transition-all text-left"
+                >
+                  <div className="w-9 h-9 rounded-full bg-[#f0ede8] flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {chat.avatar_url
+                      ? <img src={chat.avatar_url} alt="" className="w-full h-full object-cover rounded-full" />
+                      : (SOURCE_ICON[chat.source] || SOURCE_ICON.web)
+                    }
                   </div>
-                  {(chat.last_message || chat.title) && (
-                    <p className="text-[11px] text-[#888780] truncate">{chat.last_message || chat.title || '—'}</p>
-                  )}
-                </div>
-                <span className="text-[10px] text-[#888780] flex-shrink-0">{formatDate(chat.updated_at)}</span>
-              </button>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      {SOURCE_ICON[chat.source] || SOURCE_ICON.web}
+                      <span className="text-xs font-semibold text-[#1a1a18] capitalize">{chat.source || 'web'}</span>
+                    </div>
+                    {(chat.last_message || chat.title) && (
+                      <p className="text-[11px] text-[#888780] truncate">{chat.last_message || chat.title || '—'}</p>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-[#888780] flex-shrink-0">{formatDate(chat.updated_at)}</span>
+                </button>
+                {openChatId === chat.id && (
+                  <div className="mt-2 rounded-2xl border border-[#f0ede8] overflow-hidden h-[500px]">
+                    <ChatDialog selectedChat={chat} compact={true} onClose={() => setOpenChatId(null)} />
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         )}

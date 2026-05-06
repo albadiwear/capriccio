@@ -134,7 +134,7 @@ export default function AdminCRMDetailPage() {
         supabase.from('users').select('*').eq('id', id).maybeSingle(),
         supabase.from('lead_notes').select('*').eq('user_id', id).order('created_at', { ascending: false }),
         supabase.from('orders').select('id, created_at, total_amount, status').eq('user_id', id).order('created_at', { ascending: false }),
-        supabase.from('stylist_chats').select('id, source, last_message, updated_at, avatar_url').eq('user_id', id),
+        supabase.from('stylist_chats').select('id, source, title, last_message, updated_at, avatar_url').eq('user_id', id).order('updated_at', { ascending: false }),
         supabase.from('wishlist').select('id, product_id').eq('user_id', id),
         supabase.from('stylist_profiles').select('*').eq('user_id', id).maybeSingle(),
         supabase.from('crm_custom_fields').select('*').eq('user_id', id).order('created_at', { ascending: true }),
@@ -528,8 +528,8 @@ export default function AdminCRMDetailPage() {
                     {SOURCE_ICON[chat.source] || SOURCE_ICON.web}
                     <span className="text-xs font-semibold text-[#1a1a18] capitalize">{chat.source || 'web'}</span>
                   </div>
-                  {chat.last_message && (
-                    <p className="text-[11px] text-[#888780] truncate">{chat.last_message}</p>
+                  {(chat.last_message || chat.title) && (
+                    <p className="text-[11px] text-[#888780] truncate">{chat.last_message || chat.title || '—'}</p>
                   )}
                 </div>
                 <span className="text-[10px] text-[#888780] flex-shrink-0">{formatDate(chat.updated_at)}</span>

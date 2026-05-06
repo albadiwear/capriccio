@@ -42,7 +42,7 @@ export default async function handler(req, res) {
       .select('*')
       .eq('source', 'telegram')
       .eq('external_id', tgChatId)
-      .single()
+      .maybeSingle()
 
     if (!chat) {
       const { data: newChat } = await supabase
@@ -62,45 +62,99 @@ export default async function handler(req, res) {
 
       // Получаем фото профиля из Telegram
       try {
-        const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
         const photosRes = await fetch(
           `https://api.telegram.org/bot${BOT_TOKEN}/getUserProfilePhotos?user_id=${tgChatId}&limit=1`
         )
         const photosData = await photosRes.json()
         const fileId = photosData?.result?.photos?.[0]?.[0]?.file_id
-        
+
         if (fileId) {
           const fileRes = await fetch(
             `https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${fileId}`
           )
           const fileData = await fileRes.json()
           const filePath = fileData?.result?.file_path
-          
+
           if (filePath) {
             const avatarUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${filePath}`
-            await supabase
-              .from('stylist_chats')
-              .update({ avatar_url: avatarUrl })
-              .eq('id', chat.id)
+            await supabase.from('stylist_chats').update({ avatar_url: avatarUrl }).eq('id', chat.id)
             chat.avatar_url = avatarUrl
           }
         }
-      } catch (e) {
-        console.error('Avatar fetch error:', e)
+      } catch (_) {
+        // аватар не критичен
       }
-
-      // Создать лид
-      await supabase.from('leads').insert({
-        name: fromName,
-        source: 'telegram',
-        username: username,
-        chat_id: chat.id,
-        status: 'new',
-        created_at: new Date().toISOString(),
-      })
     }
 
-    // Сохранить сообщение
+    // Привязка user_id по номеру телефона
+    if (!chat.user_id) {
+      const { data: lastMsg } = await supabase
+        .from('stylist_messages')
+        .select('content, role')
+        .eq('chat_id', chat.id)
+        .eq('role', 'assistant')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      const waitingForPhone =
+        lastMsg?.content?.includes('номер телефона') ||
+        lastMsg?.content?.includes('поделитесь номером')
+
+      if (waitingForPhone && text) {
+        const cleanPhone = text.replace(/\D/g, '')
+
+        if (cleanPhone.length >= 10) {
+          const { data: foundUser } = await supabase
+            .from('users')
+            .select('id')
+            .ilike('phone', `%${cleanPhone.slice(-10)}%`)
+            .maybeSingle()
+
+          if (foundUser) {
+            await supabase
+              .from('stylist_chats')
+              .update({ user_id: foundUser.id })
+              .eq('id', chat.id)
+            chat.user_id = foundUser.id
+
+            const confirmText = 'Отлично! Я нашла ваш профиль 🌸 Теперь я знаю ваши предпочтения и смогу подбирать образы именно для вас!'
+            await supabase.from('stylist_messages').insert({
+              chat_id: chat.id,
+              role: 'assistant',
+              content: confirmText,
+              created_at: new Date().toISOString(),
+            })
+            await sendTelegram(tgChatId, confirmText)
+            return res.status(200).json({ ok: true })
+          } else {
+            const notFoundText = 'К сожалению, не нашла аккаунт с таким номером. Попробуйте зарегистрироваться на сайте capriccio.vercel.app или напишите номер ещё раз.'
+            await supabase.from('stylist_messages').insert({
+              chat_id: chat.id,
+              role: 'assistant',
+              content: notFoundText,
+              created_at: new Date().toISOString(),
+            })
+            await sendTelegram(tgChatId, notFoundText)
+            return res.status(200).json({ ok: true })
+          }
+        }
+      }
+
+      if (!waitingForPhone) {
+        const welcomeText = `Привет! 👋 Я Амина, стилист Capriccio.\n\nЧтобы я могла учитывать ваши предпочтения и историю — поделитесь номером телефона, на который зарегистрированы на нашем сайте.`
+        await supabase.from('stylist_messages').insert({
+          chat_id: chat.id,
+          role: 'assistant',
+          content: welcomeText,
+          created_at: new Date().toISOString(),
+        })
+        await sendTelegram(tgChatId, welcomeText)
+        return res.status(200).json({ ok: true })
+      }
+    }
+
+    // Сохранить сообщение пользователя
     await supabase.from('stylist_messages').insert({
       chat_id: chat.id,
       role: 'user',
@@ -108,15 +162,14 @@ export default async function handler(req, res) {
       created_at: new Date().toISOString(),
     })
 
-    // Обновить updated_at чата
+    // Обновить updated_at и last_message чата
     await supabase
       .from('stylist_chats')
       .update({ updated_at: new Date().toISOString(), last_message: text })
       .eq('id', chat.id)
 
     return res.status(200).json({ ok: true })
-  } catch (e) {
-    console.error('Telegram webhook error:', e)
+  } catch (_) {
     return res.status(200).json({ ok: true })
   }
 }

@@ -111,7 +111,7 @@ export default function AdminCRMDetailPage() {
 
   const [tab, setTab] = useState('chats')
   const [mobileSection, setMobileSection] = useState('info')
-  const [openChatId, setOpenChatId] = useState(null)
+  const [selectedChat, setSelectedChat] = useState(null)
 
   const [noteText, setNoteText] = useState('')
   const [addingField, setAddingField] = useState(false)
@@ -474,7 +474,30 @@ export default function AdminCRMDetailPage() {
     { id: 'wishlist', label: 'Избранное', count: wishlist.length },
   ]
 
-  const TabsBlock = (
+  const TabsBlock = selectedChat ? (
+    <div className="bg-white rounded-2xl border border-[#f0ede8] flex flex-col h-full overflow-hidden">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-[#f0ede8] flex-shrink-0">
+        <button
+          type="button"
+          onClick={() => setSelectedChat(null)}
+          className="flex items-center gap-1.5 text-xs text-[#888780] hover:text-[#1a1a18] transition-colors"
+        >
+          <ArrowLeft size={14} />
+          Все чаты
+        </button>
+        <div className="w-px h-4 bg-[#f0ede8]" />
+        <span className="text-xs font-medium text-[#1a1a18] truncate">
+          {selectedChat.title || 'Чат'}
+        </span>
+        <span className="ml-auto text-xs text-[#888780]">
+          {selectedChat.source === 'telegram' ? 'Telegram' : 'Сайт'}
+        </span>
+      </div>
+      <div className="flex-1 min-h-0">
+        <ChatDialog selectedChat={selectedChat} compact={true} />
+      </div>
+    </div>
+  ) : (
     <div className="bg-white rounded-2xl border border-[#f0ede8] flex flex-col min-h-0 h-full">
       <div className="flex border-b border-[#f0ede8] px-4 pt-1 flex-shrink-0">
         {TABS.map(t => (
@@ -507,35 +530,31 @@ export default function AdminCRMDetailPage() {
               </div>
             )}
             {chats.map(chat => (
-              <div key={chat.id}>
-                <button
-                  type="button"
-                  onClick={() => setOpenChatId(openChatId === chat.id ? null : chat.id)}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl border border-[#f0ede8] hover:border-[#D4537E]/40 hover:bg-[#fdf9f8] transition-all text-left"
-                >
-                  <div className="w-9 h-9 rounded-full bg-[#f0ede8] flex items-center justify-center flex-shrink-0 overflow-hidden">
-                    {chat.avatar_url
-                      ? <img src={chat.avatar_url} alt="" className="w-full h-full object-cover rounded-full" />
-                      : (SOURCE_ICON[chat.source] || SOURCE_ICON.web)
-                    }
+              <button
+                key={chat.id}
+                type="button"
+                onClick={() => setSelectedChat(chat)}
+                className={`w-full flex items-center gap-3 p-3 rounded-xl border hover:border-[#D4537E]/40 hover:bg-[#fdf9f8] transition-all text-left ${
+                  chat.id === selectedChat?.id ? 'border-[#D4537E]' : 'border-[#f0ede8]'
+                }`}
+              >
+                <div className="w-9 h-9 rounded-full bg-[#f0ede8] flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  {chat.avatar_url
+                    ? <img src={chat.avatar_url} alt="" className="w-full h-full object-cover rounded-full" />
+                    : (SOURCE_ICON[chat.source] || SOURCE_ICON.web)
+                  }
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    {SOURCE_ICON[chat.source] || SOURCE_ICON.web}
+                    <span className="text-xs font-semibold text-[#1a1a18] capitalize">{chat.source || 'web'}</span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      {SOURCE_ICON[chat.source] || SOURCE_ICON.web}
-                      <span className="text-xs font-semibold text-[#1a1a18] capitalize">{chat.source || 'web'}</span>
-                    </div>
-                    {(chat.last_message || chat.title) && (
-                      <p className="text-[11px] text-[#888780] truncate">{chat.last_message || chat.title || '—'}</p>
-                    )}
-                  </div>
-                  <span className="text-[10px] text-[#888780] flex-shrink-0">{formatDate(chat.updated_at)}</span>
-                </button>
-                {openChatId === chat.id && (
-                  <div className="mt-2 rounded-2xl border border-[#f0ede8] overflow-hidden h-[500px]">
-                    <ChatDialog selectedChat={chat} compact={true} onClose={() => setOpenChatId(null)} />
-                  </div>
-                )}
-              </div>
+                  {(chat.last_message || chat.title) && (
+                    <p className="text-[11px] text-[#888780] truncate">{chat.last_message || chat.title || '—'}</p>
+                  )}
+                </div>
+                <span className="text-[10px] text-[#888780] flex-shrink-0">{formatDate(chat.updated_at)}</span>
+              </button>
             ))}
           </div>
         )}

@@ -1,20 +1,42 @@
-import { Outlet, useLocation } from 'react-router-dom'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useEffect } from 'react'
 import Header from './Header'
 import CartDrawer from '../cart/CartDrawer'
 import { useAuthStore } from '../../store/authStore'
 import InnerHeader from './InnerHeader'
 import BottomNav from './BottomNav'
 import DesktopNav from './DesktopNav'
+import { useTelegram } from '../../hooks/useTelegram'
 
 export default function Layout() {
   const location = useLocation()
+  const navigate = useNavigate()
   const pathname = location.pathname
   const user = useAuthStore((state) => state.user)
   const loading = useAuthStore((state) => state.loading)
+  const { isTMA, webApp } = useTelegram()
 
   const isHome = pathname === '/'
   const isAdmin = pathname.startsWith('/admin')
   const isBlog = pathname.startsWith('/blog')
+  const shouldShowTelegramBack = isTMA && pathname !== '/' && pathname !== '/catalog'
+
+  useEffect(() => {
+    if (!isTMA || !webApp?.BackButton) return
+    const handleBack = () => navigate(-1)
+
+    if (shouldShowTelegramBack) {
+      webApp.BackButton.show()
+      webApp.BackButton.onClick(handleBack)
+    } else {
+      webApp.BackButton.hide()
+    }
+
+    return () => {
+      webApp.BackButton.offClick?.(handleBack)
+      webApp.BackButton.hide()
+    }
+  }, [isTMA, navigate, shouldShowTelegramBack, webApp])
 
   // Пока сессия загружается — показываем пустую шапку без меню
   if (loading && !isHome && !isAdmin) {
@@ -33,7 +55,7 @@ export default function Layout() {
   return (
     <div className="h-[100dvh] overflow-hidden flex flex-col bg-white">
       {/* Старый хедер — только незалогиненным и не на главной/админке/блоге */}
-      {!user && !isHome && !isAdmin && !isBlog && <Header />}
+      {!isTMA && !user && !isHome && !isAdmin && !isBlog && <Header />}
 
       {isBlog && (
         <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/95 backdrop-blur">
@@ -46,7 +68,7 @@ export default function Layout() {
       )}
 
       {/* Новый хедер — только залогиненным и не на главной/админке */}
-      {user && !isHome && !isAdmin && (
+      {user && !isHome && !isAdmin && !isTMA && (
         <>
           <div className="md:hidden">
             <InnerHeader />

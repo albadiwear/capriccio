@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
 
 let authSubscription = null
+const isTelegramMiniApp = () => typeof window !== 'undefined' && window.Telegram?.WebApp?.initData !== ''
 
 export const useAuthStore = create((set) => ({
   user: null,
@@ -39,14 +40,26 @@ export const useAuthStore = create((set) => ({
               set({ session, user: session.user ?? null, loading: false })
             }
           } else {
-            set({ session: null, user: null, loading: false })
+            set((state) => ({
+              session: null,
+              user: isTelegramMiniApp() ? state.user : null,
+              loading: false,
+            }))
           }
         } catch {
-          set({ session: null, user: null, loading: false })
+          set((state) => ({
+            session: null,
+            user: isTelegramMiniApp() ? state.user : null,
+            loading: false,
+          }))
         }
       })
       .catch(() => {
-        set({ session: null, user: null, loading: false })
+        set((state) => ({
+          session: null,
+          user: isTelegramMiniApp() ? state.user : null,
+          loading: false,
+        }))
       })
 
     if (authSubscription) {
@@ -57,7 +70,7 @@ export const useAuthStore = create((set) => ({
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       set((state) => ({
         session,
-        user: session?.user ?? null,
+        user: session?.user ?? (isTelegramMiniApp() ? state.user : null),
         // Don't hide splash early during initial bootstrap.
         loading: state.loading ? true : false,
       }))

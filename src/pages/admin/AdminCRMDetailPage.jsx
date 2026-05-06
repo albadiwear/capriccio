@@ -147,6 +147,7 @@ export default function AdminCRMDetailPage() {
             <p className="text-sm font-bold text-[#1a1a18] truncate">{user.full_name || 'Без имени'}</p>
             {user.email && <p className="text-xs text-[#888780] truncate mt-0.5">{user.email}</p>}
             {user.phone && <p className="text-xs text-[#888780] mt-0.5">{user.phone}</p>}
+            {user.city && <span className="text-sm text-[#888780]">{user.city}</span>}
           </div>
         </div>
 
@@ -170,13 +171,6 @@ export default function AdminCRMDetailPage() {
             <span className="text-xs text-[#888780]">Регистрация</span>
             <span className="text-xs text-[#1a1a18]">{formatDate(user.created_at)}</span>
           </div>
-
-          {user.city && (
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-[#888780]">Город</span>
-              <span className="text-xs text-[#1a1a18]">{user.city}</span>
-            </div>
-          )}
         </div>
       </div>
 
@@ -220,7 +214,11 @@ export default function AdminCRMDetailPage() {
           type="button"
           onClick={handleAddNote}
           disabled={savingNote || !newNote.trim()}
-          className="w-full py-2 text-xs font-semibold bg-[#1a1a18] text-white rounded-xl disabled:opacity-40 flex items-center justify-center gap-1.5 hover:bg-gray-800 transition-colors"
+          className={`w-full py-2 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-colors ${
+            newNote.trim()
+              ? 'bg-[#D4537E] text-white hover:bg-[#c44370]'
+              : 'bg-[#f0ede8] text-[#888780] cursor-not-allowed'
+          }`}
         >
           <Plus size={12} />
           Сохранить заметку
@@ -251,13 +249,9 @@ export default function AdminCRMDetailPage() {
             }`}
           >
             {t.label}
-            {t.count > 0 && (
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                tab === t.id ? 'bg-[#D4537E]/10 text-[#D4537E]' : 'bg-gray-100 text-[#888780]'
-              }`}>
-                {t.count}
-              </span>
-            )}
+            <span className="ml-1 text-xs bg-[#f0ede8] text-[#888780] rounded-full px-2 py-0.5">
+              {t.count}
+            </span>
           </button>
         ))}
       </div>
@@ -266,7 +260,12 @@ export default function AdminCRMDetailPage() {
         {/* Чаты */}
         {tab === 'chats' && (
           <div className="space-y-2">
-            {chats.length === 0 && <p className="text-xs text-[#888780]">Нет чатов</p>}
+            {chats.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-16 text-[#888780]">
+                <MessageCircle size={40} className="mb-3 opacity-30" />
+                <p className="text-sm">Нет чатов</p>
+              </div>
+            )}
             {chats.map(chat => (
               <button
                 key={chat.id}
@@ -298,7 +297,12 @@ export default function AdminCRMDetailPage() {
         {/* Заказы */}
         {tab === 'orders' && (
           <div className="space-y-2">
-            {orders.length === 0 && <p className="text-xs text-[#888780]">Нет заказов</p>}
+            {orders.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-16 text-[#888780]">
+                <ShoppingBag size={40} className="mb-3 opacity-30" />
+                <p className="text-sm">Заказов пока нет</p>
+              </div>
+            )}
             {orders.map(order => {
               const style = ORDER_STATUS_STYLE[order.status] || { label: order.status || '—', cls: 'bg-gray-100 text-gray-600' }
               return (
@@ -325,7 +329,12 @@ export default function AdminCRMDetailPage() {
         {/* Избранное */}
         {tab === 'wishlist' && (
           <div className="grid grid-cols-2 gap-3">
-            {wishlist.length === 0 && <p className="text-xs text-[#888780] col-span-2">Нет избранных товаров</p>}
+            {wishlist.length === 0 && (
+              <div className="col-span-2 flex flex-col items-center justify-center py-16 text-[#888780]">
+                <Heart size={40} className="mb-3 opacity-30" />
+                <p className="text-sm">Список избранного пуст</p>
+              </div>
+            )}
             {wishlist.map(item => {
               const product = item.products
               if (!product) return null
@@ -370,7 +379,7 @@ export default function AdminCRMDetailPage() {
 
       {/* Desktop: две колонки */}
       <div className="hidden md:flex flex-1 gap-5 p-5 overflow-hidden">
-        <div className="w-72 flex-shrink-0 overflow-y-auto scrollbar-thin">
+        <div className="w-72 flex-shrink-0 overflow-y-auto max-h-[calc(100vh-120px)] scrollbar-thin">
           {ProfileBlock}
         </div>
         <div className="flex-1 min-w-0 overflow-hidden flex flex-col">
@@ -383,9 +392,9 @@ export default function AdminCRMDetailPage() {
         <div className="flex border-b border-[#f0ede8] bg-white flex-shrink-0">
           {[
             { id: 'info',     label: 'Профиль' },
-            { id: 'chats',    label: 'Чаты' },
-            { id: 'orders',   label: 'Заказы' },
-            { id: 'wishlist', label: 'Избранное' },
+            { id: 'chats',    label: 'Чаты', count: chats.length },
+            { id: 'orders',   label: 'Заказы', count: orders.length },
+            { id: 'wishlist', label: 'Избранное', count: wishlist.length },
           ].map(t => (
             <button
               key={t.id}
@@ -401,6 +410,11 @@ export default function AdminCRMDetailPage() {
               }`}
             >
               {t.label}
+              {t.id !== 'info' && (
+                <span className="ml-1 text-xs bg-[#f0ede8] text-[#888780] rounded-full px-2 py-0.5">
+                  {t.count}
+                </span>
+              )}
             </button>
           ))}
         </div>

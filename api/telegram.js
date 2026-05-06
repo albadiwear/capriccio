@@ -7,11 +7,14 @@ const supabase = createClient(
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
 
-async function sendTelegram(chatId, text) {
+async function sendTelegram(chatId, text, replyMarkup = null) {
+  const body = { chat_id: chatId, text }
+  if (replyMarkup) body.reply_markup = replyMarkup
+
   await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: chatId, text }),
+    body: JSON.stringify(body),
   })
 }
 
@@ -32,6 +35,7 @@ export default async function handler(req, res) {
 
     const tgChatId = String(message.chat.id)
     const text = message.text || ''
+    const contact = message.contact || null
     const fromName = [message.from?.first_name, message.from?.last_name]
       .filter(Boolean).join(' ') || 'Telegram пользователь'
     const username = message.from?.username || null
@@ -101,6 +105,45 @@ export default async function handler(req, res) {
         lastMsg?.content?.includes('номер телефона') ||
         lastMsg?.content?.includes('поделитесь номером')
 
+      if (contact?.phone_number) {
+        const cleanPhone = contact.phone_number.replace(/\D/g, '')
+        const { data: foundUser } = await supabase
+          .from('users')
+          .select('id')
+          .or(`phone.ilike.%${cleanPhone.slice(-10)}%`)
+          .maybeSingle()
+
+        if (foundUser) {
+          await supabase
+            .from('stylist_chats')
+            .update({ user_id: foundUser.id })
+            .eq('id', chat.id)
+          chat.user_id = foundUser.id
+
+          const successText = 'Отлично! Нашла ваш профиль 🌸 Теперь могу подбирать образы именно для вас! Чем могу помочь?'
+          await supabase.from('stylist_messages').insert({
+            chat_id: chat.id,
+            role: 'assistant',
+            content: successText,
+            created_at: new Date().toISOString(),
+          })
+          await sendTelegram(tgChatId, successText, {
+            remove_keyboard: true,
+          })
+          return res.status(200).json({ ok: true })
+        } else {
+          const notFoundText = 'Не нашла аккаунт с таким номером 😔 Зарегистрируйтесь на capriccio.vercel.app и напишите мне снова!'
+          await supabase.from('stylist_messages').insert({
+            chat_id: chat.id,
+            role: 'assistant',
+            content: notFoundText,
+            created_at: new Date().toISOString(),
+          })
+          await sendTelegram(tgChatId, notFoundText, { remove_keyboard: true })
+          return res.status(200).json({ ok: true })
+        }
+      }
+
       if (waitingForPhone && text) {
         const cleanPhone = text.replace(/\D/g, '')
 
@@ -142,14 +185,21 @@ export default async function handler(req, res) {
       }
 
       if (!waitingForPhone) {
-        const welcomeText = `Привет! 👋 Я Амина, стилист Capriccio.\n\nЧтобы я могла учитывать ваши предпочтения и историю — поделитесь номером телефона, на который зарегистрированы на нашем сайте.`
+        const welcomeText = `Привет! 👋 Я Амина, стилист Capriccio.\n\nЧтобы я могла учитывать ваши предпочтения — поделитесь номером телефона, на который зарегистрированы на нашем сайте.`
         await supabase.from('stylist_messages').insert({
           chat_id: chat.id,
           role: 'assistant',
           content: welcomeText,
           created_at: new Date().toISOString(),
         })
-        await sendTelegram(tgChatId, welcomeText)
+        await sendTelegram(tgChatId, welcomeText, {
+          keyboard: [[{
+            text: '📱 Поделиться номером телефона',
+            request_contact: true,
+          }]],
+          resize_keyboard: true,
+          one_time_keyboard: true,
+        })
         return res.status(200).json({ ok: true })
       }
     }

@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import {
   ArrowLeft, MessageCircle, Send, Phone, Camera,
-  ShoppingBag, Heart, ChevronRight, Plus, User,
+  ShoppingBag, Heart, ChevronRight, Plus, User, X,
 } from 'lucide-react'
 
 const STATUS_OPTIONS = [
@@ -49,6 +49,7 @@ function formatDateTime(iso) {
 function EditableField({ label, value, onSave, type = 'text', options = null }) {
   const [editing, setEditing] = useState(false)
   const [val, setVal] = useState(value || '')
+  const compact = !label
 
   useEffect(() => { setVal(value || '') }, [value])
 
@@ -59,8 +60,8 @@ function EditableField({ label, value, onSave, type = 'text', options = null }) 
   }
 
   return (
-    <div className="flex justify-between items-center py-1.5 border-b border-[#f0ede8] last:border-0 group">
-      <span className="text-xs text-[#888780] flex-shrink-0">{label}</span>
+    <div className={compact ? 'group' : 'flex justify-between items-center py-1.5 border-b border-[#f0ede8] last:border-0 group'}>
+      {!compact && <span className="text-xs text-[#888780] flex-shrink-0">{label}</span>}
       {editing ? (
         options ? (
           <select
@@ -68,7 +69,7 @@ function EditableField({ label, value, onSave, type = 'text', options = null }) 
             value={val}
             onChange={e => setVal(e.target.value)}
             onBlur={handleSave}
-            className="text-xs text-[#1a1a18] border border-[#D4537E] rounded-lg px-2 py-0.5 outline-none max-w-[55%]"
+            className={`text-xs text-[#1a1a18] border border-[#D4537E] rounded-lg px-2 py-0.5 outline-none ${compact ? 'w-[140px]' : 'max-w-[55%]'}`}
           >
             {options.map(o => <option key={o} value={o}>{o}</option>)}
           </select>
@@ -86,13 +87,13 @@ function EditableField({ label, value, onSave, type = 'text', options = null }) 
                 setEditing(false)
               }
             }}
-            className="text-xs text-[#1a1a18] border border-[#D4537E] rounded-lg px-2 py-0.5 outline-none text-right max-w-[55%]"
+            className={`text-xs text-[#1a1a18] border border-[#D4537E] rounded-lg px-2 py-0.5 outline-none ${compact ? 'w-[140px]' : 'text-right max-w-[55%]'}`}
           />
         )
       ) : (
         <span
           onClick={() => setEditing(true)}
-          className="text-xs font-medium text-[#1a1a18] text-right max-w-[55%] cursor-pointer hover:text-[#D4537E] transition-colors group-hover:underline decoration-dotted"
+          className={`text-xs font-medium text-[#1a1a18] cursor-pointer hover:text-[#D4537E] transition-colors group-hover:underline decoration-dotted ${compact ? '' : 'text-right max-w-[55%]'}`}
         >
           {value || <span className="text-[#888780]">—</span>}
         </span>
@@ -112,11 +113,15 @@ export default function AdminCRMDetailPage() {
   const [orders, setOrders] = useState([])
   const [chats, setChats] = useState([])
   const [wishlist, setWishlist] = useState([])
+  const [customFields, setCustomFields] = useState([])
 
   const [tab, setTab] = useState('chats')
   const [mobileSection, setMobileSection] = useState('info')
 
   const [noteText, setNoteText] = useState('')
+  const [addingField, setAddingField] = useState(false)
+  const [newFieldLabel, setNewFieldLabel] = useState('')
+  const [newFieldValue, setNewFieldValue] = useState('')
   const [savingNote, setSavingNote] = useState(false)
   const [savingStatus, setSavingStatus] = useState(false)
 
@@ -125,13 +130,14 @@ export default function AdminCRMDetailPage() {
   async function load() {
     setLoading(true)
     try {
-      const [userRes, notesRes, ordersRes, chatsRes, wishlistRes, profileRes] = await Promise.all([
+      const [userRes, notesRes, ordersRes, chatsRes, wishlistRes, profileRes, customFieldsRes] = await Promise.all([
         supabase.from('users').select('*').eq('id', id).maybeSingle(),
         supabase.from('lead_notes').select('*').eq('user_id', id).order('created_at', { ascending: false }),
         supabase.from('orders').select('id, created_at, total_amount, status').eq('user_id', id).order('created_at', { ascending: false }),
         supabase.from('stylist_chats').select('id, source, last_message, updated_at, avatar_url').eq('user_id', id),
         supabase.from('wishlist').select('id, product_id').eq('user_id', id),
         supabase.from('stylist_profiles').select('*').eq('user_id', id).maybeSingle(),
+        supabase.from('crm_custom_fields').select('*').eq('user_id', id).order('created_at', { ascending: true }),
       ])
       const userData = userRes.data || null
       if (!userData) {
@@ -153,6 +159,7 @@ export default function AdminCRMDetailPage() {
       setOrders(ordersRes.data || [])
       setChats(chatsRes.data || [])
       setWishlist(wishlistWithProducts)
+      setCustomFields(customFieldsRes.data || [])
     } finally {
       setLoading(false)
     }
@@ -202,6 +209,31 @@ export default function AdminCRMDetailPage() {
     } finally {
       setSavingNote(false)
     }
+  }
+
+  async function handleAddCustomField() {
+    if (!newFieldLabel.trim()) return
+    try {
+      const { data } = await supabase
+        .from('crm_custom_fields')
+        .insert({ user_id: id, label: newFieldLabel.trim(), value: newFieldValue.trim() })
+        .select()
+        .single()
+      if (data) setCustomFields(prev => [...prev, data])
+      setNewFieldLabel('')
+      setNewFieldValue('')
+      setAddingField(false)
+    } catch {}
+  }
+
+  async function handleDeleteCustomField(fieldId) {
+    await supabase.from('crm_custom_fields').delete().eq('id', fieldId)
+    setCustomFields(prev => prev.filter(f => f.id !== fieldId))
+  }
+
+  async function handleSaveCustomField(fieldId, newValue) {
+    await supabase.from('crm_custom_fields').update({ value: newValue }).eq('id', fieldId)
+    setCustomFields(prev => prev.map(f => (f.id === fieldId ? { ...f, value: newValue } : f)))
   }
 
   const totalSpent = orders.reduce((s, o) => s + Number(o.total_amount || 0), 0)
@@ -307,6 +339,81 @@ export default function AdminCRMDetailPage() {
           <EditableField label="Телосложение" value={profile?.body_type} onSave={v => saveProfileField('body_type', v)} options={['hourglass', 'pear', 'apple', 'rectangle', 'inverted_triangle']} />
           <EditableField label="Любимые цвета" value={Array.isArray(profile?.favorite_colors) ? profile.favorite_colors.join(', ') : profile?.favorite_colors} onSave={v => saveProfileField('favorite_colors', v)} />
         </div>
+      </div>
+
+      <div className="bg-white rounded-2xl p-4 border border-[#f0ede8] mb-3">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-[10px] font-bold text-[#888780] uppercase tracking-wider">Доп. поля</p>
+          <button
+            type="button"
+            onClick={() => setAddingField(true)}
+            className="flex items-center gap-1 text-[10px] text-[#D4537E] hover:opacity-70 transition-opacity"
+          >
+            <Plus size={10} /> Добавить
+          </button>
+        </div>
+
+        {customFields.length === 0 && !addingField && (
+          <p className="text-xs text-[#888780]">Нет дополнительных полей</p>
+        )}
+
+        {customFields.map(field => (
+          <div key={field.id} className="flex justify-between items-center py-1.5 border-b border-[#f0ede8] last:border-0 group">
+            <span className="text-xs text-[#888780]">{field.label}</span>
+            <div className="flex items-center gap-2">
+              <EditableField
+                label=""
+                value={field.value}
+                onSave={v => handleSaveCustomField(field.id, v)}
+              />
+              <button
+                type="button"
+                onClick={() => handleDeleteCustomField(field.id)}
+                className="opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <X size={12} className="text-[#888780] hover:text-[#e8453c]" />
+              </button>
+            </div>
+          </div>
+        ))}
+
+        {addingField && (
+          <div className="mt-2 space-y-2">
+            <input
+              autoFocus
+              placeholder="Название поля"
+              value={newFieldLabel}
+              onChange={e => setNewFieldLabel(e.target.value)}
+              className="w-full border border-[#f0ede8] rounded-lg px-3 py-1.5 text-xs outline-none focus:border-[#D4537E]"
+            />
+            <input
+              placeholder="Значение"
+              value={newFieldValue}
+              onChange={e => setNewFieldValue(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleAddCustomField() }}
+              className="w-full border border-[#f0ede8] rounded-lg px-3 py-1.5 text-xs outline-none focus:border-[#D4537E]"
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleAddCustomField}
+                disabled={!newFieldLabel.trim()}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  newFieldLabel.trim() ? 'bg-[#D4537E] text-white' : 'bg-[#f0ede8] text-[#888780] cursor-not-allowed'
+                }`}
+              >
+                Сохранить
+              </button>
+              <button
+                type="button"
+                onClick={() => { setAddingField(false); setNewFieldLabel(''); setNewFieldValue('') }}
+                className="flex-1 py-1.5 rounded-lg text-xs font-medium bg-[#f0ede8] text-[#888780]"
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Секция 3: Итоги */}

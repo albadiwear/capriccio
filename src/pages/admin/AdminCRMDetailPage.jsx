@@ -70,12 +70,17 @@ export default function AdminCRMDetailPage() {
     setLoading(true)
     try {
       const [userRes, notesRes, ordersRes, chatsRes, wishlistRes] = await Promise.all([
-        supabase.from('users').select('*').eq('id', id).single(),
+        supabase.from('users').select('*').eq('id', id).maybeSingle(),
         supabase.from('lead_notes').select('*').eq('user_id', id).order('created_at', { ascending: false }),
         supabase.from('orders').select('id, created_at, total_amount, status').eq('user_id', id).order('created_at', { ascending: false }),
         supabase.from('stylist_chats').select('id, source, last_message, updated_at, avatar_url').eq('user_id', id),
         supabase.from('wishlist').select('id, product_id').eq('user_id', id),
       ])
+      const userData = userRes.data || null
+      if (!userData) {
+        navigate('/admin/crm')
+        return
+      }
       const productIds = wishlistRes.data?.map(w => w.product_id) || []
       const productsRes = productIds.length > 0
         ? await supabase.from('products').select('id, name, price, images').in('id', productIds)
@@ -85,7 +90,7 @@ export default function AdminCRMDetailPage() {
         product: productsRes.data?.find(p => p.id === w.product_id),
       })) || []
 
-      setUser(userRes.data || null)
+      setUser(userData)
       setNotes(notesRes.data || [])
       setOrders(ordersRes.data || [])
       setChats(chatsRes.data || [])
@@ -223,7 +228,7 @@ export default function AdminCRMDetailPage() {
           type="button"
           onClick={handleAddNote}
           disabled={!noteText.trim()}
-          className={`w-full py-2 rounded-lg text-sm font-medium transition-colors ${
+          className={`w-full py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1 ${
             noteText.trim()
               ? 'bg-[#D4537E] text-white hover:bg-[#c44370] cursor-pointer'
               : 'bg-[#f0ede8] text-[#888780] cursor-not-allowed'

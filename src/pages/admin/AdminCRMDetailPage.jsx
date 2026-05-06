@@ -60,7 +60,7 @@ export default function AdminCRMDetailPage() {
   const [tab, setTab] = useState('chats')
   const [mobileSection, setMobileSection] = useState('info')
 
-  const [newNote, setNewNote] = useState('')
+  const [noteText, setNoteText] = useState('')
   const [savingNote, setSavingNote] = useState(false)
   const [savingStatus, setSavingStatus] = useState(false)
 
@@ -74,13 +74,22 @@ export default function AdminCRMDetailPage() {
         supabase.from('lead_notes').select('*').eq('user_id', id).order('created_at', { ascending: false }),
         supabase.from('orders').select('id, created_at, total_amount, status').eq('user_id', id).order('created_at', { ascending: false }),
         supabase.from('stylist_chats').select('id, source, last_message, updated_at, avatar_url').eq('user_id', id),
-        supabase.from('wishlist').select('id, product_id, products(id, name, price, images)').eq('user_id', id),
+        supabase.from('wishlist').select('id, product_id').eq('user_id', id),
       ])
+      const productIds = wishlistRes.data?.map(w => w.product_id) || []
+      const productsRes = productIds.length > 0
+        ? await supabase.from('products').select('id, name, price, images').in('id', productIds)
+        : { data: [] }
+      const wishlistWithProducts = wishlistRes.data?.map(w => ({
+        ...w,
+        product: productsRes.data?.find(p => p.id === w.product_id),
+      })) || []
+
       setUser(userRes.data || null)
       setNotes(notesRes.data || [])
       setOrders(ordersRes.data || [])
       setChats(chatsRes.data || [])
-      setWishlist(wishlistRes.data || [])
+      setWishlist(wishlistWithProducts)
     } finally {
       setLoading(false)
     }
@@ -95,16 +104,16 @@ export default function AdminCRMDetailPage() {
   }
 
   async function handleAddNote() {
-    if (!newNote.trim()) return
+    if (!noteText.trim()) return
     setSavingNote(true)
     try {
       const { data } = await supabase
         .from('lead_notes')
-        .insert({ user_id: id, content: newNote.trim() })
+        .insert({ user_id: id, content: noteText.trim() })
         .select()
         .single()
       if (data) setNotes(prev => [data, ...prev])
-      setNewNote('')
+      setNoteText('')
     } finally {
       setSavingNote(false)
     }
@@ -204,8 +213,8 @@ export default function AdminCRMDetailPage() {
         </div>
 
         <textarea
-          value={newNote}
-          onChange={e => setNewNote(e.target.value)}
+          value={noteText}
+          onChange={e => setNoteText(e.target.value)}
           placeholder="Добавить заметку..."
           rows={2}
           className="w-full border border-[#f0ede8] rounded-xl px-3 py-2 text-xs text-[#1a1a18] outline-none focus:border-[#D4537E] resize-none mb-2 placeholder:text-[#888780] bg-[#f9f8f6]"
@@ -213,10 +222,10 @@ export default function AdminCRMDetailPage() {
         <button
           type="button"
           onClick={handleAddNote}
-          disabled={savingNote || !newNote.trim()}
-          className={`w-full py-2 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-colors ${
-            newNote.trim()
-              ? 'bg-[#D4537E] text-white hover:bg-[#c44370]'
+          disabled={!noteText.trim()}
+          className={`w-full py-2 rounded-lg text-sm font-medium transition-colors ${
+            noteText.trim()
+              ? 'bg-[#D4537E] text-white hover:bg-[#c44370] cursor-pointer'
               : 'bg-[#f0ede8] text-[#888780] cursor-not-allowed'
           }`}
         >
@@ -336,7 +345,7 @@ export default function AdminCRMDetailPage() {
               </div>
             )}
             {wishlist.map(item => {
-              const product = item.products
+              const product = item.product
               if (!product) return null
               return (
                 <div key={item.id} className="rounded-xl border border-[#f0ede8] overflow-hidden">

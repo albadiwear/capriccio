@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { History, Plus, Send, Sparkles, X, Paperclip, Image } from 'lucide-react'
+import { History, Send, Sparkles, X, Paperclip, Image } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/authStore'
 
@@ -149,11 +149,13 @@ export default function StylistPage() {
       .from('stylist_chats')
       .select('*')
       .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
+      .eq('source', 'web')
+      .order('updated_at', { ascending: false })
     setChats(data || [])
     if (data && data.length > 0) {
-      const last = data.reduce((a, b) => new Date(a.updated_at) > new Date(b.updated_at) ? a : b)
+      const last = data[0]
       setActiveChatId(last.id)
+      activeChatIdRef.current = last.id
       await loadMessages(last.id)
     }
   }
@@ -198,12 +200,30 @@ export default function StylistPage() {
   }
 
   const createChat = async () => {
+    const { data: existing } = await supabase
+      .from('stylist_chats')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('source', 'web')
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (existing) {
+      setActiveChatId(existing.id)
+      activeChatIdRef.current = existing.id
+      await loadMessages(existing.id)
+      setShowHistory(false)
+      return
+    }
+
     const { data } = await supabase
       .from('stylist_chats')
-      .insert({ user_id: user.id, title: 'Новый диалог' })
+      .insert({ user_id: user.id, title: 'Новый диалог', source: 'web' })
       .select()
       .single()
     setActiveChatId(data.id)
+    activeChatIdRef.current = data.id
     setMessages([])
     setShowHistory(false)
     setChatMode('ai')
@@ -246,17 +266,32 @@ export default function StylistPage() {
 
     let chatId = activeChatId
     if (!chatId) {
-      const title = userMessage.slice(0, 50) || 'Фото от клиента'
-      const { data } = await supabase
+      const { data: existingChat } = await supabase
         .from('stylist_chats')
-        .insert({ user_id: user.id, title })
-        .select()
-        .single()
-      chatId = data.id
-      setActiveChatId(chatId)
-      activeChatIdRef.current = chatId
-      setMessages([])
-      await loadChats()
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('source', 'web')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (existingChat) {
+        chatId = existingChat.id
+        setActiveChatId(chatId)
+        activeChatIdRef.current = chatId
+      } else {
+        const title = userMessage.slice(0, 50) || 'Фото от клиента'
+        const { data } = await supabase
+          .from('stylist_chats')
+          .insert({ user_id: user.id, title, source: 'web' })
+          .select()
+          .single()
+        chatId = data.id
+        setActiveChatId(chatId)
+        activeChatIdRef.current = chatId
+        setMessages([])
+        await loadChats()
+      }
     }
 
     let uploadedImageUrl = null
@@ -714,16 +749,6 @@ export default function StylistPage() {
 
   const ChatListContent = (
     <>
-      <div className="p-4 border-b border-[#f0ede8]">
-        <button
-          type="button"
-          onClick={createChat}
-          className="w-full bg-[#1a1a18] text-white py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
-        >
-          <Plus size={16} />
-          Новый диалог
-        </button>
-      </div>
       <div className="flex-1 overflow-y-auto">
         {chats.length === 0 && (
           <p className="px-4 py-6 text-xs text-[#888780] text-center">Диалогов пока нет</p>
@@ -774,14 +799,6 @@ export default function StylistPage() {
                 <X size={20} className="text-[#888780]" />
               </button>
             </div>
-            <button
-              type="button"
-              onClick={() => { createChat(); setShowHistory(false) }}
-              className="w-full bg-[#1a1a18] text-white py-3 rounded-xl text-sm font-medium mb-3 flex items-center justify-center gap-2"
-            >
-              <Plus size={16} />
-              Новый диалог
-            </button>
             {chats.map((chat) => (
               <div
                 key={chat.id}

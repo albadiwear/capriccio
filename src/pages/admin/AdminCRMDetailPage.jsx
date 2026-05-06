@@ -52,6 +52,7 @@ export default function AdminCRMDetailPage() {
 
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState(null)
+  const [profile, setProfile] = useState(null)
   const [notes, setNotes] = useState([])
   const [orders, setOrders] = useState([])
   const [chats, setChats] = useState([])
@@ -69,12 +70,13 @@ export default function AdminCRMDetailPage() {
   async function load() {
     setLoading(true)
     try {
-      const [userRes, notesRes, ordersRes, chatsRes, wishlistRes] = await Promise.all([
+      const [userRes, notesRes, ordersRes, chatsRes, wishlistRes, profileRes] = await Promise.all([
         supabase.from('users').select('*').eq('id', id).maybeSingle(),
         supabase.from('lead_notes').select('*').eq('user_id', id).order('created_at', { ascending: false }),
         supabase.from('orders').select('id, created_at, total_amount, status').eq('user_id', id).order('created_at', { ascending: false }),
         supabase.from('stylist_chats').select('id, source, last_message, updated_at, avatar_url').eq('user_id', id),
         supabase.from('wishlist').select('id, product_id').eq('user_id', id),
+        supabase.from('stylist_profiles').select('*').eq('user_id', id).maybeSingle(),
       ])
       const userData = userRes.data || null
       if (!userData) {
@@ -91,6 +93,7 @@ export default function AdminCRMDetailPage() {
       })) || []
 
       setUser(userData)
+      setProfile(profileRes.data || null)
       setNotes(notesRes.data || [])
       setOrders(ordersRes.data || [])
       setChats(chatsRes.data || [])
@@ -145,28 +148,58 @@ export default function AdminCRMDetailPage() {
     )
   }
 
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  const firstChatSource = chats[0]?.source || null
+
+  const SOURCE_BADGE_CFG = {
+    telegram:  { label: 'Telegram',  bg: '#e8f4fd', text: '#1a7bbf' },
+    whatsapp:  { label: 'WhatsApp',  bg: '#e8fdf0', text: '#16a34a' },
+    instagram: { label: 'Instagram', bg: '#fde8f0', text: '#be185d' },
+    web:       { label: 'Сайт',      bg: '#f3f4f6', text: '#4b5563' },
+  }
+
+  function profileVal(val, suffix = '') {
+    if (Array.isArray(val)) return val.length ? val.join(', ') : '—'
+    return val ? `${val}${suffix}` : '—'
+  }
+
+  const budgetStr = profile?.budget_min && profile?.budget_max
+    ? `${Number(profile.budget_min).toLocaleString('ru-RU')} — ${Number(profile.budget_max).toLocaleString('ru-RU')} ₸`
+    : '—'
+
   // ── Profile block (shared) ─────────────────────────────────────────────────
   const ProfileBlock = (
-    <div className="space-y-4">
-      {/* Аватар + контакты */}
-      <div className="bg-white rounded-2xl p-5 border border-[#f0ede8]">
-        <div className="flex items-center gap-4 mb-5">
+    <div className="space-y-3">
+
+      {/* Секция 1: Шапка */}
+      <div className="bg-white rounded-2xl p-4 border border-[#f0ede8]">
+        <div className="flex items-center gap-3 mb-4">
           <div className="w-14 h-14 rounded-full bg-[#1a1a18] flex items-center justify-center text-white font-bold text-base flex-shrink-0 overflow-hidden">
             {user.avatar_url
               ? <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
               : <User size={22} className="text-white/70" />
             }
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-sm font-bold text-[#1a1a18] truncate">{user.full_name || 'Без имени'}</p>
             {user.email && <p className="text-xs text-[#888780] truncate mt-0.5">{user.email}</p>}
             {user.phone && <p className="text-xs text-[#888780] mt-0.5">{user.phone}</p>}
-            {user.city && <span className="text-sm text-[#888780]">{user.city}</span>}
+            {firstChatSource && (() => {
+              const cfg = SOURCE_BADGE_CFG[firstChatSource] || SOURCE_BADGE_CFG.web
+              return (
+                <span
+                  className="inline-block mt-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                  style={{ backgroundColor: cfg.bg, color: cfg.text }}
+                >
+                  {cfg.label}
+                </span>
+              )
+            })()}
           </div>
         </div>
 
-        <div className="space-y-2.5">
-          <div className="flex items-center justify-between">
+        <div>
+          <div className="flex items-center justify-between py-1.5 border-b border-[#f0ede8]">
             <span className="text-xs text-[#888780]">Статус</span>
             <div className="relative">
               <select
@@ -180,31 +213,59 @@ export default function AdminCRMDetailPage() {
               <ChevronRight size={10} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[#888780] rotate-90 pointer-events-none" />
             </div>
           </div>
-
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between py-1.5">
             <span className="text-xs text-[#888780]">Регистрация</span>
-            <span className="text-xs text-[#1a1a18]">{formatDate(user.created_at)}</span>
+            <span className="text-xs font-medium text-[#1a1a18]">{formatDate(user.created_at)}</span>
           </div>
         </div>
       </div>
 
-      {/* Итоги */}
-      <div className="bg-white rounded-2xl p-5 border border-[#f0ede8]">
-        <p className="text-[10px] font-bold text-[#888780] uppercase tracking-wider mb-3">Итоги</p>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-[#f9f8f6] rounded-xl p-3 text-center border border-[#f0ede8]">
-            <p className="text-xl font-bold text-[#1a1a18]">{orders.length}</p>
-            <p className="text-[10px] text-[#888780] mt-0.5">заказов</p>
+      {/* Секция 2: Параметры */}
+      <div className="bg-white rounded-2xl p-4 border border-[#f0ede8]">
+        <p className="text-[10px] font-bold text-[#888780] uppercase tracking-wider mb-2">Параметры</p>
+        {!profile ? (
+          <p className="text-xs text-[#888780] py-1">Анкета не заполнена</p>
+        ) : (
+          <div>
+            {[
+              { label: 'Возраст',        val: profileVal(profile.age, ' лет') },
+              { label: 'Размер одежды',  val: profileVal(profile.clothing_size) },
+              { label: 'Размер обуви',   val: profileVal(profile.shoe_size) },
+              { label: 'Рост',           val: profileVal(profile.height, ' см') },
+              { label: 'Бюджет',         val: budgetStr },
+              { label: 'Стиль',          val: profileVal(profile.style_preferences) },
+              { label: 'Цветотип',       val: profileVal(profile.color_type) },
+              { label: 'Телосложение',   val: profileVal(profile.body_type) },
+              { label: 'Любимые цвета', val: profileVal(profile.favorite_colors) },
+            ].map(({ label, val }) => (
+              <div key={label} className="flex items-start justify-between py-1.5 border-b border-[#f0ede8] last:border-0">
+                <span className="text-xs text-[#888780] flex-shrink-0">{label}</span>
+                <span className="text-xs font-medium text-[#1a1a18] text-right max-w-[55%] ml-2">{val}</span>
+              </div>
+            ))}
           </div>
-          <div className="bg-[#f9f8f6] rounded-xl p-3 text-center border border-[#f0ede8]">
-            <p className="text-sm font-bold text-[#1a1a18] leading-snug">{Number(totalSpent).toLocaleString('ru-RU')}</p>
-            <p className="text-[10px] text-[#888780] mt-0.5">₸ потрачено</p>
-          </div>
+        )}
+      </div>
+
+      {/* Секция 3: Итоги */}
+      <div className="bg-white rounded-2xl p-4 border border-[#f0ede8]">
+        <p className="text-[10px] font-bold text-[#888780] uppercase tracking-wider mb-2">Итоги</p>
+        <div>
+          {[
+            { label: 'Заказов',       val: orders.length },
+            { label: 'Потрачено',     val: `${Number(totalSpent).toLocaleString('ru-RU')} ₸` },
+            { label: 'В избранном',   val: `${wishlist.length} товаров` },
+          ].map(({ label, val }) => (
+            <div key={label} className="flex items-center justify-between py-1.5 border-b border-[#f0ede8] last:border-0">
+              <span className="text-xs text-[#888780]">{label}</span>
+              <span className="text-xs font-bold text-[#1a1a18]">{val}</span>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Заметки */}
-      <div className="bg-white rounded-2xl p-5 border border-[#f0ede8]">
+      {/* Секция 4: Заметки */}
+      <div className="bg-white rounded-2xl p-4 border border-[#f0ede8]">
         <p className="text-[10px] font-bold text-[#888780] uppercase tracking-wider mb-3">Заметки</p>
 
         <div className="space-y-2 mb-3 max-h-52 overflow-y-auto">

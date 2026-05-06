@@ -1,20 +1,16 @@
 import { supabase } from './supabase'
-import { getTelegramUser } from './telegram'
 
 export async function authWithTelegram() {
-  const tgUser = getTelegramUser()
-  if (!tgUser) {
-    const directUser = window.Telegram?.WebApp?.initDataUnsafe?.user
-    if (!directUser) return null
-  }
+  const tg = window.Telegram?.WebApp
+  if (!tg) return null
 
-  const resolvedUser = tgUser || window.Telegram?.WebApp?.initDataUnsafe?.user
-  if (!resolvedUser) return null
+  const tgUser = tg.initDataUnsafe?.user
+  if (!tgUser?.id) return null
 
-  const telegramId = resolvedUser.id
-  const fullName = [resolvedUser.first_name, resolvedUser.last_name].filter(Boolean).join(' ')
-  const username = resolvedUser.username || null
-  const phone = resolvedUser.phone_number || null
+  const telegramId = tgUser.id
+  const fullName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ') || 'Telegram User'
+  const username = tgUser.username || null
+  const phone = tgUser.phone_number || null
 
   const { data: existingUser } = await supabase
     .from('users')
@@ -22,9 +18,7 @@ export async function authWithTelegram() {
     .eq('telegram_id', telegramId)
     .maybeSingle()
 
-  if (existingUser) {
-    return existingUser
-  }
+  if (existingUser) return existingUser
 
   if (phone) {
     const cleanPhone = phone.replace(/\D/g, '')
@@ -35,10 +29,7 @@ export async function authWithTelegram() {
       .maybeSingle()
 
     if (userByPhone) {
-      await supabase
-        .from('users')
-        .update({ telegram_id: telegramId })
-        .eq('id', userByPhone.id)
+      await supabase.from('users').update({ telegram_id: telegramId }).eq('id', userByPhone.id)
       return { ...userByPhone, telegram_id: telegramId }
     }
   }
@@ -57,18 +48,29 @@ export async function authWithTelegram() {
     .single()
 
   if (newUser) {
-    await supabase
+    const { data: existingChat } = await supabase
       .from('stylist_chats')
-      .insert({
+      .select('id')
+      .eq('source', 'telegram')
+      .eq('external_id', String(telegramId))
+      .maybeSingle()
+
+    if (!existingChat) {
+      await supabase.from('stylist_chats').insert({
         user_id: newUser.id,
         source: 'telegram',
         external_id: String(telegramId),
-        username,
+        username: username,
         title: fullName,
         mode: 'ai',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
+    } else {
+      await supabase.from('stylist_chats')
+        .update({ user_id: newUser.id })
+        .eq('id', existingChat.id)
+    }
   }
 
   return newUser

@@ -12,12 +12,14 @@ export default function TelegramProvider({ children }) {
     tg.ready()
     tg.expand()
 
-    const tgUser = tg.initDataUnsafe?.user
-    if (!tgUser?.id) return
+    setTimeout(() => {
+      const tgUser = tg.initDataUnsafe?.user
+      if (!tgUser?.id) return
 
-    authWithTelegram().then(user => {
-      if (user) setUser(user)
-    })
+      authWithTelegram().then(user => {
+        if (user) setUser(user)
+      })
+    }, 500)
   }, [])
 
   return children

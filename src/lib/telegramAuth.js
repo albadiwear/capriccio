@@ -3,12 +3,18 @@ import { getTelegramUser } from './telegram'
 
 export async function authWithTelegram() {
   const tgUser = getTelegramUser()
-  if (!tgUser) return null
+  if (!tgUser) {
+    const directUser = window.Telegram?.WebApp?.initDataUnsafe?.user
+    if (!directUser) return null
+  }
 
-  const telegramId = tgUser.id
-  const fullName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ')
-  const username = tgUser.username || null
-  const phone = tgUser.phone_number || null
+  const resolvedUser = tgUser || window.Telegram?.WebApp?.initDataUnsafe?.user
+  if (!resolvedUser) return null
+
+  const telegramId = resolvedUser.id
+  const fullName = [resolvedUser.first_name, resolvedUser.last_name].filter(Boolean).join(' ')
+  const username = resolvedUser.username || null
+  const phone = resolvedUser.phone_number || null
 
   const { data: existingUser } = await supabase
     .from('users')

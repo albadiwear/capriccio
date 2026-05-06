@@ -1,27 +1,24 @@
 import { useEffect } from 'react'
 import { useAuthStore } from '../store/authStore'
-import { isTelegramWebApp, expandTelegramApp } from '../lib/telegram'
 import { authWithTelegram } from '../lib/telegramAuth'
 
 export default function TelegramProvider({ children }) {
-  const setUser = useAuthStore((state) => state.setUser)
-  const setLoading = useAuthStore((state) => state.setLoading)
+  const { setUser } = useAuthStore()
 
   useEffect(() => {
-    if (!isTelegramWebApp()) return
+    const tg = window.Telegram?.WebApp
+    if (!tg) return
 
-    expandTelegramApp()
+    tg.ready()
+    tg.expand()
 
-    authWithTelegram()
-      .then((user) => {
-        if (user) {
-          setUser(user)
-        }
-      })
-      .finally(() => {
-        setLoading(false)
-      })
-  }, [setLoading, setUser])
+    const tgUser = tg.initDataUnsafe?.user
+    if (!tgUser?.id) return
+
+    authWithTelegram().then(user => {
+      if (user) setUser(user)
+    })
+  }, [])
 
   return children
 }

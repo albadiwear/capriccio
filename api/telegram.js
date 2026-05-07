@@ -192,31 +192,77 @@ export default async function handler(req, res) {
 
         } else {
           if (chat.user_id) {
+            // Уже есть аккаунт (Mini App) — сохраняем номер и отправляем ссылку
             await supabase
               .from('users')
               .update({ phone: contact.phone_number })
               .eq('id', chat.user_id)
-          }
 
-          const savedText = 'Номер сохранён! 🌸 Чем могу помочь?'
-          await supabase.from('stylist_messages').insert({
-            chat_id: chat.id,
-            role: 'assistant',
-            content: savedText,
-            created_at: new Date().toISOString(),
-          })
-          await sendTelegram(tgChatId, savedText, { remove_keyboard: true })
-
-          if (chat.user_id) {
             const { data: tokenData } = await supabase
               .from('telegram_auth_tokens')
               .insert({ user_id: chat.user_id })
               .select('token')
               .single()
 
+            const savedText = 'Номер сохранён! 🌸'
+            await supabase.from('stylist_messages').insert({
+              chat_id: chat.id, role: 'assistant', content: savedText,
+              created_at: new Date().toISOString(),
+            })
+            await sendTelegram(tgChatId, savedText, { remove_keyboard: true })
+
             if (tokenData?.token) {
               const authLink = `https://capriccio.vercel.app?tg_token=${tokenData.token}`
               await sendTelegram(tgChatId, `🔗 Войдите на сайт по этой ссылке (действует 10 минут):\n${authLink}`)
+            }
+          } else {
+            // Нет аккаунта вообще — создаём новый через supabase.auth.admin.createUser
+            const tgEmail = `tg_${tgChatId}@capriccio.app`
+
+            const { data: newAuthUser, error: createError } = await supabase.auth.admin.createUser({
+              email: tgEmail,
+              email_confirm: true,
+              user_metadata: {
+                full_name: fromName,
+                telegram_id: Number(tgChatId),
+              }
+            })
+
+            if (!createError && newAuthUser?.user) {
+              // Обновляем users: telegram_id + phone + avatar
+              await supabase
+                .from('users')
+                .update({
+                  telegram_id: Number(tgChatId),
+                  phone: contact.phone_number,
+                  avatar_url: chat.avatar_url || null,
+                })
+                .eq('id', newAuthUser.user.id)
+
+              // Привязываем чат к новому аккаунту
+              await supabase
+                .from('stylist_chats')
+                .update({ user_id: newAuthUser.user.id })
+                .eq('id', chat.id)
+
+              // Генерируем токен
+              const { data: tokenData } = await supabase
+                .from('telegram_auth_tokens')
+                .insert({ user_id: newAuthUser.user.id })
+                .select('token')
+                .single()
+
+              const createdText = `Отлично, ${fromName}! 🌸 Аккаунт создан, номер сохранён.`
+              await supabase.from('stylist_messages').insert({
+                chat_id: chat.id, role: 'assistant', content: createdText,
+                created_at: new Date().toISOString(),
+              })
+              await sendTelegram(tgChatId, createdText, { remove_keyboard: true })
+
+              if (tokenData?.token) {
+                const authLink = `https://capriccio.vercel.app?tg_token=${tokenData.token}`
+                await sendTelegram(tgChatId, `🔗 Войдите на сайт по этой ссылке (действует 10 минут):\n${authLink}`)
+              }
             }
           }
         }

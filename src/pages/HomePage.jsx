@@ -259,6 +259,16 @@ export default function HomePage() {
     }
   }
 
+  const handleTelegramLogin = () => {
+    const botId = '8473800397'
+    const origin = 'https://capriccio.vercel.app'
+    window.open(
+      `https://oauth.telegram.org/auth?bot_id=${botId}&origin=${origin}&return_to=${origin}&embed=0`,
+      'telegram_auth',
+      'width=550,height=450,scrollbars=no'
+    )
+  }
+
   if (checking && user) return null
 
   return (
@@ -502,6 +512,19 @@ export default function HomePage() {
                       <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" />
                     </svg>
                     Войти через Google
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleTelegramLogin}
+                    disabled={loading}
+                    className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-semibold text-white transition-colors disabled:opacity-60"
+                    style={{ backgroundColor: '#229ED9' }}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L8.32 13.617l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.828.942z"/>
+                    </svg>
+                    Войти через Telegram
                   </button>
 
 	                  <p className="text-white/30 text-xs text-center mt-3">

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Mail, Phone, User } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -51,6 +51,37 @@ export default function PromoLanding() {
   const [email, setEmail] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const tgToken = params.get('tg_token')
+    if (!tgToken) return
+
+    const authWithToken = async () => {
+      try {
+        const res = await fetch('/api/telegram-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: tgToken }),
+        })
+        if (!res.ok) return
+        const { access_token, refresh_token } = await res.json()
+        await supabase.auth.setSession({ access_token, refresh_token })
+        window.history.replaceState({}, '', '/')
+        const { data: { user: authedUser } } = await supabase.auth.getUser()
+        if (authedUser) {
+          const { data: profile } = await supabase
+            .from('stylist_profiles')
+            .select('onboarding_completed')
+            .eq('user_id', authedUser.id)
+            .maybeSingle()
+          navigate(profile?.onboarding_completed ? '/catalog' : '/onboarding')
+        }
+      } catch (_) {}
+    }
+
+    authWithToken()
+  }, [])
 
   const handleSubmit = async (event) => {
     event.preventDefault()

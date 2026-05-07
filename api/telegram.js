@@ -95,11 +95,15 @@ export default async function handler(req, res) {
       if (contact?.phone_number) {
         const cleanPhone = contact.phone_number.replace(/\D/g, '')
 
-        const { data: existingUser } = await supabase
+        const { data: existingUsers } = await supabase
           .from('users')
           .select('id, full_name, email, telegram_id')
-          .or(`phone.ilike.%${cleanPhone.slice(-10)}%`)
-          .maybeSingle()
+          .ilike('phone', `%${cleanPhone.slice(-10)}%`)
+          .is('telegram_id', null)
+          .order('created_at', { ascending: true })
+          .limit(1)
+
+        const existingUser = existingUsers?.[0] || null
 
         if (existingUser && !existingUser.telegram_id) {
           await supabase
@@ -109,7 +113,10 @@ export default async function handler(req, res) {
 
           await supabase
             .from('stylist_chats')
-            .update({ user_id: existingUser.id })
+            .update({
+              user_id: existingUser.id,
+              source: 'telegram'
+            })
             .eq('id', chat.id)
 
           if (chat.user_id && chat.user_id !== existingUser.id) {

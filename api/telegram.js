@@ -110,7 +110,7 @@ export default async function handler(req, res) {
           await supabase
             .from('users')
             .update({
-              telegram_id: Number(chat.external_id),
+              telegram_id: Number(tgChatId),
             })
             .eq('id', existingUser.id)
 

@@ -138,24 +138,18 @@ export default async function handler(req, res) {
               .eq('id', chat.id)
           }
 
-          // Генерируем токен
-          const { data: tokenData } = await supabase
-            .from('telegram_auth_tokens')
-            .insert({ user_id: tgUser.id })
-            .select('token')
-            .single()
-
           const savedText = `Номер сохранён! 🌸`
           await supabase.from('stylist_messages').insert({
             chat_id: chat.id, role: 'assistant', content: savedText,
             created_at: new Date().toISOString(),
           })
           await sendTelegram(tgChatId, savedText, { remove_keyboard: true })
-
-          if (tokenData?.token) {
-            const authLink = `https://capriccio.vercel.app?tg_token=${tokenData.token}`
-            await sendTelegramWithButton(tgChatId, '🔗 Войдите на сайт Capriccio:', '🛍 Открыть сайт', authLink)
-          }
+          await sendTelegramWithButton(
+            tgChatId,
+            '🛍 Открывайте каталог прямо в Telegram:',
+            '🛍 Открыть Capriccio',
+            'https://t.me/Cap_Ricciobot/catalog'
+          )
 
           return res.status(200).json({ ok: true })
         }
@@ -227,16 +221,12 @@ export default async function handler(req, res) {
           })
           await sendTelegram(tgChatId, successText, { remove_keyboard: true })
 
-          const { data: tokenData } = await supabase
-            .from('telegram_auth_tokens')
-            .insert({ user_id: existingUser.id })
-            .select('token')
-            .single()
-
-          if (tokenData?.token) {
-            const authLink = `https://capriccio.vercel.app?tg_token=${tokenData.token}`
-            await sendTelegramWithButton(tgChatId, '🔗 Войдите на сайт Capriccio:', '🛍 Открыть сайт', authLink)
-          }
+          await sendTelegramWithButton(
+            tgChatId,
+            '🛍 Открывайте каталог прямо в Telegram:',
+            '🛍 Открыть Capriccio',
+            'https://t.me/Cap_Ricciobot/catalog'
+          )
 
         } else if (existingUser && existingUser.telegram_id) {
           const alreadyText = 'Этот номер уже привязан к другому аккаунту. Напишите нам если нужна помощь.'
@@ -256,23 +246,18 @@ export default async function handler(req, res) {
               .update({ phone: contact.phone_number })
               .eq('id', chat.user_id)
 
-            const { data: tokenData } = await supabase
-              .from('telegram_auth_tokens')
-              .insert({ user_id: chat.user_id })
-              .select('token')
-              .single()
-
             const savedText = 'Номер сохранён! 🌸'
             await supabase.from('stylist_messages').insert({
               chat_id: chat.id, role: 'assistant', content: savedText,
               created_at: new Date().toISOString(),
             })
             await sendTelegram(tgChatId, savedText, { remove_keyboard: true })
-
-            if (tokenData?.token) {
-              const authLink = `https://capriccio.vercel.app?tg_token=${tokenData.token}`
-              await sendTelegramWithButton(tgChatId, '🔗 Войдите на сайт Capriccio:', '🛍 Открыть сайт', authLink)
-            }
+            await sendTelegramWithButton(
+              tgChatId,
+              '🛍 Открывайте каталог прямо в Telegram:',
+              '🛍 Открыть Capriccio',
+              'https://t.me/Cap_Ricciobot/catalog'
+            )
           } else {
             // Нет аккаунта вообще — создаём новый через supabase.auth.admin.createUser
             const tgEmail = `tg_${tgChatId}@capriccio.app`
@@ -303,24 +288,18 @@ export default async function handler(req, res) {
                 .update({ user_id: newAuthUser.user.id })
                 .eq('id', chat.id)
 
-              // Генерируем токен
-              const { data: tokenData } = await supabase
-                .from('telegram_auth_tokens')
-                .insert({ user_id: newAuthUser.user.id })
-                .select('token')
-                .single()
-
               const createdText = `Отлично, ${fromName}! 🌸 Аккаунт создан, номер сохранён.`
               await supabase.from('stylist_messages').insert({
                 chat_id: chat.id, role: 'assistant', content: createdText,
                 created_at: new Date().toISOString(),
               })
               await sendTelegram(tgChatId, createdText, { remove_keyboard: true })
-
-              if (tokenData?.token) {
-                const authLink = `https://capriccio.vercel.app?tg_token=${tokenData.token}`
-                await sendTelegramWithButton(tgChatId, '🔗 Войдите на сайт Capriccio:', '🛍 Открыть сайт', authLink)
-              }
+              await sendTelegramWithButton(
+                tgChatId,
+                '🛍 Открывайте каталог прямо в Telegram:',
+                '🛍 Открыть Capriccio',
+                'https://t.me/Cap_Ricciobot/catalog'
+              )
             }
           }
         }

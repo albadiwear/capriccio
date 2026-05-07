@@ -102,6 +102,50 @@ export default async function handler(req, res) {
       if (contact?.phone_number) {
         const cleanPhone = contact.phone_number.replace(/\D/g, '')
 
+        // Сначала проверяем есть ли уже аккаунт с этим telegram_id
+        const { data: tgUser } = await supabase
+          .from('users')
+          .select('id, full_name, phone, telegram_id')
+          .eq('telegram_id', Number(tgChatId))
+          .maybeSingle()
+
+        if (tgUser) {
+          // Аккаунт уже есть (создан через Mini App) — просто сохраняем номер
+          await supabase
+            .from('users')
+            .update({ phone: contact.phone_number })
+            .eq('id', tgUser.id)
+
+          // Привязываем чат если ещё не привязан
+          if (!chat.user_id) {
+            await supabase
+              .from('stylist_chats')
+              .update({ user_id: tgUser.id })
+              .eq('id', chat.id)
+          }
+
+          // Генерируем токен
+          const { data: tokenData } = await supabase
+            .from('telegram_auth_tokens')
+            .insert({ user_id: tgUser.id })
+            .select('token')
+            .single()
+
+          const savedText = `Номер сохранён! 🌸`
+          await supabase.from('stylist_messages').insert({
+            chat_id: chat.id, role: 'assistant', content: savedText,
+            created_at: new Date().toISOString(),
+          })
+          await sendTelegram(tgChatId, savedText, { remove_keyboard: true })
+
+          if (tokenData?.token) {
+            const authLink = `https://capriccio.vercel.app?tg_token=${tokenData.token}`
+            await sendTelegram(tgChatId, `🔗 Войдите на сайт по этой ссылке (действует 10 минут):\n${authLink}`)
+          }
+
+          return res.status(200).json({ ok: true })
+        }
+
         const { data: existingUsers } = await supabase
           .from('users')
           .select('id, full_name, email, telegram_id')

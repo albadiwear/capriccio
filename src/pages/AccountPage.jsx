@@ -123,15 +123,17 @@ export default function AccountPage() {
 
       const profileData = profileResponse.data
       setProfile({
-        full_name: profileData?.full_name || user.user_metadata?.full_name || '',
-        email: user.email || '',
-        phone: profileData?.phone || user.user_metadata?.phone || '',
-        city: profileData?.city || '',
-        avatar_url: profileData?.avatar_url || '',
+        full_name: profileData?.full_name || user?.full_name || user?.user_metadata?.full_name || '',
+        email: profileData?.email || user?.email || user?.user_metadata?.email || '',
+        phone: profileData?.phone || user?.phone || user?.user_metadata?.phone || '',
+        city: profileData?.city || user?.city || '',
+        avatar_url: profileData?.avatar_url || user?.avatar_url || '',
         referral_code:
           profileData?.referral_code ||
-          user.user_metadata?.referral_code ||
-          user.id.slice(0, 8).toUpperCase(),
+          user?.referral_code ||
+          user?.user_metadata?.referral_code ||
+          user?.id?.slice(0, 8).toUpperCase() ||
+          '',
       })
 
       setOrders(ordersResponse.data || [])

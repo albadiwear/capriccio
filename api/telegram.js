@@ -82,6 +82,13 @@ export default async function handler(req, res) {
             const avatarUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${filePath}`
             await supabase.from('stylist_chats').update({ avatar_url: avatarUrl }).eq('id', chat.id)
             chat.avatar_url = avatarUrl
+
+            if (chat.user_id) {
+              await supabase
+                .from('users')
+                .update({ avatar_url: avatarUrl })
+                .eq('id', chat.user_id)
+            }
           }
         }
       } catch (_) {
@@ -113,6 +120,16 @@ export default async function handler(req, res) {
               telegram_id: Number(tgChatId),
             })
             .eq('id', existingUser.id)
+
+          // 1.5 Подтянуть аватар из Telegram в users.avatar_url
+          // Берём аватар из chat.avatar_url (он уже загружен при создании чата)
+          // Если есть — обновляем users.avatar_url
+          if (chat.avatar_url) {
+            await supabase
+              .from('users')
+              .update({ avatar_url: chat.avatar_url })
+              .eq('id', existingUser.id)
+          }
 
           // 2. Привязать Telegram чат к существующему аккаунту
           await supabase

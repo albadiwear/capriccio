@@ -147,6 +147,69 @@ export default function AccessForm({ user }) {
     }
   }
 
+  async function handleTelegramAuth(tgUser) {
+    setLoading(true)
+    setError('')
+    setMessage('')
+
+    try {
+      const res = await fetch('/api/telegram-web-auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(tgUser),
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        setError(err.error || 'Ошибка авторизации через Telegram')
+        setLoading(false)
+        return
+      }
+
+      const { access_token, refresh_token } = await res.json()
+      await supabase.auth.setSession({ access_token, refresh_token })
+
+      const { data: { user: authedUser } } = await supabase.auth.getUser()
+      if (!authedUser) {
+        setError('Не удалось войти. Попробуйте ещё раз.')
+        setLoading(false)
+        return
+      }
+
+      const { data: profile } = await supabase
+        .from('stylist_profiles')
+        .select('onboarding_completed')
+        .eq('user_id', authedUser.id)
+        .maybeSingle()
+
+      navigate(profile?.onboarding_completed ? '/catalog' : '/onboarding')
+    } catch {
+      setError('Ошибка соединения. Попробуйте ещё раз.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    window.onTelegramAuth = handleTelegramAuth
+
+    const container = document.getElementById('telegram-login-btn')
+    if (!container || container.querySelector('script')) return
+
+    const script = document.createElement('script')
+    script.src = 'https://telegram.org/js/telegram-widget.js?22'
+    script.setAttribute('data-telegram-login', 'Cap_Ricciobot')
+    script.setAttribute('data-size', 'large')
+    script.setAttribute('data-onauth', 'onTelegramAuth(user)')
+    script.setAttribute('data-request-access', 'write')
+    script.async = true
+    container.appendChild(script)
+
+    return () => {
+      delete window.onTelegramAuth
+    }
+  }, [])
+
   return (
     <section id="access" className="bg-[#1a1a18] text-white">
       <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:py-20">
@@ -321,6 +384,10 @@ export default function AccessForm({ user }) {
               >
                 Войти через Google
               </button>
+
+              <div className="mt-3 flex justify-center">
+                <div id="telegram-login-btn" />
+              </div>
 
               <p className="mt-4 text-center text-xs text-white/50">
                 Без спама · Только важное · Можно отписаться в любой момент

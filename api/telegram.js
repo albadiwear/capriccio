@@ -98,6 +98,10 @@ export default async function handler(req, res) {
 
     const contact = message.contact || null
     if (contact?.phone_number) {
+      const phone = contact.phone_number.startsWith('+')
+        ? contact.phone_number
+        : `+${contact.phone_number}`
+
       const { data: tgUser } = await supabase
         .from('users')
         .select('id, full_name, phone, telegram_id')
@@ -107,8 +111,22 @@ export default async function handler(req, res) {
       if (tgUser) {
         await supabase
           .from('users')
-          .update({ phone: contact.phone_number })
+          .update({ phone })
           .eq('id', tgUser.id)
+
+        const { data: tgChat } = await supabase
+          .from('stylist_chats')
+          .select('avatar_url')
+          .eq('external_id', tgChatId)
+          .eq('source', 'telegram')
+          .maybeSingle()
+
+        if (tgChat?.avatar_url) {
+          await supabase
+            .from('users')
+            .update({ avatar_url: tgChat.avatar_url })
+            .eq('id', tgUser.id)
+        }
 
         if (!chat.user_id) {
           await supabase

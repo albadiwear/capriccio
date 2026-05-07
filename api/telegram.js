@@ -18,20 +18,6 @@ async function sendTelegram(chatId, text, replyMarkup = null) {
   })
 }
 
-async function sendTelegramWithButton(chatId, text, buttonText, buttonUrl) {
-  await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text,
-      reply_markup: {
-        inline_keyboard: [[{ text: buttonText, url: buttonUrl }]],
-      },
-    }),
-  })
-}
-
 export default async function handler(req, res) {
   if (req.method === 'GET') {
     const { query } = req
@@ -110,213 +96,73 @@ export default async function handler(req, res) {
       }
     }
 
-    // Привязка user_id по номеру телефона
-    if (!chat.user_id) {
-      const contact = message.contact || null
-      if (contact?.phone_number) {
-        const cleanPhone = contact.phone_number.replace(/\D/g, '')
+    const contact = message.contact || null
+    if (contact?.phone_number) {
+      const { data: tgUser } = await supabase
+        .from('users')
+        .select('id, full_name, phone, telegram_id')
+        .eq('telegram_id', Number(tgChatId))
+        .maybeSingle()
 
-        // Сначала проверяем есть ли уже аккаунт с этим telegram_id
-        const { data: tgUser } = await supabase
+      if (tgUser) {
+        await supabase
           .from('users')
-          .select('id, full_name, phone, telegram_id')
-          .eq('telegram_id', Number(tgChatId))
-          .maybeSingle()
+          .update({ phone: contact.phone_number })
+          .eq('id', tgUser.id)
 
-        if (tgUser) {
-          // Аккаунт уже есть (создан через Mini App) — просто сохраняем номер
-          await supabase
-            .from('users')
-            .update({ phone: contact.phone_number })
-            .eq('id', tgUser.id)
-
-          // Привязываем чат если ещё не привязан
-          if (!chat.user_id) {
-            await supabase
-              .from('stylist_chats')
-              .update({ user_id: tgUser.id })
-              .eq('id', chat.id)
-          }
-
-          const savedText = `Номер сохранён! 🌸`
-          await supabase.from('stylist_messages').insert({
-            chat_id: chat.id, role: 'assistant', content: savedText,
-            created_at: new Date().toISOString(),
-          })
-          await sendTelegram(tgChatId, savedText, { remove_keyboard: true })
-          await sendTelegramWithButton(
-            tgChatId,
-            '🛍 Открывайте каталог прямо в Telegram:',
-            '🛍 Открыть Capriccio',
-            'https://t.me/Cap_Ricciobot/catalog'
-          )
-
-          return res.status(200).json({ ok: true })
-        }
-
-        const { data: existingUsers } = await supabase
-          .from('users')
-          .select('id, full_name, email, telegram_id')
-          .ilike('phone', `%${cleanPhone.slice(-10)}%`)
-          .is('telegram_id', null)
-          .order('created_at', { ascending: true })
-          .limit(1)
-
-        const existingUser = existingUsers?.[0] || null
-
-        if (existingUser && !existingUser.telegram_id) {
-          // 1. Записать telegram_id в существующий аккаунт
-          await supabase
-            .from('users')
-            .update({
-              telegram_id: Number(tgChatId),
-            })
-            .eq('id', existingUser.id)
-
-          // 1.5 Подтянуть аватар из Telegram в users.avatar_url
-          // Берём аватар из chat.avatar_url (он уже загружен при создании чата)
-          // Если есть — обновляем users.avatar_url
-          if (chat.avatar_url) {
-            await supabase
-              .from('users')
-              .update({ avatar_url: chat.avatar_url })
-              .eq('id', existingUser.id)
-          }
-
-          // 2. Привязать Telegram чат к существующему аккаунту
+        if (!chat.user_id) {
           await supabase
             .from('stylist_chats')
-            .update({
-              user_id: existingUser.id,
-              source: 'telegram',
-            })
+            .update({ user_id: tgUser.id })
             .eq('id', chat.id)
-
-          // 3. Найти и удалить временный Telegram аккаунт (created via Mini App)
-          // Ищем в users по telegram_id = tgChatId, но только temp аккаунты (email like 'tg_%@capriccio.app')
-          const { data: tempUser } = await supabase
-            .from('users')
-            .select('id')
-            .eq('telegram_id', Number(tgChatId))
-            .ilike('email', 'tg_%@capriccio.app')
-            .maybeSingle()
-
-          if (tempUser) {
-            // Перепривязать все чаты временного аккаунта на существующий
-            await supabase
-              .from('stylist_chats')
-              .update({ user_id: existingUser.id })
-              .eq('user_id', tempUser.id)
-
-            // Удалить временный аккаунт из auth
-            await supabase.auth.admin.deleteUser(tempUser.id)
-          }
-
-          const successText = `Отлично! Нашла ваш аккаунт, ${existingUser.full_name || 'друг'}! 🌸 Теперь всё связано.`
-          await supabase.from('stylist_messages').insert({
-            chat_id: chat.id,
-            role: 'assistant',
-            content: successText,
-            created_at: new Date().toISOString(),
-          })
-          await sendTelegram(tgChatId, successText, { remove_keyboard: true })
-
-          await sendTelegramWithButton(
-            tgChatId,
-            '🛍 Открывайте каталог прямо в Telegram:',
-            '🛍 Открыть Capriccio',
-            'https://t.me/Cap_Ricciobot/catalog'
-          )
-
-        } else if (existingUser && existingUser.telegram_id) {
-          const alreadyText = 'Этот номер уже привязан к другому аккаунту. Напишите нам если нужна помощь.'
-          await supabase.from('stylist_messages').insert({
-            chat_id: chat.id,
-            role: 'assistant',
-            content: alreadyText,
-            created_at: new Date().toISOString(),
-          })
-          await sendTelegram(tgChatId, alreadyText, { remove_keyboard: true })
-
-        } else {
-          if (chat.user_id) {
-            // Уже есть аккаунт (Mini App) — сохраняем номер и отправляем ссылку
-            await supabase
-              .from('users')
-              .update({ phone: contact.phone_number })
-              .eq('id', chat.user_id)
-
-            const savedText = 'Номер сохранён! 🌸'
-            await supabase.from('stylist_messages').insert({
-              chat_id: chat.id, role: 'assistant', content: savedText,
-              created_at: new Date().toISOString(),
-            })
-            await sendTelegram(tgChatId, savedText, { remove_keyboard: true })
-            await sendTelegramWithButton(
-              tgChatId,
-              '🛍 Открывайте каталог прямо в Telegram:',
-              '🛍 Открыть Capriccio',
-              'https://t.me/Cap_Ricciobot/catalog'
-            )
-          } else {
-            // Нет аккаунта вообще — создаём новый через supabase.auth.admin.createUser
-            const tgEmail = `tg_${tgChatId}@capriccio.app`
-
-            const { data: newAuthUser, error: createError } = await supabase.auth.admin.createUser({
-              email: tgEmail,
-              email_confirm: true,
-              user_metadata: {
-                full_name: fromName,
-                telegram_id: Number(tgChatId),
-              }
-            })
-
-            if (!createError && newAuthUser?.user) {
-              // Обновляем users: telegram_id + phone + avatar
-              await supabase
-                .from('users')
-                .update({
-                  telegram_id: Number(tgChatId),
-                  phone: contact.phone_number,
-                  avatar_url: chat.avatar_url || null,
-                })
-                .eq('id', newAuthUser.user.id)
-
-              // Привязываем чат к новому аккаунту
-              await supabase
-                .from('stylist_chats')
-                .update({ user_id: newAuthUser.user.id })
-                .eq('id', chat.id)
-
-              const createdText = `Отлично, ${fromName}! 🌸 Аккаунт создан, номер сохранён.`
-              await supabase.from('stylist_messages').insert({
-                chat_id: chat.id, role: 'assistant', content: createdText,
-                created_at: new Date().toISOString(),
-              })
-              await sendTelegram(tgChatId, createdText, { remove_keyboard: true })
-              await sendTelegramWithButton(
-                tgChatId,
-                '🛍 Открывайте каталог прямо в Telegram:',
-                '🛍 Открыть Capriccio',
-                'https://t.me/Cap_Ricciobot/catalog'
-              )
-            }
-          }
         }
-
-        return res.status(200).json({ ok: true })
       }
 
-      const welcomeText = `Привет! 👋 Я Амина, стилист Capriccio.\n\nПоделитесь номером телефона, чтобы я могла учитывать ваши предпочтения.`
+      const savedText = 'Номер сохранён! 🌸 Теперь открывайте каталог через кнопку выше.'
       await supabase.from('stylist_messages').insert({
-        chat_id: chat.id, role: 'assistant', content: welcomeText,
+        chat_id: chat.id,
+        role: 'assistant',
+        content: savedText,
         created_at: new Date().toISOString(),
       })
-      await sendTelegram(tgChatId, welcomeText, {
-        keyboard: [[{ text: '📱 Поделиться номером телефона', request_contact: true }]],
-        resize_keyboard: true,
-        one_time_keyboard: true,
+      await sendTelegram(tgChatId, savedText, { remove_keyboard: true })
+      return res.status(200).json({ ok: true })
+    }
+
+    if (text === '/start') {
+      const startText = `Привет! 👋 Я Амина, стилист Capriccio.\n\nОткрывайте каталог 1500+ образов прямо сейчас 👇`
+      await supabase.from('stylist_messages').insert({
+        chat_id: chat.id,
+        role: 'assistant',
+        content: startText,
+        created_at: new Date().toISOString(),
       })
+      await sendTelegram(
+        tgChatId,
+        startText,
+        {
+          inline_keyboard: [[
+            { text: '🛍 Открыть каталог', web_app: { url: 'https://t.me/Cap_Ricciobot/catalog' } }
+          ]]
+        }
+      )
+
+      const phonePromptText = `И поделитесь номером телефона, чтобы я могла сохранить ваши предпочтения 👇`
+      await supabase.from('stylist_messages').insert({
+        chat_id: chat.id,
+        role: 'assistant',
+        content: phonePromptText,
+        created_at: new Date().toISOString(),
+      })
+      await sendTelegram(
+        tgChatId,
+        phonePromptText,
+        {
+          keyboard: [[{ text: '📱 Поделиться номером', request_contact: true }]],
+          resize_keyboard: true,
+          one_time_keyboard: true,
+        }
+      )
       return res.status(200).json({ ok: true })
     }
 

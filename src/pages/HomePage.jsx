@@ -291,13 +291,7 @@ export default function HomePage() {
   }
 
   const handleTelegramLogin = () => {
-    const botId = '8473800397'
-    const origin = 'https://capriccio.vercel.app'
-    window.open(
-      `https://oauth.telegram.org/auth?bot_id=${botId}&origin=${origin}&return_to=${origin}&embed=0`,
-      'telegram_auth',
-      'width=550,height=450,scrollbars=no'
-    )
+    window.open('https://t.me/Cap_Ricciobot?start=web_auth', '_blank')
   }
 
   if (checking && user) return null

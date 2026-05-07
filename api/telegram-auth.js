@@ -5,6 +5,19 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 )
 
+async function getSessionForUser(userId, telegramId) {
+  const email = `tg_${telegramId}@capriccio.app`
+  const password = `tg_${telegramId}_secret`
+
+  const { data: signInData } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  })
+
+  if (signInData?.session) return signInData.session
+  return null
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
 
@@ -19,7 +32,10 @@ export default async function handler(req, res) {
       .eq('telegram_id', telegram_id)
       .maybeSingle()
 
-    if (existing) return res.status(200).json({ user: existing })
+    if (existing) {
+      const session = await getSessionForUser(existing.id, telegram_id)
+      return res.status(200).json({ user: existing, session })
+    }
 
     if (phone) {
       const cleanPhone = phone.replace(/\D/g, '')
@@ -31,12 +47,13 @@ export default async function handler(req, res) {
 
       if (byPhone) {
         await supabase.from('users').update({ telegram_id }).eq('id', byPhone.id)
-        return res.status(200).json({ user: { ...byPhone, telegram_id } })
+        const session = await getSessionForUser(byPhone.id, telegram_id)
+        return res.status(200).json({ user: { ...byPhone, telegram_id }, session })
       }
     }
 
     const fakeEmail = `tg_${telegram_id}@capriccio.app`
-    const fakePassword = `tg_${telegram_id}_${Date.now()}`
+    const fakePassword = `tg_${telegram_id}_secret`
 
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email: fakeEmail,
@@ -88,7 +105,8 @@ export default async function handler(req, res) {
         .eq('id', existingChat.id)
     }
 
-    return res.status(200).json({ user: newUser })
+    const session = await getSessionForUser(userId, telegram_id)
+    return res.status(200).json({ user: newUser, session })
   } catch (e) {
     return res.status(500).json({ error: e.message })
   }

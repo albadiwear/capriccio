@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/authStore'
 
 export default function TelegramProvider({ children }) {
@@ -26,6 +27,12 @@ export default function TelegramProvider({ children }) {
           }),
         })
         const data = await res.json()
+        if (data.session) {
+          await supabase.auth.setSession({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
+          })
+        }
         if (data.user) setUser(data.user)
       } catch {}
     }

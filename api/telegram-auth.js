@@ -35,20 +35,34 @@ export default async function handler(req, res) {
       }
     }
 
-    const { data: newUser, error } = await supabase
-      .from('users')
-      .insert({
-        full_name: full_name || 'Telegram User',
-        phone: phone || null,
-        telegram_id,
-        lead_status: 'Новый',
-        role: 'user',
-        created_at: new Date().toISOString(),
-      })
-      .select()
-      .single()
+    const fakeEmail = `tg_${telegram_id}@capriccio.app`
+    const fakePassword = `tg_${telegram_id}_${Date.now()}`
 
-    if (error) return res.status(500).json({ error: error.message })
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email: fakeEmail,
+      password: fakePassword,
+      email_confirm: true,
+      user_metadata: {
+        full_name: full_name || 'Telegram User',
+        telegram_id,
+      }
+    })
+
+    if (authError) return res.status(500).json({ error: authError.message })
+
+    const userId = authData.user.id
+    await supabase.from('users').update({
+      telegram_id,
+      full_name: full_name || 'Telegram User',
+      phone: phone || null,
+      lead_status: 'Новый',
+    }).eq('id', userId)
+
+    const { data: newUser } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .single()
 
     const { data: existingChat } = await supabase
       .from('stylist_chats')

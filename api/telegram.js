@@ -18,6 +18,20 @@ async function sendTelegram(chatId, text, replyMarkup = null) {
   })
 }
 
+async function sendTelegramWithButton(chatId, text, buttonText, buttonUrl) {
+  await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text,
+      reply_markup: {
+        inline_keyboard: [[{ text: buttonText, url: buttonUrl }]],
+      },
+    }),
+  })
+}
+
 export default async function handler(req, res) {
   if (req.method === 'GET') {
     const { query } = req
@@ -140,7 +154,7 @@ export default async function handler(req, res) {
 
           if (tokenData?.token) {
             const authLink = `https://capriccio.vercel.app?tg_token=${tokenData.token}`
-            await sendTelegram(tgChatId, `🔗 Войдите на сайт по этой ссылке (действует 10 минут):\n${authLink}`)
+            await sendTelegramWithButton(tgChatId, '🔗 Войдите на сайт Capriccio:', '🛍 Открыть сайт', authLink)
           }
 
           return res.status(200).json({ ok: true })
@@ -221,7 +235,7 @@ export default async function handler(req, res) {
 
           if (tokenData?.token) {
             const authLink = `https://capriccio.vercel.app?tg_token=${tokenData.token}`
-            await sendTelegram(tgChatId, `🔗 Войдите на сайт по этой ссылке (действует 10 минут):\n${authLink}`)
+            await sendTelegramWithButton(tgChatId, '🔗 Войдите на сайт Capriccio:', '🛍 Открыть сайт', authLink)
           }
 
         } else if (existingUser && existingUser.telegram_id) {
@@ -257,7 +271,7 @@ export default async function handler(req, res) {
 
             if (tokenData?.token) {
               const authLink = `https://capriccio.vercel.app?tg_token=${tokenData.token}`
-              await sendTelegram(tgChatId, `🔗 Войдите на сайт по этой ссылке (действует 10 минут):\n${authLink}`)
+              await sendTelegramWithButton(tgChatId, '🔗 Войдите на сайт Capriccio:', '🛍 Открыть сайт', authLink)
             }
           } else {
             // Нет аккаунта вообще — создаём новый через supabase.auth.admin.createUser
@@ -305,7 +319,7 @@ export default async function handler(req, res) {
 
               if (tokenData?.token) {
                 const authLink = `https://capriccio.vercel.app?tg_token=${tokenData.token}`
-                await sendTelegram(tgChatId, `🔗 Войдите на сайт по этой ссылке (действует 10 минут):\n${authLink}`)
+                await sendTelegramWithButton(tgChatId, '🔗 Войдите на сайт Capriccio:', '🛍 Открыть сайт', authLink)
               }
             }
           }

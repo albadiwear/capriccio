@@ -106,21 +106,33 @@ export default async function handler(req, res) {
         const existingUser = existingUsers?.[0] || null
 
         if (existingUser && !existingUser.telegram_id) {
+          // 1. Записать telegram_id в существующий аккаунт
           await supabase
             .from('users')
-            .update({ telegram_id: chat.external_id })
+            .update({
+              telegram_id: Number(chat.external_id),
+            })
             .eq('id', existingUser.id)
 
+          // 2. Привязать Telegram чат к существующему аккаунту
           await supabase
             .from('stylist_chats')
             .update({
               user_id: existingUser.id,
-              source: 'telegram'
+              source: 'telegram',
             })
             .eq('id', chat.id)
 
+          // 3. Удалить временный Telegram аккаунт если он был создан через Mini App
           if (chat.user_id && chat.user_id !== existingUser.id) {
-            await supabase.from('users').delete().eq('id', chat.user_id)
+            // Сначала отвязать все чаты от временного аккаунта
+            await supabase
+              .from('stylist_chats')
+              .update({ user_id: existingUser.id })
+              .eq('user_id', chat.user_id)
+
+            // Потом удалить временный аккаунт из auth
+            await supabase.auth.admin.deleteUser(chat.user_id)
           }
 
           const successText = `Отлично! Нашла ваш аккаунт, ${existingUser.full_name || 'друг'}! 🌸 Теперь всё связано.`

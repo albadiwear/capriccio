@@ -139,6 +139,37 @@ export default function HomePage() {
       .then(({ data }) => setBlogPosts(data || []))
   }, [])
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const tgToken = params.get('tg_token')
+    if (!tgToken) return
+
+    const authWithToken = async () => {
+      try {
+        const res = await fetch('/api/telegram-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: tgToken }),
+        })
+        if (!res.ok) return
+        const { access_token, refresh_token } = await res.json()
+        await supabase.auth.setSession({ access_token, refresh_token })
+        window.history.replaceState({}, '', '/')
+        const { data: { user: authedUser } } = await supabase.auth.getUser()
+        if (authedUser) {
+          const { data: profile } = await supabase
+            .from('stylist_profiles')
+            .select('onboarding_completed')
+            .eq('user_id', authedUser.id)
+            .maybeSingle()
+          navigate(profile?.onboarding_completed ? '/catalog' : '/onboarding')
+        }
+      } catch (_) {}
+    }
+
+    authWithToken()
+  }, [])
+
   async function handleSubmit(e) {
     e.preventDefault()
     if (loading) return

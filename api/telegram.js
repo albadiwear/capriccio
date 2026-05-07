@@ -169,6 +169,17 @@ export default async function handler(req, res) {
           })
           await sendTelegram(tgChatId, successText, { remove_keyboard: true })
 
+          const { data: tokenData } = await supabase
+            .from('telegram_auth_tokens')
+            .insert({ user_id: existingUser.id })
+            .select('token')
+            .single()
+
+          if (tokenData?.token) {
+            const authLink = `https://capriccio.vercel.app?tg_token=${tokenData.token}`
+            await sendTelegram(tgChatId, `🔗 Войдите на сайт по этой ссылке (действует 10 минут):\n${authLink}`)
+          }
+
         } else if (existingUser && existingUser.telegram_id) {
           const alreadyText = 'Этот номер уже привязан к другому аккаунту. Напишите нам если нужна помощь.'
           await supabase.from('stylist_messages').insert({
@@ -195,6 +206,19 @@ export default async function handler(req, res) {
             created_at: new Date().toISOString(),
           })
           await sendTelegram(tgChatId, savedText, { remove_keyboard: true })
+
+          if (chat.user_id) {
+            const { data: tokenData } = await supabase
+              .from('telegram_auth_tokens')
+              .insert({ user_id: chat.user_id })
+              .select('token')
+              .single()
+
+            if (tokenData?.token) {
+              const authLink = `https://capriccio.vercel.app?tg_token=${tokenData.token}`
+              await sendTelegram(tgChatId, `🔗 Войдите на сайт по этой ссылке (действует 10 минут):\n${authLink}`)
+            }
+          }
         }
 
         return res.status(200).json({ ok: true })

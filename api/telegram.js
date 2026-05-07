@@ -123,16 +123,24 @@ export default async function handler(req, res) {
             })
             .eq('id', chat.id)
 
-          // 3. Удалить временный Telegram аккаунт если он был создан через Mini App
-          if (chat.user_id && chat.user_id !== existingUser.id) {
-            // Сначала отвязать все чаты от временного аккаунта
+          // 3. Найти и удалить временный Telegram аккаунт (created via Mini App)
+          // Ищем в users по telegram_id = tgChatId, но только temp аккаунты (email like 'tg_%@capriccio.app')
+          const { data: tempUser } = await supabase
+            .from('users')
+            .select('id')
+            .eq('telegram_id', Number(tgChatId))
+            .ilike('email', 'tg_%@capriccio.app')
+            .maybeSingle()
+
+          if (tempUser) {
+            // Перепривязать все чаты временного аккаунта на существующий
             await supabase
               .from('stylist_chats')
               .update({ user_id: existingUser.id })
-              .eq('user_id', chat.user_id)
+              .eq('user_id', tempUser.id)
 
-            // Потом удалить временный аккаунт из auth
-            await supabase.auth.admin.deleteUser(chat.user_id)
+            // Удалить временный аккаунт из auth
+            await supabase.auth.admin.deleteUser(tempUser.id)
           }
 
           const successText = `Отлично! Нашла ваш аккаунт, ${existingUser.full_name || 'друг'}! 🌸 Теперь всё связано.`

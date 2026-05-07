@@ -94,28 +94,65 @@ export default async function handler(req, res) {
       const contact = message.contact || null
       if (contact?.phone_number) {
         const cleanPhone = contact.phone_number.replace(/\D/g, '')
-        const { data: foundUser } = await supabase
+
+        const { data: existingUser } = await supabase
           .from('users')
-          .select('id')
+          .select('id, full_name, email, telegram_id')
           .or(`phone.ilike.%${cleanPhone.slice(-10)}%`)
           .maybeSingle()
 
-        if (foundUser) {
-          await supabase.from('stylist_chats').update({ user_id: foundUser.id }).eq('id', chat.id)
-          const successText = 'Отлично! Нашла ваш профиль 🌸 Чем могу помочь?'
+        if (existingUser && !existingUser.telegram_id) {
+          await supabase
+            .from('users')
+            .update({ telegram_id: chat.external_id })
+            .eq('id', existingUser.id)
+
+          await supabase
+            .from('stylist_chats')
+            .update({ user_id: existingUser.id })
+            .eq('id', chat.id)
+
+          if (chat.user_id && chat.user_id !== existingUser.id) {
+            await supabase.from('users').delete().eq('id', chat.user_id)
+          }
+
+          const successText = `Отлично! Нашла ваш аккаунт, ${existingUser.full_name || 'друг'}! 🌸 Теперь всё связано.`
           await supabase.from('stylist_messages').insert({
-            chat_id: chat.id, role: 'assistant', content: successText,
+            chat_id: chat.id,
+            role: 'assistant',
+            content: successText,
             created_at: new Date().toISOString(),
           })
           await sendTelegram(tgChatId, successText, { remove_keyboard: true })
-        } else {
-          const notFoundText = 'Не нашла аккаунт с таким номером 😔 Зарегистрируйтесь на capriccio.vercel.app'
+
+        } else if (existingUser && existingUser.telegram_id) {
+          const alreadyText = 'Этот номер уже привязан к другому аккаунту. Напишите нам если нужна помощь.'
           await supabase.from('stylist_messages').insert({
-            chat_id: chat.id, role: 'assistant', content: notFoundText,
+            chat_id: chat.id,
+            role: 'assistant',
+            content: alreadyText,
             created_at: new Date().toISOString(),
           })
-          await sendTelegram(tgChatId, notFoundText, { remove_keyboard: true })
+          await sendTelegram(tgChatId, alreadyText, { remove_keyboard: true })
+
+        } else {
+          if (chat.user_id) {
+            await supabase
+              .from('users')
+              .update({ phone: contact.phone_number })
+              .eq('id', chat.user_id)
+          }
+
+          const savedText = 'Номер сохранён! 🌸 Чем могу помочь?'
+          await supabase.from('stylist_messages').insert({
+            chat_id: chat.id,
+            role: 'assistant',
+            content: savedText,
+            created_at: new Date().toISOString(),
+          })
+          await sendTelegram(tgChatId, savedText, { remove_keyboard: true })
         }
+
         return res.status(200).json({ ok: true })
       }
 

@@ -130,39 +130,47 @@ export default async function handler(req, res) {
     }
 
     if (text === '/start') {
-      const startText = `Привет! 👋 Я Амина, стилист Capriccio.\n\nОткрывайте каталог 1500+ образов прямо сейчас 👇`
+      const startText = 'Привет! 👋 Я Амина, стилист Capriccio.\n\nОткрывайте каталог 1500+ образов прямо сейчас 👇'
       await supabase.from('stylist_messages').insert({
         chat_id: chat.id,
         role: 'assistant',
         content: startText,
         created_at: new Date().toISOString(),
       })
-      await sendTelegram(
-        tgChatId,
-        startText,
-        {
-          inline_keyboard: [[
-            { text: '🛍 Открыть каталог', web_app: { url: 'https://t.me/Cap_Ricciobot/catalog' } }
-          ]]
-        }
-      )
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: tgChatId,
+          text: startText,
+          reply_markup: {
+            inline_keyboard: [[
+              { text: '🛍 Открыть каталог', web_app: { url: 'https://capriccio.vercel.app' } }
+            ]],
+          },
+        }),
+      })
 
-      const phonePromptText = `И поделитесь номером телефона, чтобы я могла сохранить ваши предпочтения 👇`
+      const phonePromptText = 'И поделитесь номером телефона, чтобы я могла сохранить ваши предпочтения 👇'
       await supabase.from('stylist_messages').insert({
         chat_id: chat.id,
         role: 'assistant',
         content: phonePromptText,
         created_at: new Date().toISOString(),
       })
-      await sendTelegram(
-        tgChatId,
-        phonePromptText,
-        {
-          keyboard: [[{ text: '📱 Поделиться номером', request_contact: true }]],
-          resize_keyboard: true,
-          one_time_keyboard: true,
-        }
-      )
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: tgChatId,
+          text: phonePromptText,
+          reply_markup: {
+            keyboard: [[{ text: '📱 Поделиться номером', request_contact: true }]],
+            resize_keyboard: true,
+            one_time_keyboard: true,
+          },
+        }),
+      })
       return res.status(200).json({ ok: true })
     }
 

@@ -145,7 +145,7 @@ export default async function handler(req, res) {
           text: startText,
           reply_markup: {
             inline_keyboard: [[
-              { text: '🛍 Открыть каталог', url: 'https://t.me/Cap_Ricciobot/catalog' }
+              { text: '🛍 Открыть каталог', web_app: { url: 'https://capriccio.vercel.app' } }
             ]],
           },
         }),

@@ -1,11 +1,12 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { saveRefCode, trackReferralClick } from './utils/referral'
 import Layout from './components/layout/Layout'
 import ProtectedRoute from './components/layout/ProtectedRoute'
 import AdminLayout from './components/admin/AdminLayout'
 import ScrollToTop from './components/layout/ScrollToTop'
+import { supabase } from './lib/supabase'
 
 // Public pages
 import HomePage from './pages/HomePage'
@@ -55,6 +56,55 @@ import OnboardingPage from './pages/OnboardingPage'
 import OrderSuccessPage from './pages/OrderSuccessPage'
 import NotFoundPage from './pages/NotFoundPage'
 
+function AuthRedirectHandler() {
+  const navigate = useNavigate()
+  const oauthRedirectRef = useRef(false)
+
+  useEffect(() => {
+    let active = true
+    const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : ''
+    const hashParams = new URLSearchParams(hash)
+    const accessToken = hashParams.get('access_token')
+    const refreshToken = hashParams.get('refresh_token')
+
+    if (accessToken) {
+      oauthRedirectRef.current = true
+    }
+
+    async function syncOAuthRedirect() {
+      if (accessToken && refreshToken) {
+        await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        })
+      }
+
+      const { data: { session } } = await supabase.auth.getSession()
+
+      if (!active || !session || !oauthRedirectRef.current) return
+
+      window.history.replaceState({}, '', `${window.location.pathname}${window.location.search}`)
+      navigate('/catalog', { replace: true })
+    }
+
+    syncOAuthRedirect().catch(() => {})
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session && oauthRedirectRef.current) {
+        window.history.replaceState({}, '', `${window.location.pathname}${window.location.search}`)
+        navigate('/catalog', { replace: true })
+      }
+    })
+
+    return () => {
+      active = false
+      subscription.unsubscribe()
+    }
+  }, [navigate])
+
+  return null
+}
+
 function App() {
   const initialize = useAuthStore((state) => state.initialize)
   const authLoading = useAuthStore((state) => state.loading)
@@ -95,6 +145,7 @@ function App() {
     <div className="h-[100dvh] overflow-hidden bg-white">
       <Router>
         <ScrollToTop />
+        <AuthRedirectHandler />
         <Routes>
           <Route path="/promo" element={<ProtectedRoute><PromoLanding /></ProtectedRoute>} />
           <Route path="/onboarding" element={<ProtectedRoute><OnboardingPage /></ProtectedRoute>} />

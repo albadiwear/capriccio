@@ -58,9 +58,8 @@ const PAGE_SIZE = 20
 
 // Only the fields the catalog grid needs — avoids pulling heavy columns
 // (description, composition, care, youtube_url, etc.) for every product.
-// is_new/season are kept: they back the «Новинки» category and season filter.
 const CATALOG_SELECT =
-  'id, name, price, sale_price, images, category, brand, is_active, badges, is_new, season, product_variants(size, color, stock)'
+  'id, name, price, sale_price, images, category, brand, is_active, badges, product_variants(size, color, stock)'
 
 function SkeletonCard() {
   return (
@@ -306,7 +305,7 @@ export default function CatalogPage() {
           if (cat === 'Скидки') {
             query = query.not('sale_price', 'is', null)
           } else if (cat === 'Новинки') {
-            query = query.eq('is_new', true)
+            // is_new column removed — «Новинки» no longer filters
           } else {
             query = query.ilike('category', `%${cat}%`)
           }
@@ -315,7 +314,8 @@ export default function CatalogPage() {
         if (filters.onSale) query = query.not('sale_price', 'is', null)
         if (filters.priceMin > 0) query = query.gte('price', filters.priceMin)
         if (filters.priceMax < MAX_PRICE) query = query.lte('price', filters.priceMax)
-        if (filters.seasons?.length > 0) query = query.in('season', filters.seasons)
+        // season column removed — season filter disabled
+        // if (filters.seasons?.length > 0) query = query.in('season', filters.seasons)
         if (filters.sizes?.length > 0) query = query.eq('product_variants.size', filters.sizes[0])
 
         // Sorting: always newest first on mobile flow
@@ -355,7 +355,7 @@ export default function CatalogPage() {
       if (activeCategory === 'Скидки') {
         query = query.not('sale_price', 'is', null)
       } else if (activeCategory === 'Новинки') {
-        query = query.eq('is_new', true)
+        // is_new column removed — «Новинки» no longer filters
       } else {
         query = query.ilike('category', `%${activeCategory}%`)
       }
@@ -364,7 +364,8 @@ export default function CatalogPage() {
     if (filters.onSale) query = query.not('sale_price', 'is', null)
     if (filters.priceMin) query = query.gte('price', filters.priceMin)
     if (filters.priceMax) query = query.lte('price', filters.priceMax)
-    if (filters.seasons?.length > 0) query = query.in('season', filters.seasons)
+    // season column removed — season filter disabled
+    // if (filters.seasons?.length > 0) query = query.in('season', filters.seasons)
     if (filters.sizes?.length > 0) query = query.eq('product_variants.size', filters.sizes[0])
 
     query = query.order('created_at', { ascending: false })
@@ -468,7 +469,7 @@ export default function CatalogPage() {
         if (activeCategory === 'Скидки') {
           if (!p.sale_price) return false
         } else if (activeCategory === 'Новинки') {
-          if (!p.is_new) return false
+          // is_new column removed — «Новинки» no longer filters
         } else if (!p.category?.toLowerCase().includes(activeCategory.toLowerCase())) {
           return false
         }
@@ -500,12 +501,13 @@ export default function CatalogPage() {
 
       if (filters.onSale && !p.sale_price) return false
 
-      if (filters.seasons.length > 0) {
-        const hasMatchingSeason = filters.seasons.some(
-          (season) => p.season === season || p.tags?.includes(season)
-        )
-        if (!hasMatchingSeason) return false
-      }
+      // season column removed — season filter disabled
+      // if (filters.seasons.length > 0) {
+      //   const hasMatchingSeason = filters.seasons.some(
+      //     (season) => p.season === season || p.tags?.includes(season)
+      //   )
+      //   if (!hasMatchingSeason) return false
+      // }
 
       const price = p.sale_price || p.price || 0
       if (price < filters.priceMin || price > filters.priceMax) return false

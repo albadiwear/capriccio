@@ -71,6 +71,18 @@ function AuthRedirectHandler() {
       oauthRedirectRef.current = true
     }
 
+    async function resolveOAuthTarget(userId) {
+      if (!userId) return '/catalog'
+
+      const { data: profile } = await supabase
+        .from('users')
+        .select('phone')
+        .eq('id', userId)
+        .maybeSingle()
+
+      return profile?.phone ? '/catalog' : '/onboarding'
+    }
+
     async function syncOAuthRedirect() {
       if (accessToken && refreshToken) {
         await supabase.auth.setSession({
@@ -84,15 +96,19 @@ function AuthRedirectHandler() {
       if (!active || !session || !oauthRedirectRef.current) return
 
       window.history.replaceState({}, '', `${window.location.pathname}${window.location.search}`)
-      navigate('/catalog', { replace: true })
+      const nextRoute = await resolveOAuthTarget(session.user?.id)
+      if (!active) return
+      navigate(nextRoute, { replace: true })
     }
 
     syncOAuthRedirect().catch(() => {})
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session && oauthRedirectRef.current) {
         window.history.replaceState({}, '', `${window.location.pathname}${window.location.search}`)
-        navigate('/catalog', { replace: true })
+        const nextRoute = await resolveOAuthTarget(session.user?.id)
+        if (!active) return
+        navigate(nextRoute, { replace: true })
       }
     })
 

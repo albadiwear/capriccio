@@ -49,6 +49,7 @@ export default function OnboardingPage() {
   const [form, setForm] = useState({
     age: '',
     city: '',
+    phone: user?.user_metadata?.phone || '',
     lifestyle: '',
     clothing_size: '',
     shoe_size: '',
@@ -136,7 +137,34 @@ export default function OnboardingPage() {
     }
 
     const { error: upsertError } = await supabase.from('stylist_profiles').upsert(payload, { onConflict: 'user_id' })
-    if (upsertError) {
+    if (!upsertError) {
+      const normalizedPhone = form.phone.trim() || null
+
+      const [{ error: userUpsertError }, { error: leadUpsertError }] = await Promise.all([
+        supabase.from('users').upsert({
+          id: user.id,
+          email: user.email,
+          full_name: user.user_metadata?.full_name || user.email,
+          phone: normalizedPhone,
+        }),
+        supabase.from('leads').upsert({
+          name: user.user_metadata?.full_name || user.email,
+          email: user.email,
+          phone: normalizedPhone,
+          source: 'site',
+        }, { onConflict: 'email' }),
+      ])
+
+      if (userUpsertError) {
+        console.error('Ошибка сохранения пользователя:', JSON.stringify(userUpsertError, null, 2))
+        alert('Ошибка: ' + userUpsertError.message)
+      }
+
+      if (leadUpsertError) {
+        console.error('Ошибка сохранения лида:', JSON.stringify(leadUpsertError, null, 2))
+        alert('Ошибка: ' + leadUpsertError.message)
+      }
+    } else {
       console.error('Ошибка сохранения профиля:', JSON.stringify(upsertError, null, 2))
       alert('Ошибка: ' + upsertError.message)
     }
@@ -243,6 +271,17 @@ export default function OnboardingPage() {
                 value={form.city}
                 onChange={(e) => set('city', e.target.value)}
                 placeholder="Алматы"
+                className="h-12 w-full rounded-xl border border-gray-200 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a1a18]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Телефон</label>
+              <input
+                type="tel"
+                value={form.phone}
+                onChange={(e) => set('phone', e.target.value)}
+                placeholder="+7 777 000 00 00"
                 className="h-12 w-full rounded-xl border border-gray-200 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a1a18]"
               />
             </div>

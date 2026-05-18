@@ -48,6 +48,7 @@ function ProductCard({ product }) {
     <Link to={`/product/${product.id}`} className="group">
       <div className="relative overflow-hidden rounded-lg bg-gray-50 aspect-[3/4]">
         <img
+          loading="lazy"
           src={image}
           alt={product.name}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -657,7 +658,7 @@ export default function ProductPage() {
                         activeImage === i ? 'border-[#1a1a18]' : 'border-transparent'
                       }`}
                     >
-                      <img src={img} alt={`Фото ${i + 1}`} className="w-full h-full object-cover" />
+                      <img loading="lazy" src={img} alt={`Фото ${i + 1}`} className="w-full h-full object-cover" />
                     </button>
                   ))}
                 </div>
@@ -692,7 +693,7 @@ export default function ProductPage() {
                         activeImage === i ? 'border-gray-900' : 'border-transparent'
                       }`}
                     >
-                      <img src={img} alt={`Фото ${i + 1}`} className="w-full h-full object-cover" />
+                      <img loading="lazy" src={img} alt={`Фото ${i + 1}`} className="w-full h-full object-cover" />
                     </button>
                   ))}
                 </div>
@@ -972,7 +973,7 @@ export default function ProductPage() {
 		                {allRelated.map((item) => (
 		                  <Link key={item.id} to={`/product/${item.id}`} className="flex-shrink-0 w-[150px]">
 		                    <div className="w-[150px] h-[200px] rounded-xl overflow-hidden bg-[#f0ede8] mb-2">
-		                      <img src={item.images?.[0]} alt={item.name} className="w-full h-full object-cover" />
+		                      <img loading="lazy" src={item.images?.[0]} alt={item.name} className="w-full h-full object-cover" />
 		                    </div>
 	                    <p className="text-xs text-[#1a1a18] leading-tight mb-1 line-clamp-2">{item.name}</p>
 	                    <p className="text-xs font-medium text-[#1a1a18]">{Number(item.price).toLocaleString('ru-RU')} ₸</p>
@@ -1027,7 +1028,7 @@ export default function ProductPage() {
                       {r.photos?.length > 0 && (
                         <div className="flex gap-2 mt-2">
                           {r.photos.map((photo, i) => (
-                            <img key={i} src={photo} alt="" className="w-14 h-14 object-cover rounded-lg" />
+                            <img key={i} loading="lazy" src={photo} alt="" className="w-14 h-14 object-cover rounded-lg" />
                           ))}
                         </div>
                       )}
@@ -1362,7 +1363,7 @@ export default function ProductPage() {
                       {r.photos?.length > 0 && (
                         <div className="flex gap-2 mt-2">
                           {r.photos.map((photo, i) => (
-                            <img key={i} src={photo} alt="" className="w-14 h-14 object-cover rounded-lg" />
+                            <img key={i} loading="lazy" src={photo} alt="" className="w-14 h-14 object-cover rounded-lg" />
                           ))}
                         </div>
                       )}

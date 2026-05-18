@@ -6,6 +6,7 @@ import { useCartStore } from '../../store/cartStore'
 export default function ProductCard({ product, wished, onToggleWishlist, onAddedToCart, imageLoading = 'lazy' }) {
   const addItem = useCartStore((state) => state.addItem)
   const [tapped, setTapped] = useState(false)
+  const [imgLoaded, setImgLoaded] = useState(false)
   const timerRef = useRef(null)
 
   const oldPrice = product.old_price ?? (product.sale_price ? product.price : null)
@@ -55,11 +56,18 @@ export default function ProductCard({ product, wished, onToggleWishlist, onAdded
     <div className="relative">
       <Link to={`/product/${product.id}`} className="block group" onClick={handleTap}>
         <div className="relative w-full aspect-[2/3] overflow-hidden bg-[#f0ede8]">
+          {!imgLoaded && (
+            <div className="absolute inset-0 bg-gray-100 animate-pulse" />
+          )}
           <img
             loading={imageLoading}
             src={product.images?.[0]}
             alt={product.name}
-            className="w-full h-full object-cover md:group-hover:scale-105 transition-transform duration-500"
+            onLoad={() => setImgLoaded(true)}
+            onError={() => setImgLoaded(true)}
+            className={`w-full h-full object-cover md:group-hover:scale-105 transition-transform duration-500 ${
+              imgLoaded ? 'opacity-100' : 'opacity-0'
+            }`}
           />
 
           {/* Бейджи — показываем все выбранные */}

@@ -54,7 +54,12 @@ const ALL_CATEGORIES = [
 const SEASONS = ['Весна', 'Лето', 'Осень', 'Зима']
 
 const MAX_PRICE = 200000
-const PAGE_SIZE = 12
+const PAGE_SIZE = 20
+
+// Only the fields the catalog grid needs — avoids pulling heavy columns
+// (description, composition, care, youtube_url, etc.) for every product.
+const CATALOG_SELECT =
+  'id, name, category, price, sale_price, old_price, images, badges, is_new, season, length, tags, reviews_count, stock, created_at, product_variants(id, color, size, stock)'
 
 function SkeletonCard() {
   return (
@@ -292,7 +297,7 @@ export default function CatalogPage() {
       try {
         let query = supabase
           .from('products')
-          .select('*, product_variants(*)')
+          .select(CATALOG_SELECT)
           .eq('is_active', true)
 
         const cat = activeCategoryRef.current
@@ -314,6 +319,9 @@ export default function CatalogPage() {
 
         // Sorting: always newest first on mobile flow
         query = query.order('created_at', { ascending: false })
+
+        // Load only the first page — "Показать ещё" fetches the rest.
+        query = query.range(0, PAGE_SIZE - 1)
 
         const { data, error } = await query
         if (error) throw error
@@ -339,7 +347,7 @@ export default function CatalogPage() {
 
     let query = supabase
       .from('products')
-      .select('*, product_variants(*)')
+      .select(CATALOG_SELECT)
       .eq('is_active', true)
 
     if (activeCategory !== 'Все') {

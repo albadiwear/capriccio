@@ -11,6 +11,22 @@ export default async function handler(req, res) {
       process.env.SUPABASE_SERVICE_KEY
     )
 
+    // Only managers/admins may send messages through the bot.
+    const token = req.headers.authorization?.replace('Bearer ', '')
+    if (!token) return res.status(401).json({ error: 'Unauthorized' })
+
+    const { data: { user } } = await supabase.auth.getUser(token)
+    if (!user) return res.status(401).json({ error: 'Unauthorized' })
+
+    const { data: profile } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle()
+    if (!['manager', 'admin'].includes(profile?.role)) {
+      return res.status(401).json({ error: 'Unauthorized' })
+    }
+
     const { data: chat } = await supabase
       .from('stylist_chats')
       .select('external_id')

@@ -16,7 +16,7 @@ export default function DesktopNav() {
   const setCartOpen = useCartStore((state) => state.setIsOpen)
   const cartQty = useCartStore((state) => state.items.reduce((sum, i) => sum + (i.quantity || 0), 0))
 
-  const wishlistCount = useWishlistStore((state) => state.count)
+  const wishlistCount = useWishlistStore((state) => state.items.length)
   const loadWishlist = useWishlistStore((state) => state.load)
 
   useEffect(() => {

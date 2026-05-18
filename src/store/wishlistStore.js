@@ -54,9 +54,5 @@ export const useWishlistStore = create((set, get) => ({
       set((state) => ({ items: [data, ...state.items] }))
     }
   },
-
-  get count() {
-    return get().items.length
-  },
 }))
 

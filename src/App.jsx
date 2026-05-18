@@ -148,7 +148,7 @@ function App() {
     return (
       <div
         className="fixed inset-0 flex items-center justify-center"
-        style={{ backgroundColor: '#D4537E' }}
+        style={{ background: 'linear-gradient(160deg,#2d1525 0%,#4a2035 25%,#6b3050 45%,#5a2840 70%,#1a0f18 100%)' }}
       >
         <div className="text-white text-xl sm:text-2xl font-semibold tracking-[0.35em]">
           CAPRICCIO
@@ -158,7 +158,7 @@ function App() {
   }
 
   return (
-    <div className="h-[100dvh] overflow-hidden bg-white">
+    <div className="bg-[#0f0c10] min-h-screen">
       <Router>
         <ScrollToTop />
         <AuthRedirectHandler />

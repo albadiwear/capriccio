@@ -13,10 +13,10 @@ function getSessionId() {
 
 export async function trackEvent(type, payload = {}) {
   try {
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { session } } = await supabase.auth.getSession()
     await supabase.from('events').insert({
       type,
-      user_id: user?.id ?? null,
+      user_id: session?.user?.id ?? null,
       session_id: getSessionId(),
       product_id: payload.product_id ?? null,
       category: payload.category ?? null,

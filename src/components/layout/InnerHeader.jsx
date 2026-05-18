@@ -8,7 +8,7 @@ import SearchOverlay from '../catalog/SearchOverlay'
 
 export default function InnerHeader() {
   const user = useAuthStore((state) => state.user)
-  const count = useWishlistStore((state) => state.count)
+  const count = useWishlistStore((state) => state.items.length)
   const load = useWishlistStore((state) => state.load)
   const [searchOpen, setSearchOpen] = useState(false)
   const navigate = useNavigate()

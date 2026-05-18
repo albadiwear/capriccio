@@ -60,7 +60,7 @@ const PAGE_SIZE = 20
 // (description, composition, care, youtube_url, etc.) for every product.
 // is_new/season are kept: they back the «Новинки» category and season filter.
 const CATALOG_SELECT =
-  'id, name, price, sale_price, images, category, brand, is_active, badges, is_new, season, product_variants(size, color, color_hex, stock)'
+  'id, name, price, sale_price, images, category, brand, is_active, badges, is_new, season, product_variants(size, color, stock)'
 
 function SkeletonCard() {
   return (

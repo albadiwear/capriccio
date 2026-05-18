@@ -67,13 +67,28 @@ export const useAuthStore = create((set) => ({
       authSubscription = null
     }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       set((state) => ({
         session,
         user: session?.user ?? (isTelegramMiniApp() ? state.user : null),
         // Don't hide splash early during initial bootstrap.
         loading: state.loading ? true : false,
       }))
+
+      // After a Google OAuth sign-in, send users without a phone to onboarding.
+      if (event === 'SIGNED_IN' && session?.user?.app_metadata?.provider === 'google') {
+        supabase
+          .from('users')
+          .select('phone')
+          .eq('id', session.user.id)
+          .maybeSingle()
+          .then(({ data }) => {
+            const hasPhone = !!data?.phone && String(data.phone).trim() !== ''
+            if (!hasPhone && window.location.pathname !== '/onboarding') {
+              window.location.assign('/onboarding')
+            }
+          })
+      }
     })
 
     authSubscription = subscription

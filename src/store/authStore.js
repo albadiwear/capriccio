@@ -4,6 +4,23 @@ import { supabase } from '../lib/supabase'
 let authSubscription = null
 const isTelegramMiniApp = () => typeof window !== 'undefined' && window.Telegram?.WebApp?.initData !== ''
 
+// Google OAuth users without a saved phone must finish onboarding first.
+async function redirectGoogleUserWithoutPhone(user) {
+  if (!user || user.app_metadata?.provider !== 'google') return
+  if (typeof window === 'undefined' || window.location.pathname === '/onboarding') return
+
+  const { data } = await supabase
+    .from('users')
+    .select('phone')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  const hasPhone = !!data?.phone && String(data.phone).trim() !== ''
+  if (!hasPhone) {
+    window.location.assign('/onboarding')
+  }
+}
+
 export const useAuthStore = create((set) => ({
   user: null,
   session: null,
@@ -31,13 +48,16 @@ export const useAuthStore = create((set) => ({
           if (session) {
             try {
               const { data: refreshed } = await supabase.auth.refreshSession()
+              const activeUser = refreshed.session?.user ?? session.user ?? null
               set({
                 session: refreshed.session ?? session,
-                user: refreshed.session?.user ?? session.user ?? null,
+                user: activeUser,
                 loading: false,
               })
+              redirectGoogleUserWithoutPhone(activeUser)
             } catch {
               set({ session, user: session.user ?? null, loading: false })
+              redirectGoogleUserWithoutPhone(session.user ?? null)
             }
           } else {
             set((state) => ({
@@ -76,18 +96,8 @@ export const useAuthStore = create((set) => ({
       }))
 
       // After a Google OAuth sign-in, send users without a phone to onboarding.
-      if (event === 'SIGNED_IN' && session?.user?.app_metadata?.provider === 'google') {
-        supabase
-          .from('users')
-          .select('phone')
-          .eq('id', session.user.id)
-          .maybeSingle()
-          .then(({ data }) => {
-            const hasPhone = !!data?.phone && String(data.phone).trim() !== ''
-            if (!hasPhone && window.location.pathname !== '/onboarding') {
-              window.location.assign('/onboarding')
-            }
-          })
+      if (event === 'SIGNED_IN') {
+        redirectGoogleUserWithoutPhone(session?.user ?? null)
       }
     })
 

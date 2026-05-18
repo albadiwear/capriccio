@@ -148,7 +148,7 @@ export default function PartnerPage() {
   }, [user])
 
   const referralCode = userRefCode || user?.user_metadata?.referral_code || ''
-  const referralLink = `https://capriccio.vercel.app?ref=${referralCode}`
+  const referralLink = `https://www.capriccio.kz?ref=${referralCode}`
   const balance = Number(referral?.balance || 0)
   const totalEarned = Number(referral?.total_earned || 0)
   const totalWithdrawn = Number(referral?.total_withdrawn || 0)

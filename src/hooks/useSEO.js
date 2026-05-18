@@ -1,6 +1,6 @@
 export function useSEO({ title, description, url, image } = {}) {
   const siteName = 'Capriccio'
-  const baseUrl = 'https://capriccio.vercel.app'
+  const baseUrl = 'https://www.capriccio.kz'
   const defaultImage = `${baseUrl}/og-image.jpg`
 
   const fullTitle = title ? `${title} — ${siteName}` : `${siteName} — Женская одежда премиум`

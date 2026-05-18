@@ -138,7 +138,7 @@ export default function AdminNotificationsPage() {
                             const phone = p.phone?.replace(/\D/g, '')
                             const productName = p.product_name ?? 'Товар'
                             const productId = p.product_id ?? ''
-                            const productLink = `https://capriccio.vercel.app/product/${productId}`
+                            const productLink = `https://www.capriccio.kz/product/${productId}`
                             const text = encodeURIComponent(
                               `Здравствуйте! Товар "${productName}" снова в наличии. Успейте заказать: ${productLink}`
                             )

@@ -235,7 +235,7 @@ export default function ChatDialog({ selectedChat, onClose, compact = false }) {
     if (!chatData?.id) return
 
     const imageUrl = Array.isArray(product.images) ? product.images[0] : product.images
-    const productUrl = `https://capriccio.vercel.app/product/${product.id}`
+    const productUrl = `https://www.capriccio.kz/product/${product.id}`
 
     try {
       await supabase.from('stylist_messages').insert({
@@ -541,7 +541,7 @@ export default function ChatDialog({ selectedChat, onClose, compact = false }) {
                       key={product.id}
                       onClick={() => {
                         if (showLinkPicker) {
-                          const productUrl = `https://capriccio.vercel.app/product/${product.id}`
+                          const productUrl = `https://www.capriccio.kz/product/${product.id}`
                           const linkText = `${product.name} — ${Number(product.price).toLocaleString('ru-RU')} ₸\n${productUrl}`
                           setInput(linkText)
                           setShowLinkPicker(false)

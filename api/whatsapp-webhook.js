@@ -41,26 +41,73 @@ export default async function handler(req, res) {
     if (!text) return res.status(200).json({ ok: true }) // skip non-text for now
 
     // Find or create the lead in `users`.
-    let { data: user } = await supabase
+    let { data: user, error: userLookupError } = await supabase
       .from('users')
       .select('id')
       .eq('phone', phone)
       .maybeSingle()
 
-    if (!user) {
-      const { data: newUser } = await supabase
+    if (userLookupError) {
+      console.error('[whatsapp-webhook] users lookup failed', {
+        phone,
+        phoneDigits,
+        waChatId,
+        error: {
+          message: userLookupError.message,
+          details: userLookupError.details,
+          hint: userLookupError.hint,
+          code: userLookupError.code,
+        },
+      })
+      throw userLookupError
+    }
+
+    if (!user?.id) {
+      console.log('[whatsapp-webhook] user create start', {
+        phone,
+        phoneDigits,
+        waChatId,
+        senderName,
+      })
+
+      const newUserPayload = {
+        id: crypto.randomUUID(),
+        full_name: senderName || 'WhatsApp клиент',
+        phone,
+        email: null,
+        lead_source: 'whatsapp',
+        lead_status: 'Новый',
+        created_at: new Date().toISOString(),
+      }
+
+      const { data: newUser, error: newUserError } = await supabase
         .from('users')
-        .insert({
-          id: crypto.randomUUID(),
-          full_name: senderName || 'WhatsApp клиент',
-          phone,
-          email: null,
-          lead_source: 'whatsapp',
-          lead_status: 'Новый',
-          created_at: new Date().toISOString(),
-        })
+        .insert(newUserPayload)
         .select('id')
         .single()
+
+      if (newUserError) {
+        console.error('[whatsapp-webhook] users insert failed', {
+          phone,
+          phoneDigits,
+          waChatId,
+          senderName,
+          payload: newUserPayload,
+          error: {
+            message: newUserError.message,
+            details: newUserError.details,
+            hint: newUserError.hint,
+            code: newUserError.code,
+          },
+        })
+        throw newUserError
+      }
+
+      console.log('[whatsapp-webhook] user create end', {
+        phone,
+        userId: newUser?.id || null,
+      })
+
       user = newUser
     }
 

@@ -13,7 +13,19 @@ const STATUS_COLORS = {
   'Купил': 'bg-green-100 text-green-700',
 }
 
+const SOURCE_LABELS = {
+  whatsapp: 'WhatsApp',
+  telegram: 'Telegram',
+  google: 'Google',
+  site: 'Сайт',
+  promo: 'Promo',
+}
+
 function getLeadSource(lead) {
+  if (lead.lead_source) {
+    return SOURCE_LABELS[lead.lead_source] || lead.lead_source
+  }
+  // Fallback for legacy leads without lead_source.
   if (lead.user_metadata?.provider === 'google') return 'Google'
   if (lead.from_promo || lead.user_metadata?.from_promo) return 'Promo'
   return 'Сайт'
@@ -49,6 +61,7 @@ export default function AdminLeadsPage() {
   const [remindAt, setRemindAt] = useState('')
   const [reminderSaved, setReminderSaved] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [chatId, setChatId] = useState(null)
 
   const PAGE_SIZE = 20
 
@@ -140,14 +153,17 @@ export default function AdminLeadsPage() {
     setRemindAt(lead.remind_at ? new Date(lead.remind_at).toISOString().slice(0, 16) : '')
     setReminderSaved(false)
     setDeleting(false)
+    setChatId(null)
 
-    const [{ data: profileData }, { data: ordersData }, { data: notesData }] = await Promise.all([
+    const [{ data: profileData }, { data: ordersData }, { data: notesData }, { data: chatRow }] = await Promise.all([
       supabase.from('stylist_profiles').select('*').eq('user_id', lead.id).single(),
       supabase.from('orders').select('id, created_at, total_amount, status').eq('user_id', lead.id).order('created_at', { ascending: false }).limit(5)
       ,
-      supabase.from('lead_notes').select('*').eq('user_id', lead.id).order('created_at', { ascending: false })
+      supabase.from('lead_notes').select('*').eq('user_id', lead.id).order('created_at', { ascending: false }),
+      supabase.from('stylist_chats').select('id').eq('user_id', lead.id).limit(1).maybeSingle()
     ])
 
+    setChatId(chatRow?.id || null)
     setProfile(profileData || null)
     setEditForm({
       full_name: lead.full_name || '',
@@ -351,7 +367,7 @@ export default function AdminLeadsPage() {
           onChange={(event) => setSourceFilter(event.target.value)}
           className="h-11 rounded-lg border border-gray-200 bg-white px-4 text-sm text-gray-900 outline-none transition-colors focus:border-gray-900"
         >
-          {['Все', 'Promo', 'Google', 'Сайт'].map((option) => (
+          {['Все', 'WhatsApp', 'Telegram', 'Promo', 'Google', 'Сайт'].map((option) => (
             <option key={option} value={option}>{option}</option>
           ))}
         </select>
@@ -561,6 +577,16 @@ export default function AdminLeadsPage() {
                 </div>
               </div>
               <div className="flex items-center">
+                {chatId && (
+                  <button
+                    type="button"
+                    onClick={() => navigate('/admin/chats?chat=' + chatId)}
+                    className="flex items-center gap-1.5 text-sm text-gray-700 hover:text-gray-900 border border-gray-200 rounded-lg px-3 py-1.5 mr-2"
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                    Открыть чат
+                  </button>
+                )}
                 {!editing ? (
                   <button
                     type="button"

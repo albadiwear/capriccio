@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import ChatDialog from '../../components/admin/ChatDialog'
 import { Search, MessageCircle, ExternalLink } from 'lucide-react'
@@ -18,6 +18,7 @@ const WHATSAPP_ICON = () => (
 
 export default function AdminChatsPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [chats, setChats] = useState([])
   const [selectedChat, setSelectedChat] = useState(null)
   const [profile, setProfile] = useState(null)
@@ -122,6 +123,19 @@ export default function AdminChatsPage() {
       supabase.removeChannel(channel)
     }
   }, [])
+
+  // Auto-open a chat when navigated here with ?chat=<id> (e.g. from the leads page).
+  useEffect(() => {
+    const chatIdParam = searchParams.get('chat')
+    if (!chatIdParam || chats.length === 0) return
+
+    const chat = chats.find((c) => c.id === chatIdParam)
+    if (chat) {
+      openChat(chat)
+      searchParams.delete('chat')
+      setSearchParams(searchParams, { replace: true })
+    }
+  }, [chats, searchParams])
 
   const filteredChats = chats.filter(chat => {
     const name = chat.users?.full_name || chat.users?.email || ''

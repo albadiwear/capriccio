@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import crypto from 'crypto'
 
 const supabase = createClient(
   process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL,
@@ -27,11 +28,10 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true }) // skip groups/status broadcasts
     }
 
-    const phone = waChatId.replace('@c.us', '')
+    const phoneDigits = waChatId.replace('@c.us', '') // "77001234567"
+    const phone = `+${phoneDigits}` // "+77001234567"
     const senderName =
-      body.senderData?.senderName ||
-      body.senderData?.chatName ||
-      `WhatsApp ${phone}`
+      body.senderData?.senderName || body.senderData?.chatName || null
 
     const md = body.messageData || {}
     const text =
@@ -39,6 +39,32 @@ export default async function handler(req, res) {
       md.extendedTextMessageData?.text ??
       ''
     if (!text) return res.status(200).json({ ok: true }) // skip non-text for now
+
+    // Find or create the lead in `users`.
+    let { data: user } = await supabase
+      .from('users')
+      .select('id')
+      .eq('phone', phone)
+      .maybeSingle()
+
+    if (!user) {
+      const { data: newUser } = await supabase
+        .from('users')
+        .insert({
+          id: crypto.randomUUID(),
+          full_name: senderName || 'WhatsApp клиент',
+          phone,
+          email: null,
+          lead_source: 'whatsapp',
+          lead_status: 'Новый',
+          created_at: new Date().toISOString(),
+        })
+        .select('id')
+        .single()
+      user = newUser
+    }
+
+    const userId = user?.id || null
 
     // Find or create the chat.
     let { data: chat } = await supabase
@@ -54,8 +80,9 @@ export default async function handler(req, res) {
         .insert({
           source: 'whatsapp',
           external_id: waChatId,
-          whatsapp_phone: phone,
-          title: senderName,
+          whatsapp_phone: phoneDigits,
+          user_id: userId,
+          title: senderName || `WhatsApp ${phoneDigits}`,
           mode: 'ai',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -63,6 +90,13 @@ export default async function handler(req, res) {
         .select()
         .single()
       chat = newChat
+    } else if (!chat.user_id && userId) {
+      // Link an older chat that has no user attached yet.
+      await supabase
+        .from('stylist_chats')
+        .update({ user_id: userId })
+        .eq('id', chat.id)
+      chat.user_id = userId
     }
 
     if (!chat) return res.status(200).json({ ok: true })

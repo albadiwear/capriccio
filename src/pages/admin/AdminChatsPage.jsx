@@ -10,6 +10,12 @@ const TELEGRAM_ICON = () => (
   </svg>
 )
 
+const WHATSAPP_ICON = () => (
+  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-[#25D366]">
+    <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38c1.45.79 3.08 1.21 4.79 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm0 1.67c2.2 0 4.27.86 5.83 2.42a8.2 8.2 0 0 1 2.42 5.83c0 4.54-3.7 8.23-8.25 8.23-1.52 0-3-.41-4.3-1.19l-.31-.18-3.12.82.83-3.04-.2-.32a8.17 8.17 0 0 1-1.25-4.35c0-4.54 3.7-8.23 8.24-8.23zm-4.53 4.43c-.21 0-.56.08-.85.39-.29.32-1.12 1.1-1.12 2.67 0 1.57 1.15 3.09 1.31 3.31.16.21 2.23 3.55 5.5 4.83 2.72 1.07 3.27.86 3.86.8.59-.05 1.9-.77 2.17-1.52.27-.75.27-1.39.19-1.52-.08-.13-.29-.21-.61-.37-.32-.16-1.9-.94-2.19-1.04-.29-.11-.51-.16-.72.16-.21.32-.82 1.04-1.01 1.25-.19.21-.37.24-.69.08-.32-.16-1.35-.5-2.57-1.59-.95-.85-1.59-1.89-1.78-2.21-.19-.32-.02-.49.14-.65.14-.14.32-.37.48-.56.16-.18.21-.32.32-.53.11-.21.05-.4-.03-.56-.08-.16-.72-1.74-.99-2.38-.26-.62-.52-.54-.72-.55-.18-.01-.4-.01-.61-.01z" />
+  </svg>
+)
+
 export default function AdminChatsPage() {
   const navigate = useNavigate()
   const [chats, setChats] = useState([])
@@ -184,6 +190,11 @@ export default function AdminChatsPage() {
                   {chat.source === 'telegram' && (
                     <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-white flex items-center justify-center">
                       <TELEGRAM_ICON />
+                    </span>
+                  )}
+                  {chat.source === 'whatsapp' && (
+                    <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-white flex items-center justify-center">
+                      <WHATSAPP_ICON />
                     </span>
                   )}
                   {chat.handoff_requested && (

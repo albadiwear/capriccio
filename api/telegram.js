@@ -7,6 +7,10 @@ const supabase = createClient(
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
 
+function normalizePhone(phone) {
+  return String(phone || '').replace(/\D/g, '')
+}
+
 async function sendTelegram(chatId, text, replyMarkup = null) {
   const body = { chat_id: chatId, text }
   if (replyMarkup) body.reply_markup = replyMarkup
@@ -98,9 +102,55 @@ export default async function handler(req, res) {
 
     const contact = message.contact || null
     if (contact?.phone_number) {
-      const phone = contact.phone_number.startsWith('+')
-        ? contact.phone_number
-        : `+${contact.phone_number}`
+      const phoneDigits = normalizePhone(contact.phone_number)
+      const phone = phoneDigits ? `+${phoneDigits}` : null
+
+      const { data: usersWithPhone } = await supabase
+        .from('users')
+        .select('id, full_name, phone, lead_source')
+        .not('phone', 'is', null)
+
+      const existingUserByPhone = usersWithPhone?.find((u) => normalizePhone(u.phone) === phoneDigits) || null
+
+      if (existingUserByPhone?.id) {
+        console.log('[merge] found existing user by phone', {
+          existingId: existingUserByPhone.id,
+          phoneDigits,
+        })
+
+        if (fromName && (existingUserByPhone.full_name === 'WhatsApp клиент' || existingUserByPhone.full_name === 'Telegram клиент')) {
+          await supabase
+            .from('users')
+            .update({ full_name: fromName })
+            .eq('id', existingUserByPhone.id)
+        }
+
+        await supabase
+          .from('users')
+          .update({ phone })
+          .eq('id', existingUserByPhone.id)
+
+        const { data: tgChat } = await supabase
+          .from('stylist_chats')
+          .select('avatar_url')
+          .eq('external_id', tgChatId)
+          .eq('source', 'telegram')
+          .maybeSingle()
+
+        if (tgChat?.avatar_url) {
+          await supabase
+            .from('users')
+            .update({ avatar_url: tgChat.avatar_url })
+            .eq('id', existingUserByPhone.id)
+        }
+
+        if (!chat.user_id) {
+          await supabase
+            .from('stylist_chats')
+            .update({ user_id: existingUserByPhone.id })
+            .eq('id', chat.id)
+        }
+      }
 
       const { data: tgUser } = await supabase
         .from('users')

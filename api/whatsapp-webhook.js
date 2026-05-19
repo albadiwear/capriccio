@@ -6,6 +6,10 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 )
 
+function normalizePhone(phone) {
+  return String(phone || '').replace(/\D/g, '')
+}
+
 // Incoming WhatsApp messages from Green API.
 // Webhook URL must include ?token=<GREEN_API_WEBHOOK_TOKEN>.
 export default async function handler(req, res) {
@@ -28,7 +32,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true }) // skip groups/status broadcasts
     }
 
-    const phoneDigits = waChatId.replace('@c.us', '') // "77001234567"
+    const phoneDigits = normalizePhone(waChatId.replace('@c.us', '')) // "77001234567"
     const phone = `+${phoneDigits}` // "+77001234567"
     const senderName =
       body.senderData?.senderName || body.senderData?.chatName || null
@@ -41,11 +45,10 @@ export default async function handler(req, res) {
     if (!text) return res.status(200).json({ ok: true }) // skip non-text for now
 
     // Find or create the lead in `users`.
-    let { data: user, error: userLookupError } = await supabase
+    let { data: usersWithPhone, error: userLookupError } = await supabase
       .from('users')
-      .select('id')
-      .eq('phone', phone)
-      .maybeSingle()
+      .select('id, full_name, phone, lead_source')
+      .not('phone', 'is', null)
 
     if (userLookupError) {
       console.error('[whatsapp-webhook] users lookup failed', {
@@ -60,6 +63,24 @@ export default async function handler(req, res) {
         },
       })
       throw userLookupError
+    }
+
+    let user = usersWithPhone?.find((u) => normalizePhone(u.phone) === phoneDigits) || null
+
+    if (user?.id) {
+      console.log('[merge] found existing user by phone', {
+        existingId: user.id,
+        phoneDigits,
+      })
+
+      if (senderName && (user.full_name === 'WhatsApp клиент' || user.full_name === 'Telegram клиент')) {
+        await supabase
+          .from('users')
+          .update({ full_name: senderName })
+          .eq('id', user.id)
+
+        user = { ...user, full_name: senderName }
+      }
     }
 
     if (!user?.id) {

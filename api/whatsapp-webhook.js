@@ -70,19 +70,55 @@ export default async function handler(req, res) {
         senderName,
       })
 
-      const newUserPayload = {
-        id: crypto.randomUUID(),
-        full_name: senderName || 'WhatsApp клиент',
-        phone,
-        email: null,
-        lead_source: 'whatsapp',
-        lead_status: 'Новый',
-        created_at: new Date().toISOString(),
+      // Create the auth user first so users.id satisfies the FK to auth.users.
+      const tempEmail = `wa_${phoneDigits}@capriccio.app`
+      const tempPassword = crypto.randomUUID()
+
+      const { data: created, error: createError } =
+        await supabase.auth.admin.createUser({
+          email: tempEmail,
+          password: tempPassword,
+          email_confirm: true,
+          user_metadata: { full_name: senderName, provider: 'whatsapp' },
+        })
+
+      let authUserId = created?.user?.id || null
+
+      if (createError) {
+        // Auth user already exists — resolve its id by email.
+        const { data: list } = await supabase.auth.admin.listUsers()
+        const existingAuthUser = list?.users?.find((u) => u.email === tempEmail)
+        authUserId = existingAuthUser?.id || null
+
+        if (!authUserId) {
+          console.error('[whatsapp-webhook] auth user resolve failed', {
+            phone,
+            phoneDigits,
+            waChatId,
+            tempEmail,
+            error: {
+              message: createError.message,
+              status: createError.status,
+            },
+          })
+          throw createError
+        }
       }
 
+      const newUserPayload = {
+        id: authUserId,
+        full_name: senderName || 'WhatsApp клиент',
+        phone,
+        email: tempEmail,
+        lead_source: 'whatsapp',
+        lead_status: 'Новый',
+      }
+
+      // upsert: a DB trigger may already have created the users row on
+      // auth.admin.createUser — onConflict keeps this idempotent.
       const { data: newUser, error: newUserError } = await supabase
         .from('users')
-        .insert(newUserPayload)
+        .upsert(newUserPayload, { onConflict: 'id' })
         .select('id')
         .single()
 

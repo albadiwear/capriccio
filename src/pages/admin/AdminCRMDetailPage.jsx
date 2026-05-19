@@ -108,8 +108,6 @@ export default function AdminCRMDetailPage() {
   const [chats, setChats] = useState([])
   const [wishlist, setWishlist] = useState([])
   const [customFields, setCustomFields] = useState([])
-  const [webChat, setWebChat] = useState(null)
-  const [telegramChat, setTelegramChat] = useState(null)
 
   const [tab, setTab] = useState('chats')
   const [mobileSection, setMobileSection] = useState('info')
@@ -122,17 +120,18 @@ export default function AdminCRMDetailPage() {
   const [newFieldValue, setNewFieldValue] = useState('')
   const [savingStatus, setSavingStatus] = useState(false)
 
+  const channelChats = {
+    web: chats.find(c => c.source === 'web' || c.source === 'site' || !c.source) || null,
+    telegram: chats.find(c => c.source === 'telegram') || null,
+    whatsapp: chats.find(c => c.source === 'whatsapp') || null,
+    instagram: chats.find(c => c.source === 'instagram') || null,
+  }
+
   useEffect(() => { load() }, [id])
 
   useEffect(() => {
-    if (channelTab === 'web') {
-      setSelectedChat(webChat || null)
-    } else if (channelTab === 'telegram') {
-      setSelectedChat(telegramChat || null)
-    } else {
-      setSelectedChat(null)
-    }
-  }, [channelTab, webChat, telegramChat])
+    setSelectedChat(channelChats[channelTab] || null)
+  }, [channelTab, chats])
 
   async function load() {
     setLoading(true)
@@ -141,7 +140,7 @@ export default function AdminCRMDetailPage() {
         supabase.from('users').select('*').eq('id', id).maybeSingle(),
         supabase.from('lead_notes').select('*').eq('user_id', id).order('created_at', { ascending: false }),
         supabase.from('orders').select('id, created_at, total_amount, status').eq('user_id', id).order('created_at', { ascending: false }),
-        supabase.from('stylist_chats').select('id, source, title, last_message, updated_at, avatar_url, mode, handoff_requested').eq('user_id', id).order('updated_at', { ascending: false }),
+        supabase.from('stylist_chats').select('*').eq('user_id', id).order('updated_at', { ascending: false }),
         supabase.from('wishlist').select('id, product_id').eq('user_id', id),
         supabase.from('stylist_profiles').select('*').eq('user_id', id).maybeSingle(),
         supabase.from('crm_custom_fields').select('*').eq('user_id', id).order('created_at', { ascending: true }),
@@ -164,8 +163,6 @@ export default function AdminCRMDetailPage() {
       setProfile(profileRes.data || null)
       setNotes(notesRes.data || [])
       setOrders(ordersRes.data || [])
-      setWebChat(chatsRes.data?.find(c => c.source === 'web' || !c.source) || null)
-      setTelegramChat(chatsRes.data?.find(c => c.source === 'telegram') || null)
       setChats(chatsRes.data || [])
       setWishlist(wishlistWithProducts)
       setCustomFields(customFieldsRes.data || [])
@@ -275,6 +272,13 @@ export default function AdminCRMDetailPage() {
     whatsapp:  { label: 'WhatsApp',  bg: '#e8fdf0', text: '#16a34a' },
     instagram: { label: 'Instagram', bg: '#fde8f0', text: '#be185d' },
     web:       { label: 'Сайт',      bg: '#f3f4f6', text: '#4b5563' },
+  }
+
+  const CHANNEL_LABELS = {
+    web: 'Сайт',
+    telegram: 'Telegram',
+    whatsapp: 'WhatsApp',
+    instagram: 'Instagram',
   }
 
   // ── Profile block (shared) ─────────────────────────────────────────────────
@@ -541,13 +545,7 @@ export default function AdminCRMDetailPage() {
                 <ChatDialog selectedChat={selectedChat} compact={true} />
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-[#888780]">
-                  {channelTab === 'whatsapp' && <p className="text-sm">WhatsApp не подключён</p>}
-                  {channelTab === 'instagram' && <p className="text-sm">Instagram не подключён</p>}
-                  {channelTab === 'web' && <p className="text-sm">Нет чата с сайта</p>}
-                  {channelTab === 'telegram' && <p className="text-sm">Нет чата в Telegram</p>}
-                  {(channelTab === 'whatsapp' || channelTab === 'instagram') && (
-                    <p className="text-xs mt-1">Будет доступно после подключения API</p>
-                  )}
+                  <p className="text-sm">{CHANNEL_LABELS[channelTab]} не подключён</p>
                 </div>
               )}
             </div>
